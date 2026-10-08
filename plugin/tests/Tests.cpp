@@ -303,6 +303,22 @@ static void testEngine()
             CHECK (st.finite && st.peak <= 1.0 && st.rmsDb > -45, "sr %.0f block %d: rms %.1f", sr, blk, st.rmsDb);
         }
 
+    // A host sending bigger blocks than it promised must still get real audio
+    {
+        Engine big;
+        big.prepare (48000, 256);
+        big.installFrame (0.5);
+        big.setTarget (resolveLeash (c, {}));
+        juce::AudioBuffer<float> b (2, 4096);
+        b.clear();
+        for (int ch = 0; ch < 2; ++ch)
+            juce::FloatVectorOperations::fill (b.getWritePointer (ch), 7.0f, 4096); // garbage in
+        juce::MidiBuffer m;
+        m.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 10);
+        big.render (b, m);
+        CHECK (b.getMagnitude (0, 4096) < 1.0f && b.getMagnitude (0, 4096) > 0.0001f, "oversized block: magnitude %.3f", b.getMagnitude (0, 4096));
+    }
+
     // CPU: 12 voices held for 10 s at 48 kHz
     Engine e;
     e.prepare (48000, 512);

@@ -32,7 +32,7 @@ void Engine::prepare (double sampleRate, int maxBlock)
 {
     sr = sampleRate;
     maxBlockSize = juce::jmax (maxBlock, kChunk);
-    scratch.setSize (2, maxBlockSize);
+    scratch.setSize (2, kChunk);
 
     bankShimmer = std::make_shared<WavetableBank> (frames()[0].partials, sr);
     installFrame (framePos.load() < 0 ? 0.3 : framePos.load());
@@ -421,9 +421,9 @@ void Engine::processFx (float* L, float* R, int n) noexcept
 
 void Engine::render (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi) noexcept
 {
+    // Works in chunks of at most kChunk samples, so any host block size is fine
     const int total = out.getNumSamples();
-    if (scratch.getNumSamples() < total) return; // host broke its promise; stay silent rather than allocate
-    scratch.clear (0, total);
+    const int outCh = out.getNumChannels();
     float* L = scratch.getWritePointer (0);
     float* R = scratch.getWritePointer (1);
 
@@ -439,19 +439,27 @@ void Engine::render (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi
         int end = juce::jmin (total, pos + kChunk);
         if (it != midi.cend() && (*it).samplePosition < end) end = juce::jmax (pos + 1, (*it).samplePosition);
         const int n = end - pos;
+        juce::FloatVectorOperations::clear (L, n);
+        juce::FloatVectorOperations::clear (R, n);
         updateChunkParams();
-        renderVoices (L + pos, R + pos, n);
-        processFx (L + pos, R + pos, n);
+        renderVoices (L, R, n);
+        processFx (L, R, n);
+        if (outCh >= 2)
+        {
+            out.copyFrom (0, pos, L, n);
+            out.copyFrom (1, pos, R, n);
+            for (int c = 2; c < outCh; ++c)
+                out.clear (c, pos, n);
+        }
+        else if (outCh == 1)
+        {
+            out.copyFrom (0, pos, L, n, 0.5f);
+            out.addFrom (0, pos, R, n, 0.5f);
+        }
         pos = end;
     }
-
-    const int outCh = out.getNumChannels();
-    for (int c = 0; c < outCh; ++c)
-        out.copyFrom (c, 0, scratch, juce::jmin (c, 1), 0, total);
-    if (outCh == 1)
-    {
-        out.addFrom (0, 0, scratch, 1, 0, total);
-        out.applyGain (0.5f);
-    }
+    // Events at or past the block end (hosts shouldn't send them, but some do)
+    for (; it != midi.cend(); ++it)
+        handleMidi ((*it).getMessage());
 }
 } // namespace atmos
