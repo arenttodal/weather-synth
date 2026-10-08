@@ -111,13 +111,25 @@ jobs:
           Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
           Expand-Archive pluginval.zip -DestinationPath pv
           & pv\pluginval.exe --strictness-level 7 --timeout-ms 600000 --skip-gui-tests build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
+          Write-Host "pluginval exit code: $LASTEXITCODE"
           if ($LASTEXITCODE -ne 0) { exit 1 }
-      - name: pluginval full run (informational)
+      - name: pluginval full run under the debugger (informational)
+        if: always()
         shell: pwsh
         continue-on-error: true
         run: |
-          & pv\pluginval.exe --strictness-level 7 --timeout-ms 600000 build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
-          if ($LASTEXITCODE -ne 0) { Write-Host "::warning::Full pluginval run failed (known Editor Automation crash on Windows runners)"; exit 1 }
+          if (-not (Test-Path pv\pluginval.exe)) {
+            Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+            Expand-Archive pluginval.zip -DestinationPath pv
+          }
+          $cdb = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $cdb) { Write-Host "cdb not installed on this runner"; exit 1 }
+          $pdbs = (Get-ChildItem -Recurse build -Filter *.pdb | ForEach-Object { $_.DirectoryName } | Sort-Object -Unique) -join ";"
+          $sym = "srv*C:\symcache*https://msdl.microsoft.com/download/symbols;$pdbs"
+          & $cdb.FullName -g -G -lines -y "$sym" -c "g; .echo ===== CRASH =====; .ecxr; kP 40; .echo ===== ALL THREADS =====; ~*k 12; q" `
+            pv\pluginval.exe --strictness-level 7 --validate-in-process --timeout-ms 600000 build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
+          Write-Host "exit code: $LASTEXITCODE"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Package
         shell: pwsh
         run: |
@@ -161,7 +173,8 @@ jobs:
 
   release:
     name: Publish download
-    needs: [relay, macos, windows, linux]
+    # Windows is published only when it passes; it doesn't hold up the macOS download
+    needs: [relay, macos, linux]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
@@ -171,10 +184,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          files="artifacts/Atmospheric-macOS/dist/Atmospheric-macOS.zip artifacts/Atmospheric-Linux/Atmospheric-Linux.zip"
+          [ -f artifacts/Atmospheric-Windows/Atmospheric-Windows.zip ] && files="$files artifacts/Atmospheric-Windows/Atmospheric-Windows.zip"
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest --prerelease --target "$GITHUB_SHA" \
             --title "Atmospheric test build ($(date -u +%Y-%m-%d) · ${GITHUB_SHA::7})" \
             --notes "Built from ${GITHUB_REF_NAME} at ${GITHUB_SHA}. macOS: unzip, then right-click Install.command > Open." \
-            artifacts/Atmospheric-macOS/dist/Atmospheric-macOS.zip \
-            artifacts/Atmospheric-Windows/Atmospheric-Windows.zip \
-            artifacts/Atmospheric-Linux/Atmospheric-Linux.zip
+            $files
