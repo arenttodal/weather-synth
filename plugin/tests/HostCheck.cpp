@@ -5,6 +5,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <cstdio>
+#include <thread>
 
 static int failures = 0;
 #define EXPECT(cond, msg)                         \
@@ -157,6 +158,42 @@ int main (int argc, char** argv)
             }
         ed.reset();
         EXPECT (finite, "editor automation: random values into all parameters while the editor is open");
+    }
+    // The same with pluginval's threading: audio + parameter changes on a background
+    // thread while the message thread paints an on-screen editor
+    {
+        std::unique_ptr<juce::AudioProcessorEditor> ed (inst->createEditorIfNeeded());
+       #if ! JUCE_LINUX // bare Xvfb in CI has no window manager to accept a window
+        ed->addToDesktop (juce::ComponentPeer::windowHasTitleBar);
+        ed->setVisible (true);
+       #endif
+        std::atomic<bool> done { false }, finite { true };
+        auto params = inst->getParameters();
+        std::thread worker ([&] {
+            juce::Random wr (99);
+            inst->releaseResources();
+            inst->prepareToPlay (48000, 256);
+            juce::AudioBuffer<float> ab (2, 256);
+            juce::MidiBuffer mb;
+            for (int i = 0; i < 1000; ++i)
+            {
+                for (auto* prm : params)
+                    prm->setValue (wr.nextFloat());
+                if (i % 50 == 0) mb.addEvent (juce::MidiMessage::noteOn (1, 48 + wr.nextInt (24), (juce::uint8) 100), 0);
+                inst->processBlock (ab, mb);
+                mb.clear();
+                for (int c = 0; c < 2; ++c)
+                    for (int j = 0; j < 256; ++j)
+                        if (! std::isfinite (ab.getSample (c, j))) finite = false;
+            }
+            done = true;
+        });
+        while (! done)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (10);
+        worker.join();
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
+        ed.reset();
+        EXPECT (finite.load(), "background-thread automation with the editor on screen");
     }
     second.reset();
     inst.reset();

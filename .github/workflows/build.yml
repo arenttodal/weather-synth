@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  JUCE_TAG: "8.0.4"
+  JUCE_TAG: "8.0.8"
 
 jobs:
   relay:

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # JUCE: CI downloads a pinned release; locally an installed JUCE (e.g. Ubuntu's
 # juce-modules-source) is used when available.
 option(ATMOS_FETCH_JUCE "Download JUCE instead of using an installed copy" OFF)
-set(ATMOS_JUCE_TAG "8.0.4" CACHE STRING "JUCE release to download")
+set(ATMOS_JUCE_TAG "8.0.8" CACHE STRING "JUCE release to download")
 if(ATMOS_FETCH_JUCE)
     include(FetchContent)
     FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG ${ATMOS_JUCE_TAG} GIT_SHALLOW TRUE)
