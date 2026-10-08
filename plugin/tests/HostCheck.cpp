@@ -125,6 +125,39 @@ int main (int argc, char** argv)
         }
         EXPECT (ok, "editor opens and closes cleanly");
     }
+    // pluginval's "Editor Automation": editor open, random values into any parameter
+    // (MIDI CC emulation ones included), re-prepare per rate, noise in the buffer
+    {
+        std::unique_ptr<juce::AudioProcessorEditor> ed (inst->createEditorIfNeeded());
+        auto params = inst->getParameters();
+        bool finite = true;
+        for (double sr : { 44100.0, 48000.0, 96000.0 })
+            for (int bs : { 64, 128, 256, 512, 1024 })
+            {
+                inst->releaseResources();
+                inst->setPlayConfigDetails (0, 2, sr, bs);
+                inst->prepareToPlay (sr, bs);
+                juce::AudioBuffer<float> ab (2, bs);
+                juce::MidiBuffer mb;
+                mb.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 0);
+                for (int i = 0; i < (int) (sr / bs); ++i)
+                {
+                    for (int k = 0; k < 10; ++k)
+                        params[rng.nextInt (params.size())]->setValue (rng.nextFloat());
+                    for (int c = 0; c < 2; ++c)
+                        for (int j = 0; j < bs; ++j)
+                            ab.setSample (c, j, rng.nextFloat() * 2 - 1);
+                    inst->processBlock (ab, mb);
+                    mb.clear();
+                    for (int c = 0; c < 2; ++c)
+                        for (int j = 0; j < bs; ++j)
+                            finite &= std::isfinite (ab.getSample (c, j));
+                }
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            }
+        ed.reset();
+        EXPECT (finite, "editor automation: random values into all parameters while the editor is open");
+    }
     second.reset();
     inst.reset();
     std::printf ("%s\n", failures == 0 ? "HOST CHECK PASSED" : "HOST CHECK FAILED");
