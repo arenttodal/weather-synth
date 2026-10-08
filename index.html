@@ -500,7 +500,8 @@
         font-size: 12px;
         color: var(--text2);
       }
-      .weather-source input[type="text"] {
+      .weather-source input[type="text"],
+      .weather-source input[type="password"] {
         width: 200px;
       }
 
@@ -884,8 +885,10 @@
                 Simulated ✓
               </button>
               <input
-                type="text"
+                type="password"
                 id="owmKey"
+                autocomplete="off"
+                spellcheck="false"
                 placeholder="OpenWeatherMap API key"
               />
               <button class="btn" id="liveBtn" style="font-size: 12px">
@@ -1064,6 +1067,8 @@
       const LOCATIONS = {
         trondheim: {
           name: "Trondheim, NO",
+          lat: 63.4305,
+          lon: 10.3951,
           flavor: "Nordic coastal · cold",
           tempBase: [-4, -3, 0, 4, 9, 13, 15, 14, 10, 5, 1, -2],
           wetChance: [
@@ -1080,6 +1085,8 @@
         },
         sahara: {
           name: "Sahara Desert, DZ",
+          lat: 22.785,
+          lon: 5.5228,
           flavor: "Arid extreme · scorching",
           tempBase: [15, 18, 22, 27, 33, 40, 43, 42, 38, 30, 22, 16],
           wetChance: [
@@ -1097,6 +1104,8 @@
         },
         tokyo: {
           name: "Tokyo, JP",
+          lat: 35.6762,
+          lon: 139.6503,
           flavor: "Humid subtropical · rainy",
           tempBase: [5, 6, 10, 15, 20, 23, 27, 28, 24, 18, 13, 7],
           wetChance: [
@@ -1113,6 +1122,8 @@
         },
         reykjavik: {
           name: "Reykjavík, IS",
+          lat: 64.1466,
+          lon: -21.9426,
           flavor: "Subarctic wind · stark",
           tempBase: [-1, -1, 0, 3, 7, 10, 12, 11, 8, 4, 1, -1],
           wetChance: [
@@ -1129,6 +1140,8 @@
         },
         mumbai: {
           name: "Mumbai, IN",
+          lat: 19.076,
+          lon: 72.8777,
           flavor: "Tropical monsoon · humid",
           tempBase: [25, 26, 28, 30, 32, 30, 28, 28, 28, 30, 29, 26],
           wetChance: [
@@ -1145,6 +1158,8 @@
         },
         patagonia: {
           name: "Patagonia, AR",
+          lat: -50.3379,
+          lon: -72.2648,
           flavor: "Fierce wind · dramatic",
           // Southern hemisphere: seasons flipped
           tempBase: [14, 13, 10, 7, 4, 1, 0, 2, 5, 8, 11, 13],
@@ -1162,6 +1177,8 @@
         },
         singapore: {
           name: "Singapore, SG",
+          lat: 1.3521,
+          lon: 103.8198,
           flavor: "Equatorial · lush warm rain",
           tempBase: [27, 27, 28, 28, 28, 28, 28, 28, 27, 27, 27, 27],
           wetChance: [
@@ -1178,6 +1195,8 @@
         },
         mcmurdo: {
           name: "McMurdo, Antarctica",
+          lat: -77.8419,
+          lon: 166.6863,
           flavor: "Polar ice · alien silence",
           // Southern hemisphere polar
           tempBase: [-8, -12, -20, -25, -28, -30, -32, -30, -26, -20, -12, -6],
@@ -1458,8 +1477,14 @@
       }
 
       // --- Weather → Sound ---
+      // OpenWeatherMap "main" values: Clear, Clouds, Rain, Drizzle, Snow,
+      // Thunderstorm, Mist, Fog, Haze, Smoke, Dust, Sand, Ash, Squall, Tornado
+      const isWet = (cond) =>
+        /rain|snow|drizzle|cloud|thunder|mist|fog|haze|smoke|dust|sand|ash|squall|tornado/i.test(
+          cond
+        );
       function choosePreset(temp, cond, wind) {
-        const wet = /rain|snow|drizzle|cloud/i.test(cond);
+        const wet = isWet(cond);
         if (wet) return "warmPad";
         if (!wet && wind >= 12 && temp >= 8) return "coreBass";
         return "corePadFM";
@@ -1501,7 +1526,7 @@
         }
 
         // Reverb from condition
-        let wet = /rain|snow|drizzle|cloud/i.test(cond) ? 0.6 : 0.22;
+        let wet = isWet(cond) ? 0.6 : 0.22;
         // Vibrato from wind
         let vibD = clamp(wind / 20, 0, 0.6),
           vibF = linmap(wind, 0, 20, 3, 8);
@@ -1567,11 +1592,11 @@
       resizeCanvas();
 
       function renderWeatherViz(cond) {
-        const group = /rain/i.test(cond)
+        const group = /rain|drizzle|thunder|squall/i.test(cond)
           ? "rain"
           : /snow/i.test(cond)
           ? "snow"
-          : /cloud/i.test(cond)
+          : isWet(cond)
           ? "clouds"
           : "clear";
         if (group === lastCondGroup) return;
@@ -2000,58 +2025,192 @@
       }
 
       // --- Live Weather (OWM) ---
+      const LIVE_INTERVAL = 10 * 60 * 1000; // normal refresh
+      const RETRY_INTERVAL = 60 * 1000; // after a transient failure
+      const store = {
+        get(k) {
+          try {
+            return localStorage.getItem(k);
+          } catch (e) {
+            return null;
+          }
+        },
+        set(k, v) {
+          try {
+            v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
+          } catch (e) {}
+        },
+      };
       let liveTimer = null;
+      let liveInFlight = false;
+      let lastLiveOk = 0;
+      // null = follow the browser's location; otherwise a LOCATIONS key
+      let liveLocKey = null;
+      let geoCache = null;
+
+      function setStatus(msg) {
+        $("#statusLine").textContent = msg;
+      }
+
+      function scheduleLive(ms) {
+        clearTimeout(liveTimer);
+        liveTimer = S.liveMode ? setTimeout(fetchLive, ms) : null;
+      }
+
+      // getCurrentPosition's own timeout doesn't cover an unanswered
+      // permission prompt, so race it against a hard deadline.
+      function getPosition(ms) {
+        if (!navigator.geolocation) return Promise.reject(new Error("n/a"));
+        return Promise.race([
+          new Promise((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, {
+              timeout: ms,
+              maximumAge: 30 * 60 * 1000,
+            })
+          ),
+          new Promise((_, rej) =>
+            setTimeout(() => rej(new Error("timeout")), ms + 500)
+          ),
+        ]);
+      }
+
+      async function liveCoords() {
+        if (liveLocKey) {
+          const L = LOCATIONS[liveLocKey];
+          return { lat: L.lat, lon: L.lon };
+        }
+        if (geoCache) return geoCache;
+        try {
+          const pos = await getPosition(8000);
+          geoCache = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          return geoCache;
+        } catch (e) {
+          // No permission / no fix: use the picked location instead
+          const L = LOCATIONS[currentLocationKey];
+          return { lat: L.lat, lon: L.lon };
+        }
+      }
+
+      function describeHttpError(status) {
+        if (status === 401)
+          return "API key rejected (401). New OpenWeatherMap keys can take up to 2 hours to activate.";
+        if (status === 429) return "Rate limited by OpenWeatherMap (429).";
+        if (status >= 500) return `OpenWeatherMap unavailable (${status}).`;
+        return "HTTP " + status;
+      }
+
       async function fetchLive() {
+        if (liveInFlight) return;
         const key = $("#owmKey").value.trim();
         if (!key) {
-          $("#statusLine").textContent = "Enter API key first";
+          setStatus("Enter your OpenWeatherMap API key, then Go Live");
           return;
         }
+        liveInFlight = true;
         try {
-          $("#statusLine").textContent = "Fetching…";
-          // Try browser geolocation first, fallback to Trondheim coords
-          let lat = 63.4305,
-            lon = 10.3951;
+          setStatus("Fetching live weather…");
+          const { lat, lon } = await liveCoords();
+          let r;
           try {
-            const pos = await new Promise((res, rej) =>
-              navigator.geolocation.getCurrentPosition(res, rej, {
-                timeout: 8000,
-              })
+            r = await fetch(
+              "https://api.openweathermap.org/data/2.5/weather" +
+                `?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}` +
+                `&appid=${encodeURIComponent(key)}&units=metric`
             );
-            lat = pos.coords.latitude;
-            lon = pos.coords.longitude;
-          } catch (e) {}
-          const r = await fetch(
-            `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=metric`
-          );
-          if (!r.ok) throw new Error("HTTP " + r.status);
+          } catch (e) {
+            throw Object.assign(new Error("Network error — offline?"), {
+              transient: true,
+            });
+          }
+          if (!r.ok) {
+            throw Object.assign(new Error(describeHttpError(r.status)), {
+              status: r.status,
+              transient: r.status === 429 || r.status >= 500,
+            });
+          }
           const w = await r.json();
+          if (!S.liveMode) return; // switched back to simulated meanwhile
+          // Key works: remember it so the next visit connects automatically
+          store.set("owmKey", key);
           S.temp = w.main?.temp ?? S.temp;
           S.cond = w.weather?.[0]?.main || "Clear";
           S.wind = w.wind?.speed ?? S.wind;
-          S.humidity = w.main?.humidity ?? 70;
-          S.loc = (w.name || "Unknown") + ", " + (w.sys?.country || "");
+          S.humidity = w.main?.humidity ?? S.humidity;
+          S.loc = [w.name || "Unknown", w.sys?.country]
+            .filter(Boolean)
+            .join(", ");
           const tz = w.timezone ?? 0;
           const local = new Date((w.dt + tz) * 1000);
-          const h = local.getUTCHours();
-          S.isDay = h >= 6 && h < 20;
+          if (w.sys?.sunrise && w.sys?.sunset) {
+            S.isDay = w.dt >= w.sys.sunrise && w.dt < w.sys.sunset;
+          } else {
+            const h = local.getUTCHours();
+            S.isDay = h >= 6 && h < 20;
+          }
           const lp = 2551443;
           const ns = 947182440;
           S.moon = ((Date.now() / 1000 - ns) % lp) / lp;
+          const rec = choosePreset(S.temp, S.cond, S.wind);
+          if (S.audioReady && rec !== S.preset) loadPreset(rec);
           applyWeather();
           $("#dispTime").textContent = local.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
             timeZone: "UTC",
           });
-          $("#statusLine").textContent = `Live: ${S.loc} — ${
-            S.cond
-          }, ${Math.round(S.temp)}°C`;
+          lastLiveOk = Date.now();
+          const at = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          setStatus(
+            `Live: ${S.loc} — ${S.cond}, ${Math.round(S.temp)}°C · updated ${at}`
+          );
           $("#engineTag").textContent = "LIVE";
+          scheduleLive(LIVE_INTERVAL);
         } catch (e) {
-          $("#statusLine").textContent = "Error: " + e.message;
+          if (!S.liveMode) return;
+          if (e.transient) {
+            // Keep the last good values and try again shortly
+            setStatus(e.message + " Retrying in 1 min…");
+            scheduleLive(RETRY_INTERVAL);
+          } else {
+            if (e.status === 401) store.set("owmKey", null);
+            setStatus("Error: " + e.message);
+            stopLive();
+          }
+        } finally {
+          liveInFlight = false;
         }
       }
+
+      function startLive() {
+        S.liveMode = true;
+        $("#srcToggle").textContent = "Live API";
+        $("#engineTag").textContent = "LIVE";
+        fetchLive();
+      }
+
+      function stopLive() {
+        S.liveMode = false;
+        clearTimeout(liveTimer);
+        liveTimer = null;
+        $("#srcToggle").textContent = "Simulated ✓";
+        $("#engineTag").textContent = "SIMULATED";
+      }
+
+      // Timers are throttled in background tabs; refresh on return if stale
+      document.addEventListener("visibilitychange", () => {
+        if (
+          document.visibilityState === "visible" &&
+          S.liveMode &&
+          Date.now() - lastLiveOk > LIVE_INTERVAL
+        )
+          fetchLive();
+      });
+      window.addEventListener("online", () => {
+        if (S.liveMode) fetchLive();
+      });
 
       // --- Event Wiring ---
       $("#startBtn").addEventListener("click", initAudio);
@@ -2087,29 +2246,31 @@
         });
       });
       $("#srcToggle").addEventListener("click", () => {
-        S.liveMode = !S.liveMode;
-        $("#srcToggle").textContent = S.liveMode ? "Live API" : "Simulated ✓";
-        $("#engineTag").textContent = S.liveMode ? "LIVE" : "SIMULATED";
-        if (!S.liveMode) {
-          clearInterval(liveTimer);
-          liveTimer = null;
+        if (S.liveMode) {
+          stopLive();
           runSimulated();
+          setStatus("Using simulated weather for " + S.loc);
+        } else {
+          startLive();
         }
       });
-      $("#liveBtn").addEventListener("click", () => {
-        S.liveMode = true;
-        $("#srcToggle").textContent = "Live API";
-        fetchLive();
-        clearInterval(liveTimer);
-        liveTimer = setInterval(fetchLive, 10 * 60 * 1000);
+      $("#liveBtn").addEventListener("click", startLive);
+      $("#owmKey").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") startLive();
+        e.stopPropagation(); // don't play notes while typing the key
       });
+      $("#owmKey").addEventListener("keyup", (e) => e.stopPropagation());
 
       // --- Location Picker ---
       $("#locSelect").addEventListener("change", (e) => {
         currentLocationKey = e.target.value;
         const L = LOCATIONS[currentLocationKey];
         $("#locFlavor").textContent = L.flavor;
-        if (!S.liveMode) runSimulated();
+        if (S.liveMode) {
+          // An explicit pick overrides the browser location
+          liveLocKey = currentLocationKey;
+          fetchLive();
+        } else runSimulated();
       });
 
       // --- Simulated Weather Loop ---
@@ -2136,6 +2297,12 @@
       }
       // Run simulated immediately and every 60s
       runSimulated();
+      // Auto-connect with a key from a previous visit
+      const savedKey = store.get("owmKey");
+      if (savedKey) {
+        $("#owmKey").value = savedKey;
+        startLive();
+      }
       setInterval(() => {
         if (!S.liveMode) runSimulated();
       }, 60000);
