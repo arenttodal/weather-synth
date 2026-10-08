@@ -265,7 +265,7 @@ void DayCard::paint (juce::Graphics& g)
     shadowed (l1, font (12.5f), facts.removeFromTop (18), Palette::ink.withAlpha (0.85f), juce::Justification::left);
     shadowed (l2, font (12.5f), facts.removeFromTop (18), Palette::ink.withAlpha (0.85f), juce::Justification::left);
     facts.removeFromTop (6);
-    shadowed ("Waveform: " + wave + (day.source == "live" ? "" : "   (" + day.source + ")"), font (12.5f, true), facts.removeFromTop (18),
+    shadowed (wave, font (12.5f, true), facts.removeFromTop (18),
               Palette::accent.brighter (0.2f), juce::Justification::left);
 }
 
