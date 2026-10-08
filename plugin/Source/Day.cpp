@@ -65,6 +65,7 @@ juce::var Day::toVar() const
     o->setProperty ("clouds", clouds);
     o->setProperty ("pressure", pressure);
     o->setProperty ("mappingVersion", mappingVersion);
+    if (sound.isObject()) o->setProperty ("sound", sound);
     return juce::var (o);
 }
 
@@ -91,6 +92,7 @@ Day Day::fromVar (const juce::var& v)
     d.clouds = juce::jlimit (0.0, 1.0, num ("clouds", d.clouds));
     d.pressure = juce::jlimit (850.0, 1090.0, num ("pressure", d.pressure));
     d.mappingVersion = (int) num ("mappingVersion", kMappingVersion);
+    if (v["sound"].isObject()) d.sound = v["sound"];
     return d;
 }
 

@@ -4,9 +4,11 @@ One sound, dealt by your sky. A synth (VST3, AU, standalone) whose single patch 
 
 | Path | What it is |
 |---|---|
-| `plugin/` | The JUCE plugin: engine, Days, globe, tests |
+| `plugin/` | The JUCE plugin: processor, Days, globe, UI, tests |
+| `engine/` | The sound engine, plain C++ shared by the plugin and the browser: sources, bible, nature rules, and OSP's effects (Kaleidoscope, Space, Echo, Movement, Character filter) in `engine/osp` |
+| `designer/` | The sound designer: the real engine in WebAssembly, for dialling in core sounds and their boundaries |
 | `server/` | The weather relay for Railway (keeps the OpenWeatherMap key off users' machines) |
-| `lab.html` | The tuning lab: audition and rate climates. Its mapping is the source of truth for the plugin |
+| `lab.html` | The first tuning lab (superseded by the designer); still the reference for the weather "forces" |
 | `index.html` | The original web prototype |
 | `docs/PRODUCT_PLAN.md` | Why the sound maps the way it does, and the three control models |
 | `docs/SETUP.md` | Railway setup, installing a build, the admin globe |
@@ -17,9 +19,14 @@ Every push builds macOS (universal), Windows and Linux on GitHub Actions. Each b
 
 ## Changing the sound
 
-1. Edit the mapping in `lab.html` (between `NATURE MAPPING` and `SCENARIOS`) and tune it by ear in the lab.
-2. Run `node tools/gen-vectors.mjs` to refresh `plugin/tests/vectors.json`.
-3. Port the same change to `plugin/Source/ClimateMapper.cpp`. The unit tests fail until the C++ matches the lab exactly, and so does CI.
+The plugin plays one **core sound** a day, drawn from the **bible**: a handful of designed sounds, each with a home value and low/high boundaries for every parameter, and an anchor climate (temperature, wetness, light). The day's weather picks the nearest sound (with a little daily luck) and then leans every parameter inside its boundaries. Nothing leaves the box you approved.
+
+1. Open the designer (`designer/index.html` through a local web server, or `/designer/` on the relay) and shape the sounds. Use the Low/High edge and Weather audition modes to hear the extremes.
+2. Export, and save the file as `plugin/Resources/bible.json` to build it into the plugin.
+   To try a bible without rebuilding, drop the export as `bible.json` into the app data folder (macOS `~/Library/Application Support/Atmospheric`, Windows `%APPDATA%\Atmospheric`) and reopen the plugin.
+3. Days and projects store the core sound they were made with, so changing the bible never changes a saved Day.
+
+After changing anything in `engine/`, run `tools/sync-designer.sh` so the designer and the relay play the same engine as the plugin.
 
 ## Building locally
 

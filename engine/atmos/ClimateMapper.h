@@ -7,7 +7,7 @@
 namespace atmos
 {
 // Bump when the mapping changes audibly; saved Days remember the version.
-constexpr int kMappingVersion = 1;
+constexpr int kMappingVersion = 2; // 2: core sounds from the bible (engine/atmos/Bible.h)
 
 struct Climate
 {

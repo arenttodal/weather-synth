@@ -1,5 +1,11 @@
 // HTTP handler for the relay. Dependencies are injected so tests can run offline.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { cellOf, validCoords, toSnapshot, clientIp, isPrivateIp, TtlCache, RateLimiter } from "./lib.js";
+
+const PUBLIC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".wasm": "application/wasm", ".json": "application/json; charset=utf-8" };
 
 const OWM = "https://api.openweathermap.org";
 
@@ -74,10 +80,28 @@ export function createApp({ owmKey, ipinfoToken = "", fetchImpl = fetch, now = (
     res.end(data);
   }
 
+  // The sound designer, served as plain files (fallback for viewers that block WebAssembly)
+  function serveDesigner(url, res) {
+    if (url.pathname === "/designer") {
+      res.writeHead(301, { location: "/designer/" });
+      return res.end();
+    }
+    const rel = decodeURIComponent(url.pathname.slice("/designer/".length)) || "index.html";
+    const file = path.resolve(PUBLIC, "designer", rel);
+    if (!file.startsWith(path.join(PUBLIC, "designer") + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile())
+      return send(res, 404, { error: "not_found" });
+    let body = fs.readFileSync(file);
+    if (rel === "index.html")
+      body = Buffer.concat([Buffer.from('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>'), body, Buffer.from("</body></html>")]);
+    res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream", "cache-control": "no-cache" });
+    res.end(body);
+  }
+
   return async function handle(req, res) {
     const url = new URL(req.url, "http://relay");
     if (req.method === "OPTIONS") return send(res, 204, {});
     if (url.pathname === "/health") return send(res, 200, { ok: true, keyConfigured: !!owmKey });
+    if (req.method === "GET" && (url.pathname === "/designer" || url.pathname.startsWith("/designer/"))) return serveDesigner(url, res);
     if (req.method !== "GET") return send(res, 405, { error: "method_not_allowed" });
 
     const ip = clientIp(req.headers, req.socket?.remoteAddress);

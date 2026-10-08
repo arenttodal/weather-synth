@@ -1,6 +1,6 @@
 #include "PluginEditor.h"
 #include "Storage.h"
-#include "Wavetable.h"
+#include "Core.h"
 
 using namespace atmos;
 
@@ -18,6 +18,14 @@ juce::Font font (float h, bool bold = false)
 juce::String fmtS (double s) { return s < 1 ? juce::String (juce::roundToInt (s * 1000)) + " ms" : juce::String (s, 2) + " s"; }
 juce::String fmtHz (double f) { return f < 1000 ? juce::String (juce::roundToInt (f)) + " Hz" : juce::String (f / 1000, 1) + " kHz"; }
 juce::String pct (double v) { return juce::String (juce::roundToInt (v * 100)) + "%"; }
+juce::String choiceName (int p, double v)
+{
+    const auto& info = atmos::paramInfo (p);
+    juce::StringArray names;
+    names.addTokens (info.choices != nullptr ? info.choices : "", "|", "");
+    const int i = juce::jlimit (0, juce::jmax (0, names.size() - 1), juce::roundToInt (v - info.min));
+    return names[i];
+}
 
 juce::String beaufort (double w)
 {
@@ -544,22 +552,26 @@ void AtmosEditor::timerCallback() { refresh(); }
 void AtmosEditor::refresh()
 {
     const auto& d = proc.currentDay();
-    const auto P = proc.currentParams();
-    card.setDay (d, frameName (P.frame));
+    const auto P = proc.currentPatch();
+    const auto& snd = proc.currentSound();
+    const juce::String voice = juce::String (snd.name) + ATMOS_U8 (" · ") + choiceName (srcType, P[srcType])
+                               + (P[srcType] < 0.5 ? ATMOS_U8 (" · ") + juce::String (frameName (P[srcFrame])) : juce::String());
+    card.setDay (d, voice);
     status.setText (proc.statusMessage(), juce::dontSendNotification);
 
-    knobs[0]->setReadout (fmtHz (P.cutoff));
-    knobs[1]->setReadout ("in " + fmtS (P.attack) + "\nout " + fmtS (P.release));
-    knobs[2]->setReadout ("reverb " + pct (P.verbWet) + "\n" + juce::String (P.verbDecay, 1) + " s tail");
-    knobs[3]->setReadout ("vibrato " + pct (P.vibDepth) + "\ntremolo " + pct (P.tremDepth));
+    knobs[0]->setReadout (fmtHz (P[cutoff]) + "\n" + (P[tilt] >= 0 ? "+" : "") + juce::String (P[tilt], 1) + " dB");
+    knobs[1]->setReadout ("in " + fmtS (P[attack]) + "\nout " + fmtS (P[release]));
+    knobs[2]->setReadout (choiceName (spaceType, P[spaceType]) + " " + pct (P[spaceSend]) + "\n" + juce::String (P[spaceDecay], 1) + " s tail");
+    knobs[3]->setReadout (choiceName (movMode, P[movMode]) + " " + pct (P[movAmount]) + "\nvibrato " + pct (P[vibDepth]));
     const float iv = (float) knobs[4]->slider.getValue();
     knobs[4]->setReadout (juce::String::fromUTF8 ("\xc3\x97 ") + juce::String (iv >= 0 ? 1 + 0.6 * iv : 1 + iv, 2) + "\nextremes");
 
     juce::StringArray lines;
-    lines.add ("Drive " + pct (P.drive) + (P.bits < 16 ? ATMOS_U8 ("  ·  ") + juce::String ((int) P.bits) + "-bit" : juce::String()) + ATMOS_U8 ("  ·  brightness ")
-               + (P.tilt >= 0 ? "+" : "") + juce::String (P.tilt, 1) + ATMOS_U8 (" dB  ·  spread ") + juce::String (juce::roundToInt (P.spread)) + " ct");
-    lines.add ("Delay " + pct (P.delayWet) + " at " + fmtS (P.delayTime) + ", feedback " + pct (P.delayFb) + ATMOS_U8 ("  ·  rain/wind bed ") + pct (P.noise));
-    lines.add ("Sub " + pct (P.sub) + ATMOS_U8 ("  ·  moon glow ") + pct (P.shimmer));
+    lines.add ("Drive " + pct (P[drive]) + (P[crushBits] < 15.5 ? ATMOS_U8 ("  ·  ") + juce::String (juce::roundToInt (P[crushBits])) + "-bit" : juce::String())
+               + ATMOS_U8 ("  ·  ") + choiceName (filtType, P[filtType]) + " filter, resonance " + pct (P[resonance] / 0.9));
+    lines.add ("Kaleidoscope " + pct (P[kalAmount]) + ATMOS_U8 ("  ·  ") + choiceName (echoType, P[echoType]) + " echo " + pct (P[echoSend]) + " at "
+               + fmtS (P[echoTime] / 1000) + ", feedback " + pct (P[echoFeedback]));
+    lines.add ("Sub " + pct (P[srcSub]) + ATMOS_U8 ("  ·  moon glow ") + pct (P[srcShimmer]) + ATMOS_U8 ("  ·  rain/wind bed ") + pct (P[bedLevel]));
     natureLine.setText (lines.joinIntoString ("\n"), juce::dontSendNotification);
 
     const bool liveToday = d.source == "live" && proc.dayIsCurrent() && ! proc.isPreviewing();
@@ -574,7 +586,7 @@ void AtmosEditor::refresh()
                  << juce::String (d.lat, 3) << ", " << juce::String (d.lon, 3) << "\n"
                  << d.conditionText() << ", " << juce::String (d.temp, 1) << ATMOS_U8 (" °C\n")
                  << juce::String (juce::roundToInt (d.humidity)) << "% humidity, wind " << juce::String (d.wind, 1) << " m/s\n"
-                 << "Waveform " << frameName (P.frame) << "\n\n"
+                 << "Sound " << voice << "\n\n"
                  << proc.statusMessage();
         else
             info << "Drag to spin, scroll to zoom.\nClick anywhere to hear that place's sky right now.\n\n"

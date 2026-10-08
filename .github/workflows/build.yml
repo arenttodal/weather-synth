@@ -2,7 +2,7 @@ name: Build Atmospheric
 
 on:
   push:
-    paths: ["plugin/**", "server/**", "installer/**", ".github/workflows/build.yml", "lab.html", "tools/**"]
+    paths: ["plugin/**", "engine/**", "designer/**", "server/**", "installer/**", ".github/workflows/build.yml", "lab.html", "tools/**"]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,28 @@ jobs:
         run: |
           node tools/gen-vectors.mjs
           git diff --exit-code plugin/tests/vectors.json || (echo "::error::lab.html mapping changed; run node tools/gen-vectors.mjs and commit" && exit 1)
+      - name: Relay serves the current designer
+        run: |
+          for f in index.html atmos-worklet.js atmos.wasm starter-bible.json; do
+            cmp "designer/$f" "server/public/designer/$f" || (echo "::error::designer/$f differs from the relay copy; run tools/sync-designer.sh" && exit 1)
+          done
+
+  engine:
+    name: Shared engine (native + WebAssembly)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native smoke test (every source x movement x space)
+        run: |
+          g++ -std=c++20 -O2 -Iengine -Iengine/osp engine/tests/core_smoke.cpp engine/atmos/*.cpp engine/osp/engine/*.cpp -o core_smoke
+          ./core_smoke
+      - name: WebAssembly build (the sound designer's engine)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang-18 lld-18 wasi-libc libc++-18-dev-wasm32 libc++abi-18-dev-wasm32 libclang-rt-18-dev-wasm32
+          sudo ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
+          sudo ln -sf /usr/bin/wasm-ld-18 /usr/local/bin/wasm-ld
+          sh engine/wasm/build.sh "$RUNNER_TEMP/atmos.wasm"
 
   macos:
     name: macOS (universal)
@@ -117,6 +139,8 @@ jobs:
         if: always()
         shell: pwsh
         continue-on-error: true
+        env:
+          _NO_DEBUG_HEAP: "1" # the debug heap a debugger turns on can hide heap misuse
         run: |
           if (-not (Test-Path pv\pluginval.exe)) {
             Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip

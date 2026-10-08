@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "BibleFile.h"
 #include "PluginEditor.h"
 #include "Storage.h"
 
@@ -9,6 +10,15 @@ namespace
 int64_t nowUnix() { return juce::Time::currentTimeMillis() / 1000; }
 const char* kMacroIds[] = { "tone", "bloom", "space", "motion", "intensity" };
 const char* kMacroNames[] = { "Tone", "Bloom", "Space", "Motion", "Intensity" };
+
+CoreSound fallbackSound()
+{
+    CoreSound s;
+    s.name = "Plain";
+    for (int i = 0; i < kNumParams; ++i)
+        s.home[i] = s.lo[i] = s.hi[i] = paramInfo (i).def;
+    return s;
+}
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout AtmosProcessor::layout()
@@ -29,6 +39,9 @@ AtmosProcessor::AtmosProcessor()
     pSpace = apvts.getRawParameterValue ("space");
     pMotion = apvts.getRawParameterValue ("motion");
     pIntensity = apvts.getRawParameterValue ("intensity");
+
+    bible = loadBible (bibleFrom);
+    if (bible.empty()) bible.push_back (fallbackSound());
 
     // Sound immediately from the last known sky (or an estimate) so the plugin
     // is never silent while the network answers.
@@ -53,9 +66,9 @@ bool AtmosProcessor::isBusesLayoutSupported (const BusesLayout& l) const
 
 void AtmosProcessor::prepareToPlay (double sr, int block)
 {
-    engine.prepare (sr, block);
-    lastFrame = engine.currentFrame();
-    audioClimateVersion = -1;
+    core.prepare (sr, juce::jmax (block, 32));
+    scratch.setSize (2, juce::jmax (block, 512));
+    audioVersion = -1;
 }
 
 Macros AtmosProcessor::readMacros() const
@@ -69,53 +82,115 @@ Macros AtmosProcessor::readMacros() const
     return m;
 }
 
-Params AtmosProcessor::currentParams() const { return resolveLeash (day.climate(), readMacros()); }
+Patch AtmosProcessor::currentPatch() const { return resolvePatch (sound, day.climate(), day.precip, readMacros()); }
+
+void AtmosProcessor::handleMidi (const juce::MidiMessage& msg)
+{
+    if (msg.isNoteOn())
+        core.noteOn (msg.getNoteNumber(), msg.getFloatVelocity());
+    else if (msg.isNoteOff())
+        core.noteOff (msg.getNoteNumber());
+    else if (msg.isSustainPedalOn())
+        core.setSustain (true);
+    else if (msg.isSustainPedalOff())
+        core.setSustain (false);
+    else if (msg.isAllNotesOff() || msg.isAllSoundOff())
+        core.allNotesOff();
+    else if (msg.isPitchWheel())
+        core.setPitchBend ((msg.getPitchWheelValue() - 8192) / 8192.0 * 2.0);
+}
 
 void AtmosProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
     bool changed = false;
-    const int v = climateVersion.load();
-    if (v != audioClimateVersion)
+    const int v = sharedVersion.load();
+    if (v != audioVersion)
     {
-        const juce::SpinLock::ScopedTryLockType tl (climateLock);
+        const juce::SpinLock::ScopedTryLockType tl (audioLock);
         if (tl.isLocked())
         {
-            audioClimate = sharedClimate;
-            audioClimateVersion = v;
+            audio = shared;
+            audioVersion = v;
             changed = true;
         }
     }
     const Macros m = readMacros();
-    if (changed || ! audioHasTarget || m.tone != audioMacros.tone || m.bloom != audioMacros.bloom || m.space != audioMacros.space
+    if (changed || m.tone != audioMacros.tone || m.bloom != audioMacros.bloom || m.space != audioMacros.space
         || m.motion != audioMacros.motion || m.intensity != audioMacros.intensity)
     {
         audioMacros = m;
-        engine.setTarget (resolveLeash (audioClimate, m));
-        audioHasTarget = true;
+        core.setPatch (resolvePatch (audio.home, audio.lo, audio.hi, audio.climate, audio.climate.precip, m));
     }
-    engine.render (buffer, midi);
+
+    const int n = buffer.getNumSamples();
+    const int chans = buffer.getNumChannels();
+    auto render = [&] (int start, int len) {
+        while (len > 0)
+        {
+            const int chunk = juce::jmin (len, scratch.getNumSamples());
+            float* L = scratch.getWritePointer (0);
+            float* R = scratch.getWritePointer (1);
+            core.process (L, R, chunk);
+            if (chans >= 2)
+            {
+                buffer.copyFrom (0, start, L, chunk);
+                buffer.copyFrom (1, start, R, chunk);
+                for (int c = 2; c < chans; ++c)
+                    buffer.clear (c, start, chunk);
+            }
+            else if (chans == 1)
+            {
+                float* out = buffer.getWritePointer (0, start);
+                for (int i = 0; i < chunk; ++i)
+                    out[i] = 0.5f * (L[i] + R[i]);
+            }
+            start += chunk;
+            len -= chunk;
+        }
+    };
+
+    int pos = 0;
+    for (const auto meta : midi)
+    {
+        const int at = juce::jlimit (0, n, meta.samplePosition);
+        if (at > pos)
+        {
+            render (pos, at - pos);
+            pos = at;
+        }
+        handleMidi (meta.getMessage());
+    }
+    if (pos < n) render (pos, n - pos);
 }
 
-void AtmosProcessor::applyDay (const Day& d)
+void AtmosProcessor::applyDay (const Day& in)
 {
+    Day d = in;
+    CoreSound s;
+    bool ok = false;
+    if (d.sound.isObject()) s = soundFromVar (d.sound, ok);
+    if (! ok)
+    {
+        // A new Day: today's lottery draws a core sound from the bible, and the Day keeps it
+        const int i = chooseCoreSound (bible, d.climate(), d.precip);
+        s = bible[(size_t) juce::jmax (0, i)];
+        d.sound = soundToVar (s);
+    }
     {
         // Hosts may save the project from another thread at any moment
         const juce::ScopedLock sl (dayLock);
         day = d;
-    }
-    const Climate c = d.climate();
-    const double frame = natureParams (c).frame;
-    if (std::abs (frame - lastFrame) > 0.0005)
-    {
-        lastFrame = frame;
-        if (auto old = engine.installFrame (frame)) retiredBanks.push_back (std::move (old));
+        sound = s;
     }
     {
-        const juce::SpinLock::ScopedLockType sl (climateLock);
-        sharedClimate = c;
+        const juce::SpinLock::ScopedLockType sl (audioLock);
+        shared.home = s.home;
+        shared.lo = s.lo;
+        shared.hi = s.hi;
+        shared.climate = d.climate();
     }
-    climateVersion.fetch_add (1);
+    sharedVersion.fetch_add (1);
     sendChangeMessage();
 }
 
@@ -182,7 +257,7 @@ void AtmosProcessor::endPreview()
 
 bool AtmosProcessor::keepDay (const juce::String& name)
 {
-    Day d = day;
+    Day d = day; // carries its core sound
     d.id = juce::Uuid().toDashedString();
     d.name = name.trim();
     return Storage::saveDay (d);
@@ -202,9 +277,6 @@ bool AtmosProcessor::dayIsCurrent() const
 
 void AtmosProcessor::timerCallback()
 {
-    // Free waveform tables the audio thread has handed back
-    retiredBanks.clear();
-
     if (! dealtOnce && ! stateRestored)
     {
         dealToday();
@@ -224,8 +296,9 @@ void AtmosProcessor::timerCallback()
 void AtmosProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
     juce::XmlElement root ("Atmospheric");
-    root.setAttribute ("version", 1);
-    // Save the Day the user is hearing (a globe preview included), so the project reopens as it sounded
+    root.setAttribute ("version", 2);
+    // Save the Day the user is hearing (a globe preview included) with its core sound,
+    // so the project reopens exactly as it sounded, whatever the bible says later
     Day snapshot;
     {
         const juce::ScopedLock sl (dayLock);

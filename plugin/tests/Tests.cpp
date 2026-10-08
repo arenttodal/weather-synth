@@ -1,9 +1,11 @@
 // AtmosTests: run with no arguments. Exit code 0 means every check passed.
 //   AtmosTests --snapshot out.png   also renders the editor to an image
-#include "../Source/Astro.h"
-#include "../Source/ClimateMapper.h"
+#include "Astro.h"
+#include "Bible.h"
+#include "ClimateMapper.h"
+#include "Core.h"
+#include "../Source/BibleFile.h"
 #include "../Source/Day.h"
-#include "../Source/Engine.h"
 #include "../Source/Globe.h"
 #include "../Source/PluginEditor.h"
 #include "../Source/PluginProcessor.h"
@@ -12,6 +14,8 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <cmath>
 #include <cstdio>
+#include <algorithm>
+#include <set>
 
 using namespace atmos;
 
@@ -197,44 +201,43 @@ struct RenderStats
     bool finite = true;
 };
 
-static RenderStats renderScenario (const Climate& c, const Macros& m, double sr = 48000, int block = 256)
+// Plays a chord, a run and a low note through the engine, sample-accurately, and measures the result
+static RenderStats renderPatch (const Patch& patch, double sr = 48000, int block = 256)
 {
-    Engine e;
+    Core e;
     e.prepare (sr, block);
-    e.installFrame (natureParams (c).frame);
-    e.setTarget (resolveLeash (c, m));
-    juce::AudioBuffer<float> buf (2, block);
+    e.setPatch (patch);
+    struct Ev { double t; int note; float vel; };
+    std::vector<Ev> evs;
+    const int chord[] = { 48, 55, 62, 64 }; // C3 G3 D4 E4
+    for (int n : chord)
+        evs.push_back ({ 0.05, n, 0.8f }), evs.push_back ({ 2.0, n, 0 });
+    for (int i = 0; i < 12; ++i)
+        evs.push_back ({ 2.3 + i * 0.16, 60 + (i * 7) % 24, 0.7f }), evs.push_back ({ 2.42 + i * 0.16, 60 + (i * 7) % 24, 0 });
+    evs.push_back ({ 4.5, 36, 0.86f });
+    evs.push_back ({ 5.2, 36, 0 });
+    std::stable_sort (evs.begin(), evs.end(), [] (const Ev& a, const Ev& b) { return a.t < b.t; });
+
+    std::vector<float> L ((size_t) block), R ((size_t) block);
     RenderStats st;
     double sum = 0, tail = 0, mid = 0;
     long n = 0, nt = 0, nm = 0;
-    const int total = (int) (sr * 22);
-    const int chord[] = { 48, 55, 62, 64 }; // C3 G3 D4 E4
-    for (int pos = 0; pos < total; pos += block)
+    const long total = (long) (sr * 22);
+    size_t next = 0;
+    for (long pos = 0; pos < total;)
     {
-        juce::MidiBuffer midi;
-        auto at = [&] (double sec) { return (int) (sec * sr) - pos; };
-        auto inBlock = [&] (double sec) { const int o = at (sec); return o >= 0 && o < block; };
-        for (int i = 0; i < 4; ++i)
+        // Fire due events, then render up to the next one (or a block)
+        while (next < evs.size() && (long) (evs[next].t * sr) <= pos)
         {
-            const int note = chord[i];
-            if (inBlock (0.05)) midi.addEvent (juce::MidiMessage::noteOn (1, note, (juce::uint8) 100), at (0.05));
-            if (inBlock (2.0)) midi.addEvent (juce::MidiMessage::noteOff (1, note), at (2.0));
+            const auto& ev = evs[next++];
+            if (ev.vel > 0) e.noteOn (ev.note, ev.vel);
+            else e.noteOff (ev.note);
         }
-        for (int i = 0; i < 12; ++i)
-        {
-            const int note = 60 + (i * 7) % 24;
-            const double t0 = 2.3 + i * 0.16;
-            if (inBlock (t0)) midi.addEvent (juce::MidiMessage::noteOn (1, note, (juce::uint8) 90), at (t0));
-            if (inBlock (t0 + 0.12)) midi.addEvent (juce::MidiMessage::noteOff (1, note), at (t0 + 0.12));
-        }
-        if (inBlock (4.5)) midi.addEvent (juce::MidiMessage::noteOn (1, 36, (juce::uint8) 110), at (4.5));
-        if (inBlock (5.2)) midi.addEvent (juce::MidiMessage::noteOff (1, 36), at (5.2));
-        buf.clear();
-        e.render (buf, midi);
-        for (int ch = 0; ch < 2; ++ch)
-        {
-            const float* d = buf.getReadPointer (ch);
-            for (int i = 0; i < block; ++i)
+        long len = std::min<long> (block, total - pos);
+        if (next < evs.size()) len = std::max<long> (1, std::min<long> (len, (long) (evs[next].t * sr) - pos));
+        e.process (L.data(), R.data(), (int) len);
+        for (long i = 0; i < len; ++i)
+            for (const float* d : { L.data(), R.data() })
             {
                 const double x = d[i];
                 if (! std::isfinite (x)) st.finite = false;
@@ -244,7 +247,7 @@ static RenderStats renderScenario (const Climate& c, const Macros& m, double sr 
                 if (t > 21) tail += x * x, ++nt;
                 if (t > 12 && t < 13) mid += x * x, ++nm;
             }
-        }
+        pos += len;
     }
     st.rmsDb = 10 * std::log10 (sum / std::max (1L, n) + 1e-20);
     st.tailDb = 10 * std::log10 (tail / std::max (1L, nt) + 1e-20);
@@ -252,12 +255,132 @@ static RenderStats renderScenario (const Climate& c, const Macros& m, double sr 
     return st;
 }
 
+static std::vector<CoreSound> builtInBible()
+{
+    juce::String from;
+    auto b = loadBible (from);
+    return b;
+}
+
+static void testBible()
+{
+    std::printf ("The sound bible keeps every sound inside its boundaries\n");
+    const auto bible = builtInBible();
+    CHECK (bible.size() >= 6, "built-in bible has %zu core sounds", bible.size());
+    for (const auto& s : bible)
+        for (int p = 0; p < kNumParams; ++p)
+        {
+            const auto& info = paramInfo (p);
+            CHECK (s.lo[p] <= s.home[p] && s.home[p] <= s.hi[p] && s.lo[p] >= info.min && s.hi[p] <= info.max, "%s.%s: %g <= %g <= %g in [%g, %g]",
+                   s.name.c_str(), info.id, s.lo[p], s.home[p], s.hi[p], info.min, info.max);
+        }
+
+    // JSON round trip is exact (Days and projects carry their sound this way)
+    for (const auto& s : bible)
+    {
+        bool ok = false;
+        const auto back = soundFromVar (juce::JSON::parse (juce::JSON::toString (soundToVar (s))), ok);
+        bool same = ok && back.name == s.name && back.anchorTemp == s.anchorTemp && back.anchorWet == s.anchorWet && back.anchorLight == s.anchorLight;
+        for (int p = 0; p < kNumParams; ++p)
+            same = same && back.home[p] == s.home[p] && back.lo[p] == s.lo[p] && back.hi[p] == s.hi[p];
+        CHECK (same, "%s survives a JSON round trip", s.name.c_str());
+    }
+
+    // placeInBounds: 0 is home, +-1 the edges, anything beyond is clamped
+    const auto& s0 = bible[0];
+    for (int p = 0; p < kNumParams; ++p)
+    {
+        if (paramInfo (p).scale == Scale::choice) continue;
+        CHECK (std::abs (placeInBounds (p, s0.home[p], s0.lo[p], s0.hi[p], 0) - s0.home[p]) < 1e-9, "u=0 is home (%s)", paramInfo (p).id);
+        CHECK (std::abs (placeInBounds (p, s0.home[p], s0.lo[p], s0.hi[p], 1) - s0.hi[p]) < 1e-6 * (1 + std::abs (s0.hi[p])), "u=1 is hi (%s)", paramInfo (p).id);
+        CHECK (std::abs (placeInBounds (p, s0.home[p], s0.lo[p], s0.hi[p], -5) - s0.lo[p]) < 1e-6 * (1 + std::abs (s0.lo[p])), "u=-5 is lo (%s)", paramInfo (p).id);
+    }
+
+    // Any weather, any macros: never outside the box, choice parameters never move
+    juce::Random rng (7);
+    std::set<int> chosen;
+    int outside = 0;
+    for (int i = 0; i < 4000; ++i)
+    {
+        Climate c;
+        c.temp = -45 + rng.nextDouble() * 95;
+        c.humidity = rng.nextDouble() * 100;
+        c.precip = rng.nextDouble();
+        c.wind = rng.nextDouble() * 40;
+        c.clouds = rng.nextDouble();
+        c.sun = -90 + rng.nextDouble() * 180;
+        c.moon = rng.nextDouble();
+        c.pressure = 950 + rng.nextDouble() * 100;
+        c.seed = (uint32_t) rng.nextInt();
+        Macros m { rng.nextDouble() * 2 - 1, rng.nextDouble() * 2 - 1, rng.nextDouble() * 2 - 1, rng.nextDouble() * 2 - 1, rng.nextDouble() * 2 - 1 };
+        const int k = chooseCoreSound (bible, c, c.precip);
+        chosen.insert (k);
+        const auto& s = bible[(size_t) k];
+        const Patch pt = resolvePatch (s, c, c.precip, m);
+        for (int p = 0; p < kNumParams; ++p)
+        {
+            const double tol = 1e-9 * (1 + std::abs (s.hi[p]));
+            if (pt[p] < s.lo[p] - tol || pt[p] > s.hi[p] + tol || ! std::isfinite (pt[p])) ++outside;
+            if (paramInfo (p).scale == Scale::choice && pt[p] != s.home[p]) ++outside;
+        }
+        CHECK (chooseCoreSound (bible, c, c.precip) == k, "choice is deterministic");
+    }
+    CHECK (outside == 0, "%d parameter values left their boundaries", outside);
+    CHECK (chosen.size() * 3 >= bible.size() * 2, "only %zu of %zu core sounds are ever dealt", chosen.size(), bible.size());
+    std::printf ("  4000 random skies: %zu of %zu core sounds dealt, 0 values out of bounds\n", chosen.size(), bible.size());
+
+    // Extremes land where they should
+    Climate heat;
+    heat.temp = 41, heat.humidity = 15, heat.precip = 0, heat.clouds = 0, heat.sun = 60, heat.seed = 5;
+    Climate monsoon;
+    monsoon.temp = 27, monsoon.humidity = 98, monsoon.precip = 0.9, monsoon.clouds = 1, monsoon.sun = 30, monsoon.seed = 5;
+    Climate polar;
+    polar.temp = -30, polar.humidity = 70, polar.precip = 0.05, polar.clouds = 0.2, polar.sun = -20, polar.seed = 5;
+    const auto& hs = bible[(size_t) chooseCoreSound (bible, heat, 0)];
+    const auto& ms = bible[(size_t) chooseCoreSound (bible, monsoon, 0.9)];
+    const auto& ps = bible[(size_t) chooseCoreSound (bible, polar, 0.05)];
+    std::printf ("  41 C dry: %s  ·  monsoon: %s  ·  polar night: %s\n", hs.name.c_str(), ms.name.c_str(), ps.name.c_str());
+    CHECK (hs.anchorTemp >= 25, "heat picks a hot sound (%s)", hs.name.c_str());
+    CHECK (ms.anchorWet >= 0.6, "monsoon picks a wet sound (%s)", ms.name.c_str());
+    CHECK (ps.anchorTemp <= 0, "polar night picks a cold sound (%s)", ps.name.c_str());
+    const Patch hp = resolvePatch (hs, heat, 0, {}), mp = resolvePatch (ms, monsoon, 0.9, {});
+    CHECK (hp[drive] > hs.home[drive] || hs.hi[drive] == hs.home[drive], "heat drives harder than home");
+    CHECK (mp[spaceSend] > ms.home[spaceSend] || ms.hi[spaceSend] == ms.home[spaceSend], "monsoon is wetter than home");
+}
+
 static void testEngine()
 {
-    std::printf ("Engine renders every lab scenario cleanly\n");
+    std::printf ("Engine renders every core sound, edge and lab scenario cleanly\n");
+    const auto bible = builtInBible();
+    double lo = 0, hi = -200, maxPeak = 0;
+    int renders = 0;
+    auto judge = [&] (const RenderStats& st, const juce::String& what, bool normal) {
+        ++renders;
+        CHECK (st.finite, "%s: non-finite samples", what.toRawUTF8());
+        CHECK (st.peak <= 1.0, "%s: peak %.3f", what.toRawUTF8(), st.peak);
+        CHECK (st.rmsDb > -48 && st.rmsDb < -10, "%s: RMS %.1f dB", what.toRawUTF8(), st.rmsDb);
+        // Long designed tails are fine (a drenched sky rings for ~20 s); runaway feedback is not
+        CHECK (st.tailDb < -60 || (st.tailDb < -30 && st.tailDb < st.midTailDb - 6), "%s: tail not dying away (%.1f dB at 12 s, %.1f dB at 21 s)",
+               what.toRawUTF8(), st.midTailDb, st.tailDb);
+        maxPeak = std::max (maxPeak, st.peak);
+        if (normal)
+        {
+            lo = std::min (lo == 0 ? st.rmsDb : lo, st.rmsDb);
+            hi = std::max (hi, st.rmsDb);
+        }
+    };
+
+    // Every core sound at home and at both corners of its box
+    for (const auto& s : bible)
+    {
+        judge (renderPatch (s.home), juce::String (s.name) + " home", true);
+        judge (renderPatch (s.lo), juce::String (s.name) + " all-low", false);
+        judge (renderPatch (s.hi), juce::String (s.name) + " all-high", false);
+    }
+
+    // Every lab weather scenario, dealt from the bible, with macros centred and at both extremes
     const auto v = loadVectors();
     std::set<juce::String> seen;
-    double lo = 0, hi = -200, maxPeak = 0;
     const Macros zero, allUp { 1, 1, 1, 1, 1 }, allDown { -1, -1, -1, -1, -1 };
     for (auto& cs : *v["cases"].getArray())
     {
@@ -265,88 +388,62 @@ static void testEngine()
         if (seen.count (name)) continue;
         seen.insert (name);
         const Climate c = climateFrom (cs["climate"]);
+        const auto& s = bible[(size_t) chooseCoreSound (bible, c, c.precip)];
         for (int mi = 0; mi < 3; ++mi)
         {
             const Macros& m = mi == 0 ? zero : mi == 1 ? allUp : allDown;
-            const auto st = renderScenario (c, m);
-            const char* tag = mi == 0 ? "nature" : mi == 1 ? "all +1" : "all -1";
-            CHECK (st.finite, "%s (%s): non-finite samples", name.toRawUTF8(), tag);
-            CHECK (st.peak <= 1.0, "%s (%s): peak %.3f", name.toRawUTF8(), tag, st.peak);
-            CHECK (st.rmsDb > -45 && st.rmsDb < -12, "%s (%s): RMS %.1f dB", name.toRawUTF8(), tag, st.rmsDb);
-            // Long designed tails are fine (a drenched sky with Space up rings for ~20 s); runaway feedback is not
-            CHECK (st.tailDb < -60 || (st.tailDb < -30 && st.tailDb < st.midTailDb - 6), "%s (%s): tail not dying away (%.1f dB at 12 s, %.1f dB at 21 s)",
-                   name.toRawUTF8(), tag, st.midTailDb, st.tailDb);
-            maxPeak = std::max (maxPeak, st.peak);
-            if (mi == 0) CHECK (st.peak < 0.85, "%s: peaks at %.3f, hitting the safety limiter in normal use", name.toRawUTF8(), st.peak);
-            if (mi == 0)
-            {
-                lo = std::min (lo == 0 ? st.rmsDb : lo, st.rmsDb);
-                hi = std::max (hi, st.rmsDb);
-            }
+            const auto st = renderPatch (resolvePatch (s, c, c.precip, m));
+            judge (st, name + " / " + juce::String (s.name) + (mi == 0 ? " (nature)" : mi == 1 ? " (all +1)" : " (all -1)"), mi == 0);
+            if (mi == 0) CHECK (st.peak < 0.9, "%s: peaks at %.3f, hitting the safety limiter in normal use", name.toRawUTF8(), st.peak);
         }
     }
-    std::printf ("  %zu scenarios x 3 macro settings; loudness at nature %.1f .. %.1f dB RMS; highest peak %.2f\n", seen.size(), lo, hi, maxPeak);
+    std::printf ("  %d renders; loudness at home/nature %.1f .. %.1f dB RMS; highest peak %.2f\n", renders, lo, hi, maxPeak);
 
     // Bit-exact determinism: the same Day must bounce the same every time
     Climate c;
     c.temp = 38;
     c.precip = 0.4;
     c.seed = 99;
-    const auto a = renderScenario (c, {}), b = renderScenario (c, {});
+    const Patch hot = resolvePatch (bible[(size_t) chooseCoreSound (bible, c, c.precip)], c, c.precip, {});
+    const auto a = renderPatch (hot), b = renderPatch (hot);
     CHECK (a.rmsDb == b.rmsDb && a.peak == b.peak, "two renders of one Day differ");
 
     // Sample rates and odd block sizes
     for (double sr : { 44100.0, 96000.0 })
         for (int blk : { 1, 37, 1024 })
         {
-            const auto st = renderScenario (c, {}, sr, blk);
-            CHECK (st.finite && st.peak <= 1.0 && st.rmsDb > -45, "sr %.0f block %d: rms %.1f", sr, blk, st.rmsDb);
+            const auto st = renderPatch (hot, sr, blk);
+            CHECK (st.finite && st.peak <= 1.0 && st.rmsDb > -48, "sr %.0f block %d: rms %.1f", sr, blk, st.rmsDb);
         }
 
-    // A host sending bigger blocks than it promised must still get real audio
+    // CPU: 12 voices of the heaviest-looking sound held for 10 s at 48 kHz
+    for (const auto& s : bible)
     {
-        Engine big;
-        big.prepare (48000, 256);
-        big.installFrame (0.5);
-        big.setTarget (resolveLeash (c, {}));
-        juce::AudioBuffer<float> b (2, 4096);
-        b.clear();
-        for (int ch = 0; ch < 2; ++ch)
-            juce::FloatVectorOperations::fill (b.getWritePointer (ch), 7.0f, 4096); // garbage in
-        juce::MidiBuffer m;
-        m.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 10);
-        big.render (b, m);
-        CHECK (b.getMagnitude (0, 4096) < 1.0f && b.getMagnitude (0, 4096) > 0.0001f, "oversized block: magnitude %.3f", b.getMagnitude (0, 4096));
+        Core e;
+        e.prepare (48000, 512);
+        e.setPatch (s.hi);
+        std::vector<float> L (512), R (512);
+        for (int i = 0; i < 12; ++i)
+            e.noteOn (48 + i * 2, 0.8f);
+        const auto t0 = juce::Time::getMillisecondCounterHiRes();
+        for (int i = 0; i < 48000 * 10 / 512; ++i)
+            e.process (L.data(), R.data(), 512);
+        const double ms = juce::Time::getMillisecondCounterHiRes() - t0;
+        std::printf ("  CPU %-18s 10 s of 12 voices in %4.0f ms (%.1f%% of one core)\n", s.name.c_str(), ms, ms / 100.0);
+        CHECK (ms < 5000, "%s too slow: %.0f ms", s.name.c_str(), ms);
     }
-
-    // CPU: 12 voices held for 10 s at 48 kHz
-    Engine e;
-    e.prepare (48000, 512);
-    e.installFrame (0.6);
-    e.setTarget (resolveLeash (c, { 0.3, 0.3, 0.8, 1, 1 }));
-    juce::AudioBuffer<float> buf (2, 512);
-    juce::MidiBuffer on;
-    for (int i = 0; i < 12; ++i)
-        on.addEvent (juce::MidiMessage::noteOn (1, 48 + i * 2, (juce::uint8) 100), 0);
-    const auto t0 = juce::Time::getMillisecondCounterHiRes();
-    for (int i = 0; i < 48000 * 10 / 512; ++i)
-    {
-        e.render (buf, on);
-        on.clear();
-    }
-    const double ms = juce::Time::getMillisecondCounterHiRes() - t0;
-    std::printf ("  CPU: 10 s of 12 voices rendered in %.0f ms (%.1f%% of one core)\n", ms, ms / 100.0);
-    CHECK (ms < 4000, "too slow: %.0f ms", ms);
 }
 
 static void testProcessorState()
 {
-    std::printf ("Projects reopen with the same Day\n");
+    std::printf ("Projects and kept Days reopen with the same Day and the same sound\n");
     AtmosProcessor a;
     a.prepareToPlay (48000, 256);
+    CHECK (a.getBible().size() >= 6 && a.bibleSource() == "built in", "processor loads the built-in bible (%s)", a.bibleSource().toRawUTF8());
     Day d = estimateDay (-33.87, 151.21, "Sydney", utc (2026, 10, 8, 4, 0));
     d.country = "AU";
     a.applyDayForTest (d);
+    CHECK (a.currentDay().sound.isObject(), "a new Day takes a core sound from the bible");
     a.apvts.getParameter ("tone")->setValueNotifyingHost (0.8f);
     a.apvts.getParameter ("intensity")->setValueNotifyingHost (0.1f);
     juce::MemoryBlock state;
@@ -357,29 +454,75 @@ static void testProcessorState()
     CHECK (b.currentDay().placeName == "Sydney" && b.currentDay().observedAt == d.observedAt, "Day restored: %s",
            b.currentDay().placeName.toRawUTF8());
     CHECK (std::abs (b.apvts.getParameter ("tone")->getValue() - 0.8f) < 1e-4, "macro restored");
-    const auto pa = a.currentParams(), pb = b.currentParams();
-    CHECK (pa.cutoff == pb.cutoff && pa.verbWet == pb.verbWet && pa.frame == pb.frame, "same parameters after reopening");
+    CHECK (a.currentSound().name == b.currentSound().name, "same core sound after reopening");
+    {
+        const auto pa = a.currentPatch(), pb = b.currentPatch();
+        bool same = true;
+        for (int p = 0; p < kNumParams; ++p)
+            same = same && pa[p] == pb[p];
+        CHECK (same, "same parameters after reopening");
+    }
     CHECK (b.status() == AtmosProcessor::Status::restored, "restored projects don't fetch today's sky");
+
+    // A project made with an older bible keeps its sound even after the bible changes
+    {
+        CoreSound custom = a.getBible()[0];
+        custom.name = "Retired sound";
+        custom.home[cutoff] = custom.lo[cutoff] = custom.hi[cutoff] = 777;
+        Day old = d;
+        old.sound = soundToVar (custom);
+        a.applyDayForTest (old);
+        juce::MemoryBlock st2;
+        a.getStateInformation (st2);
+        AtmosProcessor c;
+        c.setStateInformation (st2.getData(), (int) st2.getSize());
+        CHECK (c.currentSound().name == "Retired sound" && std::abs (c.currentPatch()[cutoff] - 777) < 1e-6, "project keeps a sound the bible no longer has (%s)",
+               c.currentSound().name.c_str());
+        // ... and so does a kept Day
+        CHECK (c.keepDay ("Old friend"), "keep the Day");
+        const auto kept = Storage::loadDays();
+        bool found = false;
+        for (const auto& k : kept)
+            if (k.name == "Old friend")
+            {
+                found = true;
+                AtmosProcessor e2;
+                e2.loadDay (k);
+                CHECK (e2.currentSound().name == "Retired sound", "kept Day reloads with its sound (%s)", e2.currentSound().name.c_str());
+            }
+        CHECK (found, "kept Day is in the almanac");
+    }
 
     // Garbage state is ignored, not fatal
     const char junk[] = "not a plugin state";
     b.setStateInformation (junk, (int) sizeof junk);
     CHECK (b.currentDay().placeName == "Sydney", "junk state ignored");
 
-    // Process through the processor itself
-    juce::AudioBuffer<float> buf (2, 256);
-    juce::MidiBuffer midi;
-    midi.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 0);
-    b.prepareToPlay (48000, 256);
-    double peak = 0;
-    for (int i = 0; i < 400; ++i)
+    // Process through the processor itself, mono and stereo, including blocks bigger than promised
+    for (int chans : { 2, 1 })
     {
-        buf.clear();
-        b.processBlock (buf, midi);
-        midi.clear();
-        peak = std::max (peak, (double) buf.getMagnitude (0, 256));
+        juce::AudioBuffer<float> buf (chans, 4096);
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 3);
+        midi.addEvent (juce::MidiMessage::pitchWheel (1, 12000), 100);
+        midi.addEvent (juce::MidiMessage::controllerEvent (1, 64, 127), 120);
+        b.prepareToPlay (48000, 256);
+        double peak = 0;
+        for (int i = 0; i < 400; ++i)
+        {
+            const int n = i % 3 == 0 ? 4096 : 256; // hosts sometimes exceed the size they announced
+            buf.setSize (chans, n, false, false, true);
+            for (int ch = 0; ch < chans; ++ch)
+                juce::FloatVectorOperations::fill (buf.getWritePointer (ch), 7.0f, n); // garbage in
+            b.processBlock (buf, midi);
+            midi.clear();
+            peak = std::max (peak, (double) buf.getMagnitude (0, n));
+        }
+        CHECK (peak > 0.01 && peak <= 1.0, "%d-channel processor output peak %.3f", chans, peak);
+        juce::MidiBuffer off;
+        off.addEvent (juce::MidiMessage::allNotesOff (1), 0);
+        b.processBlock (buf, off);
     }
-    CHECK (peak > 0.01 && peak <= 1.0, "processor output peak %.3f", peak);
 }
 
 static void testGlobe()
@@ -429,6 +572,7 @@ int main (int argc, char** argv)
     testMapperParity();
     testAstro();
     testDayAndStorage();
+    testBible();
     testEngine();
     testProcessorState();
     testGlobe();

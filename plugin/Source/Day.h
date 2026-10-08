@@ -24,6 +24,9 @@ struct Day
     juce::String condition = "Clouds";
     double temp = 6, humidity = 80, precip = 0, wind = 4, clouds = 0.7, pressure = 1010;
     int mappingVersion = kMappingVersion;
+    // The core sound this Day plays, frozen the first time it is heard (designer export format).
+    // Kept Days and projects carry it, so editing the bible later never changes them.
+    juce::var sound;
 
     bool isValid() const { return observedAt > 0; }
     juce::String localDate() const;        // YYYY-MM-DD at the place

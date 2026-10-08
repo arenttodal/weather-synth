@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(Atmospheric VERSION 0.1.0 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # JUCE: CI downloads a pinned release; locally an installed JUCE (e.g. Ubuntu's
@@ -49,14 +49,27 @@ juce_add_plugin(Atmospheric
     HARDENED_RUNTIME_ENABLED FALSE
     NEEDS_CURL TRUE)
 
-juce_add_binary_data(AtmosData SOURCES Resources/land110m.bin)
+juce_add_binary_data(AtmosData SOURCES Resources/land110m.bin Resources/bible.json)
 set_target_properties(AtmosData PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# The sound engine is shared with the browser sound designer (engine/wasm): plain C++, no JUCE
+set(ATMOS_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../engine")
+set(ATMOS_ENGINE_SOURCES
+    ${ATMOS_ENGINE_DIR}/atmos/ClimateMapper.cpp
+    ${ATMOS_ENGINE_DIR}/atmos/Astro.cpp
+    ${ATMOS_ENGINE_DIR}/atmos/Bible.cpp
+    ${ATMOS_ENGINE_DIR}/atmos/Core.cpp
+    ${ATMOS_ENGINE_DIR}/osp/engine/CharacterFilter.cpp
+    ${ATMOS_ENGINE_DIR}/osp/engine/EchoDelay.cpp
+    ${ATMOS_ENGINE_DIR}/osp/engine/MovementBus.cpp
+    ${ATMOS_ENGINE_DIR}/osp/engine/ReimaginedStage.cpp
+    ${ATMOS_ENGINE_DIR}/osp/engine/RhythmicShaper.cpp
+    ${ATMOS_ENGINE_DIR}/osp/engine/SpaceReverb.cpp)
+set(ATMOS_INCLUDES ${ATMOS_ENGINE_DIR}/atmos ${ATMOS_ENGINE_DIR}/osp)
+
 set(ATMOS_CORE_SOURCES
-    Source/ClimateMapper.cpp
-    Source/Astro.cpp
-    Source/Wavetable.cpp
-    Source/Engine.cpp
+    ${ATMOS_ENGINE_SOURCES}
+    Source/BibleFile.cpp
     Source/Day.cpp
     Source/Storage.cpp
     Source/WeatherClient.cpp
@@ -65,6 +78,7 @@ set(ATMOS_CORE_SOURCES
     Source/PluginEditor.cpp)
 
 target_sources(Atmospheric PRIVATE ${ATMOS_CORE_SOURCES})
+target_include_directories(Atmospheric PRIVATE ${ATMOS_INCLUDES})
 
 set(ATMOS_DEFINES
     JUCE_WEB_BROWSER=0
@@ -88,11 +102,12 @@ target_link_libraries(Atmospheric
     PRIVATE AtmosData ${ATMOS_MODULES}
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
-# ---- Tests: mapping parity with the lab, astronomy, storage, state, offline renders
+# ---- Tests: nature mapping, bible placement, astronomy, storage, state, offline renders
 option(ATMOS_BUILD_TESTS "Build the test runner" ON)
 if(ATMOS_BUILD_TESTS)
     juce_add_console_app(AtmosTests PRODUCT_NAME "AtmosTests" NEEDS_CURL TRUE)
     target_sources(AtmosTests PRIVATE tests/Tests.cpp ${ATMOS_CORE_SOURCES})
+    target_include_directories(AtmosTests PRIVATE ${ATMOS_INCLUDES})
     target_compile_definitions(AtmosTests PRIVATE ${ATMOS_DEFINES}
         JucePlugin_Name="Atmospheric" JucePlugin_IsSynth=1 JucePlugin_WantsMidiInput=1 JucePlugin_ProducesMidiOutput=0
         JucePlugin_IsMidiEffect=0 JucePlugin_EditorRequiresKeyboardFocus=1

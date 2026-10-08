@@ -1,7 +1,7 @@
 #pragma once
-#include "ClimateMapper.h"
+#include "Bible.h"
+#include "Core.h"
 #include "Day.h"
-#include "Engine.h"
 #include "WeatherClient.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -48,49 +48,61 @@ public:
     bool dayIsCurrent() const; // false when the loaded Day is from an earlier date
     const atmos::Day& currentDay() const { return day; }
     atmos::Climate currentClimate() const { return day.climate(); }
-    atmos::Params currentParams() const;
+    const atmos::CoreSound& currentSound() const { return sound; }
+    atmos::Patch currentPatch() const; // what the engine is playing (core sound + weather + macros)
     Status status() const { return statusNow; }
     juce::String statusMessage() const { return statusText; }
+
+    // The bible of core sounds this plugin deals from
+    const std::vector<atmos::CoreSound>& getBible() const { return bible; }
+    juce::String bibleSource() const { return bibleFrom; }
 
     juce::AudioProcessorValueTreeState apvts;
     atmos::WeatherClient weather;
 
     // Tests and offline tools
-    atmos::Engine& getEngine() { return engine; }
+    atmos::Core& getCore() { return core; }
     void applyDayForTest (const atmos::Day& d) { applyDay (d); }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout layout();
     void timerCallback() override;
+    // Plays a Day. A Day that has been heard before brings its own core sound; a new one draws from the bible.
     void applyDay (const atmos::Day&);
     atmos::Macros readMacros() const;
     void setStatus (Status, const juce::String&);
+    void handleMidi (const juce::MidiMessage&);
 
-    atmos::Engine engine;
-    atmos::Day day, homeDay; // 'day' is written on the message thread; dayLock guards it for state saves
+    atmos::Core core;
+    std::vector<atmos::CoreSound> bible;
+    juce::String bibleFrom;
+
+    // 'day' and 'sound' are written on the message thread; dayLock guards them for state saves
+    atmos::Day day, homeDay;
+    atmos::CoreSound sound;
     juce::CriticalSection dayLock;
     bool previewing = false, stateRestored = false, dealtOnce = false;
     Status statusNow = Status::dealing;
     juce::String statusText;
-    int timerTicks = 0;
 
-    // Climate hand-off to the audio thread
-    juce::SpinLock climateLock;
-    atmos::Climate sharedClimate;
-    std::atomic<int> climateVersion { 0 };
-    int audioClimateVersion = -1;
-    atmos::Climate audioClimate;
+    // Hand-off to the audio thread: plain data only, so resolving a patch never allocates there
+    struct AudioSide
+    {
+        atmos::Patch home, lo, hi;
+        atmos::Climate climate;
+    };
+    juce::SpinLock audioLock;
+    AudioSide shared, audio;
+    std::atomic<int> sharedVersion { 0 };
+    int audioVersion = -1;
     atmos::Macros audioMacros;
-    bool audioHasTarget = false;
+    juce::AudioBuffer<float> scratch;
 
     std::atomic<float>* pTone = nullptr;
     std::atomic<float>* pBloom = nullptr;
     std::atomic<float>* pSpace = nullptr;
     std::atomic<float>* pMotion = nullptr;
     std::atomic<float>* pIntensity = nullptr;
-
-    std::vector<std::shared_ptr<const atmos::WavetableBank>> retiredBanks;
-    double lastFrame = -1;
 
     JUCE_DECLARE_WEAK_REFERENCEABLE (AtmosProcessor)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AtmosProcessor)

@@ -134,3 +134,16 @@ test("rate limit kicks in per IP", async () => {
     assert.equal((await get(base, "/v1/sky?lat=1&lon=1", { "x-forwarded-for": "81.2.3.10" })).status, 200);
   });
 });
+
+test("serves the sound designer and refuses paths outside it", async () => {
+  await withServer({ owmKey: "" }, async (base) => {
+    const r = await fetch(base + "/designer/");
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get("content-type"), /text\/html/);
+    assert.match(await r.text(), /^<!doctype html>.*Sound Designer/s);
+    const w = await fetch(base + "/designer/atmos.wasm");
+    assert.equal(w.headers.get("content-type"), "application/wasm");
+    assert.equal((await fetch(base + "/designer/..%2F..%2Fpackage.json")).status, 404);
+    assert.equal((await fetch(base + "/designer", { redirect: "manual" })).status, 301);
+  });
+});

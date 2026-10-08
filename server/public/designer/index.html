@@ -1,0 +1,696 @@
+<meta charset="utf-8" />
+<title>Atmospheric Sound Designer</title>
+<meta name="description" content="Settle Atmospheric's core sounds: sources, wavetables and OSP effects, each with the boundaries the weather may move it within." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+<style>
+  /* Layout: three panes (core sounds | editor | audition) that stack on narrow screens */
+  :root {
+    --bg: #eceff2; --surface: #f8f9fa; --sunk: #e1e6eb; --line: #c9d1d9; --ink: #17202b; --ink2: #4c5a69; --ink3: #7a8794;
+    --accent: #9a6a1c; --accent-ink: #ffffff; --band: rgba(154, 106, 28, 0.22); --good: #2c8a64; --bad: #b8483f;
+    --display: "Archivo", "Arial Narrow", system-ui, sans-serif; --body: "Archivo", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f141a; --surface: #161d26; --sunk: #1d2631; --line: #2b3643; --ink: #dfe6ee; --ink2: #9fb0c2; --ink3: #6c7c8d;
+      --accent: #d9a54a; --accent-ink: #1a1306; --band: rgba(217, 165, 74, 0.24); --good: #4cc08f; --bad: #e0756b; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f141a; --surface: #161d26; --sunk: #1d2631; --line: #2b3643; --ink: #dfe6ee; --ink2: #9fb0c2; --ink3: #6c7c8d;
+    --accent: #d9a54a; --accent-ink: #1a1306; --band: rgba(217, 165, 74, 0.24); --good: #4cc08f; --bad: #e0756b; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.4; margin: 0; padding-inline: 16px; padding-block: 14px 40px; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto 14px; }
+  h1 { font-family: var(--display); font-stretch: 70%; font-weight: 800; font-size: 28px; text-transform: uppercase; margin: 0; letter-spacing: .01em; }
+  h1 small { font-weight: 400; color: var(--ink3); font-size: 15px; letter-spacing: .06em; margin-left: 8px; }
+  .status { font-family: var(--mono); font-size: 12px; color: var(--ink3); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .meter { width: 90px; height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--good); transition: width .05s linear; }
+  .grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 260px minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 240px minmax(0, 1fr); } .audition { grid-column: 1 / -1; } }
+  @media (max-width: 720px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+  .label { font-family: var(--display); font-stretch: 75%; font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink2); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .label span { font-family: var(--mono); font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink3); }
+  button, select, input[type=text], input[type=number], textarea { font: inherit; color: var(--ink); background: var(--sunk); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--ink3); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .row-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sounds { display: grid; gap: 6px; margin-bottom: 10px; }
+  .snd { text-align: left; display: grid; gap: 2px; padding: 8px 10px; background: var(--sunk); }
+  .snd b { font-family: var(--display); font-stretch: 85%; font-size: 15px; }
+  .snd small { color: var(--ink3); font-size: 12px; font-family: var(--mono); }
+  .snd.chosen { box-shadow: inset 3px 0 0 var(--good); }
+  canvas.map { width: 100%; aspect-ratio: 1.3; display: block; background: var(--sunk); border-radius: 4px; cursor: crosshair; max-width: 100%; }
+  .maplegend { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--ink3); margin-top: 4px; }
+  .editor-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 10px; }
+  .editor-head input { font-family: var(--display); font-stretch: 85%; font-weight: 700; font-size: 18px; }
+  .anchors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 8px; }
+  .anchors label { font-size: 12px; color: var(--ink2); display: grid; gap: 2px; }
+  .anchors output { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+  details.group { border-top: 1px solid var(--line); padding: 6px 0; }
+  details.group > summary { cursor: pointer; font-family: var(--display); font-stretch: 75%; font-weight: 700; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink2); padding: 4px 0; list-style: none; display: flex; justify-content: space-between; }
+  details.group > summary::after { content: "+"; font-family: var(--mono); color: var(--ink3); }
+  details.group[open] > summary::after { content: "–"; }
+  .prow { display: grid; grid-template-columns: 128px minmax(0, 1fr) 196px 40px; gap: 8px; align-items: center; padding: 3px 0; }
+  .prow .nm { font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow .nm em { font-style: normal; font-size: 10.5px; font-family: var(--mono); color: var(--accent); margin-left: 4px; }
+  .prow .val { font-family: var(--mono); font-size: 11.5px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .prow .val b { color: var(--ink); font-weight: 500; }
+  .prow .val span { color: var(--ink3); }
+  .prow button.lock { padding: 2px 4px; font-size: 11px; font-family: var(--mono); }
+  .prow select { padding: 3px 6px; }
+  @media (max-width: 560px) { .prow { grid-template-columns: 100px minmax(0, 1fr) 40px; } .prow .val { display: none; } }
+  .range { position: relative; height: 22px; touch-action: none; cursor: pointer; }
+  .range .track { position: absolute; left: 0; right: 0; top: 10px; height: 3px; background: var(--line); border-radius: 2px; }
+  .range .band { position: absolute; top: 6px; height: 11px; background: var(--band); border-radius: 3px; }
+  .range .h { position: absolute; top: 3px; width: 6px; height: 17px; margin-left: -3px; border-radius: 2px; background: var(--ink3); }
+  .range .h.home { width: 12px; height: 12px; top: 5px; margin-left: -6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+  .range .cur { position: absolute; top: 2px; width: 2px; height: 19px; margin-left: -1px; background: var(--good); opacity: .9; }
+  .range.locked .band { background: transparent; }
+  .modes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }
+  .modes button { padding: 6px 2px; font-size: 12.5px; }
+  .transport { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .wx { display: grid; gap: 4px; }
+  .wx .r { display: grid; grid-template-columns: 76px minmax(0, 1fr) 84px; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink2); }
+  .wx output { font-family: var(--mono); font-size: 11.5px; text-align: right; color: var(--ink); }
+  .chosen-line { font-family: var(--mono); font-size: 12px; margin: 8px 0; color: var(--ink2); }
+  .chosen-line b { color: var(--good); }
+  .note { font-size: 12.5px; color: var(--ink2); margin: 6px 0; }
+  textarea { width: 100%; min-height: 54px; resize: vertical; background: var(--bg); }
+  .toast { font-family: var(--mono); font-size: 12px; color: var(--ink3); min-height: 1.4em; margin-top: 6px; }
+  .warn { border: 1px solid var(--bad); color: var(--bad); padding: 10px 12px; border-radius: 6px; margin: 0 auto 12px; max-width: 1400px; }
+  kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; color: var(--ink3); }
+  .keys { display: flex; gap: 2px; margin-top: 8px; user-select: none; }
+  .keys button { flex: 1; padding: 18px 0 4px; font-size: 10px; font-family: var(--mono); color: var(--ink3); border-radius: 0 0 4px 4px; }
+  .keys button.black { background: var(--ink2); color: var(--surface); }
+  .keys button.on { background: var(--accent); color: var(--accent-ink); }
+</style>
+
+<header>
+  <h1>Atmospheric <small>Sound Designer</small></h1>
+  <div class="status">
+    <span id="engineState">Engine not started</span>
+    <span class="meter" aria-label="Output level"><i id="meter"></i></span>
+    <span id="voices">0 voices</span>
+    <span id="saveState">Not saved yet</span>
+    <button class="primary" id="startBtn">Start audio</button>
+  </div>
+</header>
+<div class="warn" id="wasmWarn" hidden></div>
+
+<div class="grid">
+  <section class="panel" aria-labelledby="lstLbl">
+    <div class="label" id="lstLbl">Core sounds <span id="count">0</span></div>
+    <div class="sounds" id="sounds"></div>
+    <div class="row-btns">
+      <button id="addBtn">New</button>
+      <button id="dupBtn">Duplicate</button>
+      <button id="delBtn">Delete</button>
+    </div>
+    <div class="label" style="margin-top: 14px">Climate map <span>drag to place</span></div>
+    <canvas class="map" id="map" width="460" height="354" aria-label="Where each core sound sits by temperature and wetness"></canvas>
+    <div class="maplegend"><span>−30 °C</span><span>temperature →</span><span>45 °C</span></div>
+    <p class="note">Up is wetter. Today's weather picks the nearest sound; the daily seed decides close calls.</p>
+    <div class="row-btns" style="margin-top: 10px">
+      <button id="exportBtn">Export for plugin</button>
+      <label class="row-btns"><button id="importBtn" type="button">Import</button><input type="file" id="importFile" accept="application/json" hidden /></label>
+      <button id="resetBtn">Back to starters</button>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="edLbl">
+    <div class="label" id="edLbl">Edit <span>● home · ▮ boundaries · green = what's playing</span></div>
+    <div class="editor-head">
+      <input type="text" id="sndName" aria-label="Core sound name" />
+      <button id="lockAll" title="Lock every parameter to its home value">Lock all</button>
+    </div>
+    <div class="anchors">
+      <label>Belongs at <output id="aTempO"></output><input type="range" id="aTemp" min="-35" max="48" step="1" /></label>
+      <label>Wetness <output id="aWetO"></output><input type="range" id="aWet" min="0" max="1" step="0.01" /></label>
+      <label>Light <output id="aLightO"></output><input type="range" id="aLight" min="0" max="1" step="0.01" /></label>
+    </div>
+    <textarea id="sndNotes" placeholder="Notes on this sound: what it should feel like, what to avoid"></textarea>
+    <div id="groups"></div>
+  </section>
+
+  <section class="panel audition" aria-labelledby="auLbl">
+    <div class="label" id="auLbl">Audition</div>
+    <div class="modes" id="modes">
+      <button data-m="home" aria-pressed="true">Home</button>
+      <button data-m="lo">Low edge</button>
+      <button data-m="hi">High edge</button>
+      <button data-m="rand">Random</button>
+      <button data-m="weather">Weather</button>
+    </div>
+    <p class="note" id="modeNote"></p>
+    <div class="transport">
+      <button id="playBtn">Play pattern</button>
+      <select id="pattern" aria-label="Pattern">
+        <option value="chords">Chords</option><option value="arp">Arpeggio</option><option value="melody">Melody</option><option value="low">Low line</option><option value="stab">Stabs</option>
+      </select>
+      <button id="rerollBtn" hidden>Re-roll</button>
+    </div>
+    <div class="keys" id="keys" aria-label="Keyboard"></div>
+    <p class="note">Computer keys: <kbd>A</kbd> to <kbd>K</kbd> white, <kbd>W E T Y U</kbd> black, <kbd>Z</kbd>/<kbd>X</kbd> octave.</p>
+
+    <div id="weatherPanel" hidden>
+      <div class="label" style="margin-top: 12px">Climate</div>
+      <select id="scenario" aria-label="Scenario" style="width: 100%; margin-bottom: 8px"></select>
+      <div class="wx" id="wx"></div>
+      <div class="chosen-line" id="chosen">—</div>
+      <div class="label" style="margin-top: 10px">The five knobs</div>
+      <div class="wx" id="macros"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  // ---------------------------------------------------------------- engine
+  let ctx = null, node = null, schema = null, calls = 0;
+  const pending = new Map();
+  function call(fn, ...args) { if (node) node.port.postMessage({ type: "call", fn, args }); }
+  function batch(list, wantResult) {
+    if (!node) return Promise.resolve(null);
+    const id = wantResult ? ++calls : undefined;
+    node.port.postMessage({ type: "batch", calls: list, id });
+    return wantResult ? new Promise((r) => pending.set(id, r)) : Promise.resolve(null);
+  }
+  function request(type) {
+    if (!node) return Promise.resolve(null);
+    const id = ++calls;
+    node.port.postMessage({ type, id });
+    return new Promise((r) => pending.set(id, r));
+  }
+
+  async function startAudio() {
+    if (ctx) { if (ctx.state === "suspended") await ctx.resume(); return; }
+    $("#engineState").textContent = "Loading engine…";
+    try {
+      ctx = new AudioContext({ latencyHint: "interactive" });
+      try { await ctx.audioWorklet.addModule("atmos-worklet.js"); }
+      catch (e) {
+        const src = await (await fetch("atmos-worklet.js")).text();
+        await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+      }
+      const bytes = await (await fetch("atmos.wasm")).arrayBuffer();
+      node = new AudioWorkletNode(ctx, "atmos-processor", { numberOfInputs: 0, outputChannelCount: [2] });
+      node.connect(ctx.destination);
+      node.port.onmessage = (ev) => onEngine(ev.data);
+      node.port.postMessage({ type: "init", bytes }, [bytes]);
+    } catch (e) {
+      showWasmProblem(e);
+    }
+  }
+  function showWasmProblem(e) {
+    $("#engineState").textContent = "Engine couldn't start";
+    const w = $("#wasmWarn");
+    w.hidden = false;
+    w.textContent = "This view couldn't start the audio engine (" + (e && e.message ? e.message : e) + "). Open the designer from the relay instead: https://relay-production-37cf.up.railway.app/designer/ — your work there saves in that browser and exports the same file.";
+  }
+  function onEngine(m) {
+    if (m.type === "ready") {
+      schema = JSON.parse(m.schema);
+      $("#engineState").textContent = "Engine running · " + Math.round(m.sampleRate / 1000) + " kHz";
+      $("#startBtn").textContent = "Audio on";
+      pushSound(true);
+    } else if (m.type === "error") {
+      showWasmProblem(m.message);
+    } else if (m.type === "meter") {
+      $("#meter").style.width = clamp(m.peak / 0.9, 0, 1) * 100 + "%";
+      $("#meter").style.background = m.peak > 0.85 ? "var(--bad)" : "var(--good)";
+      $("#voices").textContent = m.voices + (m.voices === 1 ? " voice" : " voices");
+    } else if (m.type === "result") {
+      const r = pending.get(m.id);
+      if (r) { pending.delete(m.id); r(m.value); }
+    }
+  }
+
+  // ---------------------------------------------------------------- schema (mirrors engine/atmos/Params.h)
+  // Used until the engine reports its own schema; the two are checked against each other on start.
+  const PARAMS = [
+    ["srcType","Source","Source",0,3,0,"choice","Wavetable|FM|Supersaw|Pluck"],["srcFrame","Wavetable","Source",0,1,.35,"linear"],
+    ["fmRatio","FM ratio","Source",.5,8,2,"log"],["fmIndex","FM index","Source",0,10,2.5,"linear"],["fmFeedback","FM feedback","Source",0,1,0,"linear"],
+    ["sawVoices","Saw voices","Source",1,7,5,"linear"],["sawDetune","Saw detune","Source",0,60,18,"linear"],["pluckDamp","Pluck damping","Source",0,1,.4,"linear"],
+    ["pluckBright","Pluck brightness","Source",0,1,.6,"linear"],["srcSpread","Layer spread","Source",0,40,6,"linear"],["srcSub","Sub octave","Source",0,1,.2,"linear"],
+    ["srcShimmer","Octave shimmer","Source",0,1,0,"linear"],["srcBreath","Breath noise","Source",0,1,0,"linear"],
+    ["attack","Attack","Voice",.002,4,.08,"log"],["decay","Decay","Voice",.05,6,.8,"log"],["sustain","Sustain","Voice",0,1,.75,"linear"],
+    ["release","Release","Voice",.05,12,1.2,"log"],["vibDepth","Vibrato","Voice",0,1,.05,"linear"],["vibRate","Vibrato rate","Voice",.1,10,4.5,"log"],["glide","Drift","Voice",0,1,.15,"linear"],
+    ["drive","Drive","Drive",0,1,0,"linear"],["crushBits","Bits","Drive",4,16,16,"linear"],["crushRate","Sample-rate crush","Drive",0,1,0,"linear"],
+    ["filtType","Filter","Character",0,4,0,"choice","LP24|LP12|HP12|BP12|Tilt"],["cutoff","Cutoff","Character",40,18000,2400,"log"],["resonance","Resonance","Character",0,.9,.12,"linear"],
+    ["filtDrive","Filter drive","Character",0,1,.1,"linear"],["filtEnv","Filter envelope","Character",-1,1,.15,"linear"],["filtEnvDecay","Filter env decay","Character",.02,4,.6,"log"],["tilt","Brightness","Character",-12,6,0,"linear"],
+    ["kalAmount","Kaleidoscope","Kaleidoscope",0,1,0,"linear"],["kalFocus","Focus","Kaleidoscope",0,1,.5,"linear"],["kalSpread","Spread","Kaleidoscope",0,1,.5,"linear"],
+    ["movMode","Movement","Movement",0,4,2,"choice","Off|Tape|Chorus|Pulse|Shaper"],["movAmount","Movement amount","Movement",0,1,.3,"linear"],
+    ["movA","Rate / wow / pattern","Movement",0,1,.45,"linear"],["movB","Width / flutter / shape","Movement",0,1,.6,"linear"],["movC","Stereo / wear / smooth","Movement",0,1,.6,"linear"],
+    ["echoType","Echo","Echo",0,1,0,"choice","Tape|BBD"],["echoSend","Echo send","Echo",0,1,.1,"linear"],["echoTime","Echo time","Echo",40,1200,375,"log"],
+    ["echoFeedback","Feedback","Echo",0,1,.4,"linear"],["echoTone","Echo tone","Echo",0,1,.5,"linear"],["echoAge","Echo age","Echo",0,1,.35,"linear"],["echoStereo","Echo stereo","Echo",0,2,1,"choice","Mono|Ping-pong|Wide"],
+    ["spaceType","Space","Space",0,3,2,"choice","Room|Hall|Plate|Spring"],["spaceSend","Space send","Space",0,1,.3,"linear"],["spaceDecay","Decay","Space",.2,12,2.5,"log"],
+    ["spaceSize","Size","Space",0,1,.5,"linear"],["spaceDamping","Damping","Space",0,1,.4,"linear"],["spaceMod","Modulation","Space",0,1,.4,"linear"],["spacePreDelay","Pre-delay","Space",0,250,10,"linear"],
+    ["bedLevel","Weather bed","Bed",0,1,0,"linear"],["bedColour","Bed colour","Bed",200,8000,1800,"log"],["outGain","Output","Output",-24,6,0,"linear"],
+  ].map(([id, name, group, min, max, def, scale, choices]) => ({ id, name, group, min, max, def, scale, choices: choices ? choices.split("|") : null }));
+  const IDX = Object.fromEntries(PARAMS.map((p, i) => [p.id, i]));
+  const FRAMES = ["Glass", "Breath", "Hollow", "Reed", "Organ", "String", "Choir", "Brass"];
+  // Which knob moves what (mirrors macroLean in engine/atmos/Bible.cpp)
+  const MACRO = { cutoff: "Tone", tilt: "Tone", attack: "Bloom", release: "Bloom", sustain: "Bloom", spaceSend: "Space", echoSend: "Space", spaceDecay: "Space", movAmount: "Motion", vibDepth: "Motion", kalSpread: "Motion" };
+  // Which source parameters matter for each source type
+  const SOURCE_ONLY = { srcFrame: [0], fmRatio: [1], fmIndex: [1], fmFeedback: [1], sawVoices: [2], sawDetune: [2], pluckDamp: [3], pluckBright: [3] };
+
+  function fmt(p, v) {
+    const id = p.id;
+    if (p.scale === "choice") return p.choices[Math.round(v)] || "";
+    if (id === "srcFrame") { const x = v * 7, i = Math.floor(Math.min(6, x)), t = x - i; return t < 0.15 ? FRAMES[i] : t > 0.85 ? FRAMES[i + 1] : FRAMES[i] + "→" + FRAMES[i + 1]; }
+    if (id === "cutoff" || id === "bedColour") return v < 1000 ? Math.round(v) + " Hz" : (v / 1000).toFixed(1) + " k";
+    if (["attack", "decay", "release", "filtEnvDecay", "spaceDecay"].includes(id)) return v < 1 ? Math.round(v * 1000) + " ms" : v.toFixed(2) + " s";
+    if (id === "echoTime" || id === "spacePreDelay") return Math.round(v) + " ms";
+    if (id === "tilt" || id === "outGain") return (v > 0 ? "+" : "") + v.toFixed(1) + " dB";
+    if (id === "srcSpread" || id === "sawDetune") return Math.round(v) + " ct";
+    if (id === "crushBits") return v >= 15.5 ? "off" : Math.round(v) + " bit";
+    if (id === "sawVoices") return Math.round(v) + "";
+    if (id === "vibRate") return v.toFixed(1) + " Hz";
+    if (id === "fmRatio") return v.toFixed(2) + "×";
+    if (id === "fmIndex") return v.toFixed(1);
+    if (id === "filtEnv") return (v > 0 ? "+" : "") + Math.round(v * 100) + "%";
+    return Math.round(v * 100) + "%";
+  }
+  const toPos = (p, v) => p.scale === "log" ? Math.log(v / p.min) / Math.log(p.max / p.min) : (v - p.min) / (p.max - p.min);
+  const fromPos = (p, t) => { t = clamp(t, 0, 1); let v = p.scale === "log" ? p.min * Math.pow(p.max / p.min, t) : p.min + t * (p.max - p.min); if (p.id === "sawVoices" || p.id === "crushBits") v = Math.round(v); return v; };
+
+  // ---------------------------------------------------------------- the bible
+  let bible = null, sel = 0, mode = "home", chosenIdx = -1;
+  function blankSound(name) {
+    const params = {};
+    for (const p of PARAMS) params[p.id] = { home: p.def, lo: p.def, hi: p.def };
+    return { id: "s" + Date.now().toString(36), name, anchor: { temp: 12, wet: 0.4, light: 0.5 }, params, notes: "" };
+  }
+  function normalise(b) {
+    for (const s of b.sounds) {
+      s.notes = s.notes || "";
+      for (const p of PARAMS) {
+        const q = s.params[p.id] || (s.params[p.id] = { home: p.def, lo: p.def, hi: p.def });
+        q.home = clamp(+q.home, p.min, p.max); q.lo = clamp(Math.min(+q.lo, q.home), p.min, p.max); q.hi = clamp(Math.max(+q.hi, q.home), p.min, p.max);
+      }
+    }
+    return b;
+  }
+  const cur = () => bible.sounds[sel];
+
+  // ---------------------------------------------------------------- storage: shared log when available, this browser otherwise
+  let db = null, saveTimer = null;
+  const LS = "atmospheric.designer.bible";
+  function scheduleSave() {
+    $("#saveState").textContent = "Unsaved changes";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 1200);
+  }
+  async function save() {
+    const data = JSON.stringify({ version: 1, sounds: bible.sounds });
+    try { localStorage.setItem(LS, data); } catch (e) {}
+    if (db) {
+      try { await db.doc("bible/current").set({ json: data, savedAt: new Date().toISOString() }); $("#saveState").textContent = "Saved to the shared log"; return; }
+      catch (e) { $("#saveState").textContent = "Saved in this browser (shared log refused)"; return; }
+    }
+    $("#saveState").textContent = "Saved in this browser";
+  }
+  async function load() {
+    if (window.claude && window.claude.use) {
+      try {
+        db = await window.claude.use("db");
+        if (db) {
+          const snap = await db.doc("bible/current").get();
+          if (snap.exists) { bible = normalise(JSON.parse(snap.data().json)); $("#saveState").textContent = "Loaded from the shared log"; return; }
+        }
+      } catch (e) { db = null; }
+    }
+    try { const s = localStorage.getItem(LS); if (s) { bible = normalise(JSON.parse(s)); $("#saveState").textContent = "Loaded from this browser"; return; } } catch (e) {}
+    bible = normalise(await (await fetch("starter-bible.json")).json());
+    $("#saveState").textContent = "Starter sounds";
+  }
+
+  // ---------------------------------------------------------------- engine sync
+  let rand = {};
+  function patchFor(s) {
+    return PARAMS.map((p) => {
+      const q = s.params[p.id];
+      if (mode === "lo") return q.lo;
+      if (mode === "hi") return q.hi;
+      if (mode === "rand") { const r = rand[p.id] ?? 0.5; return p.scale === "choice" ? q.home : p.scale === "log" ? q.lo * Math.pow(q.hi / q.lo, r) : q.lo + r * (q.hi - q.lo); }
+      return q.home;
+    });
+  }
+  let pushTimer = null;
+  function pushSound(now) {
+    if (!node) return;
+    if (!now) { clearTimeout(pushTimer); pushTimer = setTimeout(() => pushSound(true), 40); return; }
+    if (mode === "weather") return pushWeather();
+    const v = patchFor(cur());
+    batch(v.map((x, i) => ["atmos_set_param", i, x]));
+    showPlaying(v);
+  }
+  async function pushWeather() {
+    const list = [["atmos_bible_resize", bible.sounds.length]];
+    bible.sounds.forEach((s, si) => {
+      list.push(["atmos_bible_anchor", si, s.anchor.temp, s.anchor.wet, s.anchor.light]);
+      PARAMS.forEach((p, i) => { const q = s.params[p.id]; list.push(["atmos_bible_set", si, 0, i, q.home], ["atmos_bible_set", si, 1, i, q.lo], ["atmos_bible_set", si, 2, i, q.hi]); });
+    });
+    const W = wxValues();
+    list.push(["atmos_set_climate", W.temp, W.humidity, W.precip, W.wind, W.clouds, W.sun, W.moon, W.pressure, W.seed]);
+    const M = macroValues();
+    list.push(["atmos_set_macros", M.tone, M.bloom, M.space, M.motion, M.intensity]);
+    list.push(["atmos_resolve"]);
+    chosenIdx = await batch(list, true);
+    const got = await request("patch");
+    const s = bible.sounds[chosenIdx];
+    $("#chosen").innerHTML = s ? `Today's sound: <b>${esc(s.name)}</b>` : "No core sounds";
+    renderList();
+    if (chosenIdx === sel) showPlaying(got); else showPlaying(null);
+  }
+  function showPlaying(v) {
+    document.querySelectorAll(".range .cur").forEach((el) => {
+      const i = +el.dataset.i;
+      if (!v) { el.hidden = true; return; }
+      el.hidden = false;
+      el.style.left = toPos(PARAMS[i], v[i]) * 100 + "%";
+    });
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  // ---------------------------------------------------------------- list + map
+  function anchorText(a) { return `${Math.round(a.temp)} °C · ${a.wet < 0.33 ? "dry" : a.wet < 0.66 ? "damp" : "wet"} · ${a.light < 0.33 ? "night" : a.light < 0.66 ? "dim" : "bright"}`; }
+  function srcText(s) { const t = Math.round(s.params.srcType.home); return t === 0 ? fmt(PARAMS[IDX.srcFrame], s.params.srcFrame.home) + " wavetable" : ["", "FM", "Supersaw", "Pluck"][t]; }
+  function renderList() {
+    $("#count").textContent = bible.sounds.length;
+    $("#sounds").innerHTML = bible.sounds.map((s, i) =>
+      `<button class="snd${i === chosenIdx && mode === "weather" ? " chosen" : ""}" data-i="${i}" aria-pressed="${i === sel}"><b>${esc(s.name)}</b><small>${esc(srcText(s))} · ${anchorText(s.anchor)}</small></button>`).join("");
+    drawMap();
+  }
+  $("#sounds").addEventListener("click", (e) => { const b = e.target.closest(".snd"); if (!b) return; sel = +b.dataset.i; renderAll(); pushSound(); });
+  const map = $("#map"), mctx = map.getContext("2d");
+  const pad = () => 12 * (window.devicePixelRatio || 1);
+  const mapX = (t) => pad() + (clamp(t, -30, 45) + 30) / 75 * (map.width - 2 * pad());
+  const mapY = (w) => map.height - pad() - clamp(w, 0, 1) * (map.height - 2 * pad());
+  function sizeMap() {
+    const dpr = window.devicePixelRatio || 1, w = map.clientWidth || 230;
+    const W = Math.round(w * dpr), H = Math.round((w / 1.3) * dpr);
+    if (map.width !== W || map.height !== H) { map.width = W; map.height = H; }
+    return dpr;
+  }
+  window.addEventListener("resize", () => drawMap());
+  function drawMap() {
+    const dpr = sizeMap();
+    const cs = getComputedStyle(document.documentElement);
+    const ink3 = cs.getPropertyValue("--ink3").trim(), acc = cs.getPropertyValue("--accent").trim(), good = cs.getPropertyValue("--good").trim(), ink = cs.getPropertyValue("--ink").trim();
+    mctx.clearRect(0, 0, map.width, map.height);
+    mctx.strokeStyle = ink3; mctx.globalAlpha = 0.25; mctx.lineWidth = 1;
+    for (let t = -30; t <= 45; t += 15) { mctx.beginPath(); mctx.moveTo(mapX(t), 10); mctx.lineTo(mapX(t), map.height - 10); mctx.stroke(); }
+    for (let w = 0; w <= 1; w += 0.25) { mctx.beginPath(); mctx.moveTo(10, mapY(w)); mctx.lineTo(map.width - 10, mapY(w)); mctx.stroke(); }
+    mctx.globalAlpha = 1;
+    mctx.font = Math.round(10.5 * dpr) + "px " + cs.getPropertyValue("--mono");
+    bible.sounds.forEach((s, i) => {
+      const x = mapX(s.anchor.temp), y = mapY(s.anchor.wet);
+      mctx.fillStyle = i === sel ? acc : i === chosenIdx && mode === "weather" ? good : ink3;
+      mctx.beginPath(); mctx.arc(x, y, (i === sel ? 5 : 3.5) * dpr, 0, Math.PI * 2); mctx.fill();
+      mctx.fillStyle = ink; mctx.fillText(s.name, Math.min(x + 7 * dpr, map.width - 4 * dpr - mctx.measureText(s.name).width), y + 3.5 * dpr);
+    });
+    if (mode === "weather") {
+      const W = wxValues();
+      const x = mapX(W.temp), y = mapY(wetForce(W));
+      mctx.strokeStyle = good; mctx.lineWidth = 2; mctx.beginPath(); mctx.moveTo(x - 6, y - 6); mctx.lineTo(x + 6, y + 6); mctx.moveTo(x + 6, y - 6); mctx.lineTo(x - 6, y + 6); mctx.stroke();
+    }
+  }
+  function wetForce(W) { const n = (v, a, b) => clamp((v - a) / (b - a), 0, 1); return clamp(0.55 * W.precip + 0.45 * n(W.humidity, 40, 100), 0, 1); }
+  let mapDrag = false;
+  function mapAt(e) {
+    const r = map.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * map.width, y = (e.clientY - r.top) / r.height * map.height;
+    return { temp: Math.round(-30 + (x - pad()) / (map.width - 2 * pad()) * 75), wet: +clamp((map.height - pad() - y) / (map.height - 2 * pad()), 0, 1).toFixed(2) };
+  }
+  map.addEventListener("pointerdown", (e) => {
+    const a = mapAt(e);
+    let best = -1, bd = 1e9;
+    bible.sounds.forEach((s, i) => { const d = Math.hypot(mapX(s.anchor.temp) - mapX(a.temp), mapY(s.anchor.wet) - mapY(a.wet)); if (d < bd) { bd = d; best = i; } });
+    if (best >= 0 && bd < 14 * (window.devicePixelRatio || 1)) sel = best;
+    mapDrag = true; map.setPointerCapture(e.pointerId);
+    Object.assign(cur().anchor, a); renderAll(); scheduleSave(); pushSound();
+  });
+  map.addEventListener("pointermove", (e) => { if (!mapDrag) return; Object.assign(cur().anchor, mapAt(e)); renderAnchors(); renderList(); scheduleSave(); pushSound(); });
+  map.addEventListener("pointerup", () => (mapDrag = false));
+
+  // ---------------------------------------------------------------- editor
+  function renderAnchors() {
+    const a = cur().anchor;
+    $("#aTemp").value = a.temp; $("#aTempO").textContent = Math.round(a.temp) + " °C";
+    $("#aWet").value = a.wet; $("#aWetO").textContent = Math.round(a.wet * 100) + "%";
+    $("#aLight").value = a.light; $("#aLightO").textContent = Math.round(a.light * 100) + "%";
+  }
+  for (const [id, key] of [["aTemp", "temp"], ["aWet", "wet"], ["aLight", "light"]])
+    $("#" + id).addEventListener("input", (e) => { cur().anchor[key] = +e.target.value; renderAnchors(); renderList(); scheduleSave(); pushSound(); });
+  $("#sndName").addEventListener("input", (e) => { cur().name = e.target.value; renderList(); scheduleSave(); });
+  $("#sndNotes").addEventListener("input", (e) => { cur().notes = e.target.value; scheduleSave(); });
+
+  const openGroups = new Set(["Source", "Voice", "Character"]);
+  function renderEditor() {
+    const s = cur();
+    $("#sndName").value = s.name;
+    $("#sndNotes").value = s.notes || "";
+    renderAnchors();
+    const groups = [...new Set(PARAMS.map((p) => p.group))];
+    const type = Math.round(s.params.srcType.home);
+    $("#groups").innerHTML = groups.map((g) => {
+      const rows = PARAMS.map((p, i) => [p, i]).filter(([p]) => p.group === g && (!SOURCE_ONLY[p.id] || SOURCE_ONLY[p.id].includes(type))).map(([p, i]) => {
+        const q = s.params[p.id];
+        if (p.scale === "choice")
+          return `<div class="prow"><span class="nm">${esc(p.name)}</span><select data-i="${i}" aria-label="${esc(p.name)}">${p.choices.map((c, k) => `<option value="${k}"${Math.round(q.home) === k ? " selected" : ""}>${esc(c)}</option>`).join("")}</select><span class="val"></span><span></span></div>`;
+        const locked = q.lo === q.hi;
+        return `<div class="prow"><span class="nm" title="${esc(p.name)}">${esc(p.name)}${MACRO[p.id] ? `<em>${MACRO[p.id]}</em>` : ""}</span>
+          <div class="range${locked ? " locked" : ""}" data-i="${i}" tabindex="0" role="group" aria-label="${esc(p.name)}: boundaries and home">
+            <div class="track"></div><div class="band"></div><div class="h lo"></div><div class="h hi"></div><div class="h home"></div><div class="cur" data-i="${i}" hidden></div></div>
+          <span class="val" data-v="${i}"></span><button class="lock" data-lock="${i}" aria-pressed="${locked}" title="Lock: the weather and knobs can't move it">${locked ? "fixed" : "free"}</button></div>`;
+      }).join("");
+      return `<details class="group" data-g="${g}"${openGroups.has(g) ? " open" : ""}><summary>${g}</summary>${rows}</details>`;
+    }).join("");
+    document.querySelectorAll(".range").forEach(layoutRange);
+    document.querySelectorAll("details.group").forEach((d) => d.addEventListener("toggle", () => (d.open ? openGroups.add(d.dataset.g) : openGroups.delete(d.dataset.g))));
+  }
+  function layoutRange(el) {
+    const i = +el.dataset.i, p = PARAMS[i], q = cur().params[p.id];
+    const lo = toPos(p, q.lo) * 100, hi = toPos(p, q.hi) * 100, h = toPos(p, q.home) * 100;
+    el.querySelector(".band").style.left = lo + "%";
+    el.querySelector(".band").style.width = Math.max(0, hi - lo) + "%";
+    el.querySelector(".lo").style.left = lo + "%";
+    el.querySelector(".hi").style.left = hi + "%";
+    el.querySelector(".home").style.left = h + "%";
+    el.classList.toggle("locked", q.lo === q.hi);
+    const v = document.querySelector(`[data-v="${i}"]`);
+    if (v) v.innerHTML = q.lo === q.hi ? `<b>${fmt(p, q.home)}</b>` : `<span>${fmt(p, q.lo)}</span> <b>${fmt(p, q.home)}</b> <span>${fmt(p, q.hi)}</span>`;
+  }
+  let drag = null;
+  $("#groups").addEventListener("pointerdown", (e) => {
+    const el = e.target.closest(".range"); if (!el) return;
+    const i = +el.dataset.i, p = PARAMS[i], q = cur().params[p.id];
+    const r = el.getBoundingClientRect(), t = (e.clientX - r.left) / r.width;
+    const d = { lo: Math.abs(t - toPos(p, q.lo)), hi: Math.abs(t - toPos(p, q.hi)), home: Math.abs(t - toPos(p, q.home)) - 0.012 };
+    let which = Object.entries(d).sort((a, b) => a[1] - b[1])[0][0];
+    if (e.altKey || e.shiftKey) which = "home";
+    drag = { el, i, which, startHome: q.home };
+    el.setPointerCapture(e.pointerId);
+    moveHandle(e);
+  });
+  $("#groups").addEventListener("pointermove", (e) => drag && moveHandle(e));
+  $("#groups").addEventListener("pointerup", () => (drag = null));
+  function moveHandle(e) {
+    const { el, i, which } = drag, p = PARAMS[i], q = cur().params[p.id];
+    const r = el.getBoundingClientRect(), v = fromPos(p, (e.clientX - r.left) / r.width);
+    if (which === "home") { const dh = v - q.home; q.home = v; if (q.lo === q.hi) { q.lo = q.hi = v; } else { q.lo = Math.min(q.lo, v); q.hi = Math.max(q.hi, v); } }
+    else if (which === "lo") q.lo = Math.min(v, q.home);
+    else q.hi = Math.max(v, q.home);
+    layoutRange(el); scheduleSave(); pushSound();
+    if (["srcFrame"].includes(p.id)) renderList();
+  }
+  $("#groups").addEventListener("keydown", (e) => {
+    const el = e.target.closest(".range"); if (!el || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    const i = +el.dataset.i, p = PARAMS[i], q = cur().params[p.id];
+    const t = toPos(p, q.home) + (e.key === "ArrowRight" ? 0.01 : -0.01);
+    q.home = fromPos(p, t); q.lo = Math.min(q.lo, q.home); q.hi = Math.max(q.hi, q.home);
+    if (el.classList.contains("locked")) q.lo = q.hi = q.home;
+    layoutRange(el); scheduleSave(); pushSound(); e.preventDefault();
+  });
+  $("#groups").addEventListener("change", (e) => {
+    const sel2 = e.target.closest("select[data-i]"); if (!sel2) return;
+    const p = PARAMS[+sel2.dataset.i], q = cur().params[p.id];
+    q.home = q.lo = q.hi = +sel2.value;
+    if (p.id === "srcType") renderEditor();
+    renderList(); scheduleSave(); pushSound();
+  });
+  $("#groups").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-lock]"); if (!b) return;
+    const p = PARAMS[+b.dataset.lock], q = cur().params[p.id];
+    if (q.lo === q.hi) { // free it: open a moderate box
+      if (p.scale === "log") { q.lo = Math.max(p.min, q.home / 2); q.hi = Math.min(p.max, q.home * 2); }
+      else { const w = (p.max - p.min) * 0.15; q.lo = Math.max(p.min, q.home - w); q.hi = Math.min(p.max, q.home + w); }
+    } else q.lo = q.hi = q.home;
+    b.setAttribute("aria-pressed", q.lo === q.hi); b.textContent = q.lo === q.hi ? "fixed" : "free";
+    layoutRange(document.querySelector(`.range[data-i="${b.dataset.lock}"]`)); scheduleSave(); pushSound();
+  });
+  $("#lockAll").addEventListener("click", () => { for (const p of PARAMS) { const q = cur().params[p.id]; q.lo = q.hi = q.home; } renderEditor(); scheduleSave(); pushSound(); });
+
+  // ---------------------------------------------------------------- list actions
+  $("#addBtn").addEventListener("click", () => { bible.sounds.push(blankSound("New sound")); sel = bible.sounds.length - 1; renderAll(); scheduleSave(); pushSound(); });
+  $("#dupBtn").addEventListener("click", () => { const c = JSON.parse(JSON.stringify(cur())); c.id = "s" + Date.now().toString(36); c.name += " copy"; bible.sounds.splice(sel + 1, 0, c); sel++; renderAll(); scheduleSave(); });
+  let delArmed = false;
+  $("#delBtn").addEventListener("click", () => {
+    if (bible.sounds.length <= 1) return toast("Keep at least one core sound");
+    if (!delArmed) { delArmed = true; $("#delBtn").textContent = "Delete " + cur().name + "?"; setTimeout(() => { delArmed = false; $("#delBtn").textContent = "Delete"; }, 3000); return; }
+    delArmed = false; $("#delBtn").textContent = "Delete";
+    bible.sounds.splice(sel, 1); sel = Math.max(0, sel - 1); renderAll(); scheduleSave(); pushSound();
+  });
+  let resetArmed = false;
+  $("#resetBtn").addEventListener("click", async () => {
+    if (!resetArmed) { resetArmed = true; $("#resetBtn").textContent = "Replace all with starters?"; setTimeout(() => { resetArmed = false; $("#resetBtn").textContent = "Back to starters"; }, 3000); return; }
+    resetArmed = false; $("#resetBtn").textContent = "Back to starters";
+    bible = normalise(await (await fetch("starter-bible.json")).json()); sel = 0; renderAll(); scheduleSave(); pushSound();
+  });
+  function exportJson() { return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), sounds: bible.sounds }, null, 1); }
+  $("#exportBtn").addEventListener("click", async () => {
+    const data = exportJson(), filename = "atmospheric-bible.json";
+    const dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null;
+    if (dl) { try { await dl.save({ filename, data }); toast("Export handed to your browser"); } catch (e) { toast("Export cancelled"); } return; }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "application/json" })); a.download = filename; a.click(); toast("Exported " + bible.sounds.length + " core sounds");
+  });
+  $("#importBtn").addEventListener("click", () => $("#importFile").click());
+  $("#importFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const b = JSON.parse(await f.text()); if (!Array.isArray(b.sounds)) throw new Error("no sounds"); bible = normalise(b); sel = 0; renderAll(); scheduleSave(); pushSound(); toast("Imported " + bible.sounds.length + " core sounds"); }
+    catch (err) { toast("That file isn't a sound bible export"); }
+    e.target.value = "";
+  });
+  let toastTimer;
+  function toast(m) { $("#toast").textContent = m; clearTimeout(toastTimer); toastTimer = setTimeout(() => ($("#toast").textContent = ""), 4000); }
+
+  // ---------------------------------------------------------------- audition modes
+  const MODE_NOTES = {
+    home: "The core sound exactly as set. This is what the weather leans away from.",
+    lo: "Every parameter at its lower boundary at once. If this still sounds right, the box is safe.",
+    hi: "Every parameter at its upper boundary at once.",
+    rand: "Each parameter somewhere inside its box, like a random day. Re-roll for another.",
+    weather: "The whole pipeline, as in the plugin: today's climate chooses a core sound and places it inside its boundaries; the knobs move inside them too.",
+  };
+  $("#modes").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-m]"); if (!b) return;
+    mode = b.dataset.m;
+    document.querySelectorAll("#modes button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    $("#modeNote").textContent = MODE_NOTES[mode];
+    $("#rerollBtn").hidden = mode !== "rand";
+    $("#weatherPanel").hidden = mode !== "weather";
+    if (mode === "rand") reroll();
+    renderList(); pushSound(true);
+  });
+  function reroll() { rand = {}; for (const p of PARAMS) rand[p.id] = Math.random(); }
+  $("#rerollBtn").addEventListener("click", () => { reroll(); pushSound(true); });
+
+  // ---------------------------------------------------------------- weather panel
+  const DECK = [
+    ["Sahara, midday", 44, 8, 0, 6, 0, 70, 0.2, 1006], ["Monsoon night", 28, 96, 0.85, 9, 1, -30, 0.45, 998], ["Equatorial thunderstorm", 27, 94, 1, 12, 1, 25, 0.1, 1004],
+    ["Polar night, new moon", -31, 60, 0.05, 8, 0.2, -25, 0.02, 990], ["Polar night, full moon", -18, 70, 0, 3, 0, -20, 0.5, 1015], ["Drizzle at dusk", 6, 88, 0.3, 5, 0.9, -2, 0.62, 1008],
+    ["Winter gale", 1, 80, 0.4, 22, 0.95, 3, 0.3, 972], ["Humid summer evening", 30, 78, 0, 2, 0.4, 4, 0.55, 1009], ["Fog morning", 13, 99, 0.05, 4, 1, 8, 0.9, 1016],
+    ["Grey office afternoon", 14, 72, 0.1, 5, 0.85, 20, 0.35, 1012], ["Perfect spring noon", 21, 50, 0, 3, 0.15, 62, 0.25, 1020], ["Mediterranean heat", 38, 22, 0, 4, 0, 50, 0.4, 1010],
+    ["Desert night", 12, 20, 0, 2, 0, -40, 0.5, 1014], ["Snowfall, still air", -4, 85, 0.5, 1, 1, 15, 0.15, 1006], ["Blizzard", -24, 75, 0.7, 20, 1, 10, 0.75, 985],
+    ["Typhoon landfall", 27, 98, 1, 34, 1, 30, 0.95, 955], ["Dry cold sunshine", -15, 55, 0, 3, 0, 18, 0.3, 1035], ["Outback dust wind", 39, 12, 0, 15, 0.1, 45, 0.1, 1003],
+  ];
+  const WX = [["temp", "Temperature", -35, 48, 0.5, (v) => v.toFixed(1) + " °C"], ["humidity", "Humidity", 5, 100, 1, (v) => Math.round(v) + " %"], ["precip", "Precip", 0, 1, 0.01, (v) => Math.round(v * 100) + "%"],
+    ["wind", "Wind", 0, 36, 0.5, (v) => v.toFixed(1) + " m/s"], ["clouds", "Clouds", 0, 1, 0.05, (v) => Math.round(v * 100) + "%"], ["sun", "Sun", -45, 75, 1, (v) => Math.round(v) + "°"],
+    ["moon", "Moon", 0, 1, 0.01, (v) => Math.round((1 - Math.cos(v * 2 * Math.PI)) * 50) + "% lit"], ["pressure", "Pressure", 950, 1040, 1, (v) => Math.round(v) + " hPa"], ["seed", "Day seed", 1, 9999, 1, (v) => "#" + Math.round(v)]];
+  const MAC = [["tone", "Tone"], ["bloom", "Bloom"], ["space", "Space"], ["motion", "Motion"], ["intensity", "Intensity"]];
+  $("#scenario").innerHTML = DECK.map((d, i) => `<option value="${i}">${esc(d[0])}</option>`).join("");
+  $("#wx").innerHTML = WX.map(([k, n, mn, mx, st]) => `<div class="r"><label for="w_${k}">${n}</label><input type="range" id="w_${k}" min="${mn}" max="${mx}" step="${st}" /><output id="wo_${k}"></output></div>`).join("");
+  $("#macros").innerHTML = MAC.map(([k, n]) => `<div class="r"><label for="m_${k}">${n}</label><input type="range" id="m_${k}" min="-1" max="1" step="0.01" value="0" /><output id="mo_${k}">nature</output></div>`).join("");
+  function loadScenario(i) {
+    const d = DECK[i];
+    WX.forEach(([k], j) => { if (k !== "seed") $("#w_" + k).value = d[j + 1]; });
+    syncWx();
+  }
+  function syncWx() { WX.forEach(([k, , , , , f]) => ($("#wo_" + k).textContent = f(+$("#w_" + k).value))); }
+  function wxValues() { const o = {}; WX.forEach(([k]) => (o[k] = +$("#w_" + k).value)); return o; }
+  function macroValues() { const o = {}; MAC.forEach(([k]) => (o[k] = +$("#m_" + k).value)); return o; }
+  $("#scenario").addEventListener("change", (e) => { loadScenario(+e.target.value); drawMap(); pushSound(); });
+  $("#wx").addEventListener("input", () => { syncWx(); drawMap(); pushSound(); });
+  $("#macros").addEventListener("input", (e) => { const k = e.target.id.slice(2); const v = +e.target.value; $("#mo_" + k).textContent = Math.abs(v) < 0.02 ? "nature" : (v > 0 ? "+" : "−") + Math.round(Math.abs(v) * 100) + "%"; pushSound(); });
+  $("#macros").addEventListener("dblclick", (e) => { if (e.target.type === "range") { e.target.value = 0; e.target.dispatchEvent(new Event("input", { bubbles: true })); } });
+
+  // ---------------------------------------------------------------- notes: keyboard, patterns
+  let octave = 4;
+  const held = new Map();
+  const KEYMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12 };
+  function noteOn(n, v = 0.8) { if (!node) return; call("atmos_note_on", n, v); keyLight(n, true); }
+  function noteOff(n) { call("atmos_note_off", n); keyLight(n, false); }
+  const KEYS = Array.from({ length: 25 }, (_, i) => 48 + i);
+  $("#keys").innerHTML = KEYS.filter((n) => ![1, 3, 6, 8, 10].includes(n % 12)).map((n) => `<button data-n="${n}">${["C", "", "D", "", "E", "F", "", "G", "", "A", "", "B"][n % 12]}${Math.floor(n / 12) - 1}</button>`).join("");
+  function keyLight(n, on) { const b = document.querySelector(`#keys [data-n="${n}"]`); if (b) b.classList.toggle("on", on); }
+  $("#keys").addEventListener("pointerdown", async (e) => { const b = e.target.closest("[data-n]"); if (!b) return; await startAudio(); noteOn(+b.dataset.n); b.addEventListener("pointerup", () => noteOff(+b.dataset.n), { once: true }); b.addEventListener("pointerleave", () => noteOff(+b.dataset.n), { once: true }); });
+  window.addEventListener("keydown", async (e) => {
+    if (e.target.closest("input[type=text], textarea, select") || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    const k = e.key.toLowerCase();
+    if (k === "z") { octave = Math.max(1, octave - 1); return; }
+    if (k === "x") { octave = Math.min(7, octave + 1); return; }
+    if (KEYMAP[k] === undefined || held.has(k)) return;
+    await startAudio();
+    const n = 12 * (octave + 1) + KEYMAP[k];
+    held.set(k, n); noteOn(n);
+  });
+  window.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (held.has(k)) { noteOff(held.get(k)); held.delete(k); } });
+
+  const CH = [[48, 55, 62, 64], [45, 52, 60, 67], [41, 48, 57, 64], [43, 50, 59, 62]];
+  const PATTERNS = {
+    chords: () => CH.flatMap((c, i) => c.map((n) => [i * 2.0, n, 1.7])),
+    arp: () => CH.flatMap((c, i) => Array.from({ length: 16 }, (_, k) => [i * 2 + k * 0.125, [...c, c[1] + 12][k % 5], 0.11])),
+    melody: () => [64, 67, 69, 67, 62, 64, 60, 62, 64, 67, 71, 69, 67, 64, 62, 60].map((n, k) => [k * 0.5, n, 0.42]),
+    low: () => [36, 36, 43, 33, 33, 40, 29, 41, 36, 31, 31, 38].map((n, k) => [k * (8 / 12), n, 0.3]),
+    stab: () => CH.flatMap((c, i) => [0, 0.75, 1.5].flatMap((o) => c.map((n) => [i * 2 + o, n + 12, 0.15]))),
+  };
+  let playing = false, loopTimer = null, loopStart = 0, events = [], nextEv = 0;
+  const LOOP = 8; // seconds
+  function tick() {
+    const t = (performance.now() - loopStart) / 1000;
+    while (nextEv < events.length && events[nextEv].t <= t) {
+      const ev = events[nextEv++];
+      if (ev.on) noteOn(ev.n, 0.75); else noteOff(ev.n);
+    }
+    if (t >= LOOP) { loopStart += LOOP * 1000; nextEv = 0; }
+  }
+  function buildEvents() {
+    events = [];
+    for (const [t, n, d] of PATTERNS[$("#pattern").value]()) { events.push({ t, n, on: true }); events.push({ t: t + d, n, on: false }); }
+    events.sort((a, b) => a.t - b.t || (a.on ? 1 : -1));
+  }
+  $("#playBtn").addEventListener("click", async () => {
+    await startAudio();
+    playing = !playing;
+    $("#playBtn").textContent = playing ? "Stop" : "Play pattern";
+    clearInterval(loopTimer);
+    call("atmos_all_off");
+    if (playing) { buildEvents(); loopStart = performance.now(); nextEv = 0; loopTimer = setInterval(tick, 10); }
+  });
+  $("#pattern").addEventListener("change", () => { if (playing) { call("atmos_all_off"); buildEvents(); loopStart = performance.now(); nextEv = 0; } });
+  $("#startBtn").addEventListener("click", startAudio);
+
+  // ---------------------------------------------------------------- boot
+  function renderAll() { renderList(); renderEditor(); }
+  (async () => {
+    await load();
+    $("#modeNote").textContent = MODE_NOTES.home;
+    $("#w_seed").value = 1234;
+    loadScenario(0);
+    renderAll();
+  })();
+</script>
