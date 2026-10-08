@@ -1,6 +1,13 @@
 # Setting up Atmospheric
 
-## 1. The weather relay on Railway (about 5 minutes)
+## 1. The weather relay on Railway
+
+**Status:** deployed as project `atmospheric-relay`, service `relay`, at
+`https://relay-production-37cf.up.railway.app`. It follows the `claude/vibrant-wright-7kfl4a` branch,
+redeploys only when `server/` changes, and its address is baked into the plugin via `plugin/relay-url.txt`.
+The one remaining step is adding `OWM_API_KEY` in the service's Variables tab.
+
+The steps below are how it was set up, for reference or to rebuild it.
 
 The plugin never contains your OpenWeatherMap key. It asks a tiny server you own (`server/` in this repo), and that server holds the key.
 
