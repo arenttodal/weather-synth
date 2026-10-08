@@ -1,0 +1,1606 @@
+<title>Atmospheric Tuning Lab</title>
+<meta name="description" content="Audition the one-sound weather synth across climate extremes, compare three control models and rate each combination." />
+<script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* Layout: two-column instrument bench (climate + engine left, rating + coverage right), stacks on phones */
+  :root {
+    --bg: #eceff2;
+    --surface: #f8f9fa;
+    --sunk: #e1e6eb;
+    --line: #c9d1d9;
+    --ink: #17202b;
+    --ink2: #4c5a69;
+    --ink3: #7a8794;
+    --accent: #9a6a1c; /* barometer brass */
+    --accent-ink: #ffffff;
+    --good: #2c8a64;
+    --mid: #4f74a8;
+    --bad: #b8483f;
+    --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --body: "Archivo", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f141a;
+      --surface: #161d26;
+      --sunk: #1d2631;
+      --line: #2b3643;
+      --ink: #dfe6ee;
+      --ink2: #9fb0c2;
+      --ink3: #6c7c8d;
+      --accent: #d9a54a;
+      --accent-ink: #1a1306;
+      --good: #4cc08f;
+      --mid: #7fa3d6;
+      --bad: #e0756b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f141a;
+    --surface: #161d26;
+    --sunk: #1d2631;
+    --line: #2b3643;
+    --ink: #dfe6ee;
+    --ink2: #9fb0c2;
+    --ink3: #6c7c8d;
+    --accent: #d9a54a;
+    --accent-ink: #1a1306;
+    --good: #4cc08f;
+    --mid: #7fa3d6;
+    --bad: #e0756b;
+    color-scheme: dark;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.45;
+    margin: 0;
+    padding-inline: 16px;
+    padding-block: 18px 40px;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    gap: 16px;
+  }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 20px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-stretch: 70%;
+    font-weight: 800;
+    font-size: 30px;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 small {
+    font-weight: 400;
+    color: var(--ink3);
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    margin-left: 8px;
+  }
+  .storage {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink3);
+  }
+  .bench {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .bench {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .col {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px;
+    min-width: 0;
+  }
+  .label {
+    font-family: var(--display);
+    font-stretch: 75%;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink2);
+    margin: 0 0 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .label span {
+    font-family: var(--mono);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink3);
+  }
+
+  /* Scenario head */
+  .scn {
+    display: grid;
+    gap: 4px;
+  }
+  .scn-name {
+    font-family: var(--display);
+    font-stretch: 85%;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  .scn-sub {
+    color: var(--ink2);
+  }
+  .transport {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    align-items: center;
+  }
+  button,
+  select {
+    font: inherit;
+    color: var(--ink);
+    background: var(--sunk);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 7px 12px;
+    cursor: pointer;
+  }
+  button:hover {
+    border-color: var(--ink3);
+  }
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  kbd {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 0 4px;
+    color: var(--ink3);
+    margin-left: 6px;
+  }
+
+  /* Sliders */
+  .rows {
+    display: grid;
+    gap: 6px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr) 128px;
+    gap: 10px;
+    align-items: center;
+  }
+  .row label {
+    font-size: 13px;
+    color: var(--ink2);
+  }
+  .row output {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    margin: 0;
+  }
+  @media (max-width: 480px) {
+    .row {
+      grid-template-columns: 76px minmax(0, 1fr) 100px;
+      gap: 8px;
+    }
+  }
+
+  /* Models */
+  .seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .seg button {
+    text-align: left;
+    display: grid;
+    gap: 2px;
+    padding: 8px 10px;
+  }
+  .seg button b {
+    font-family: var(--display);
+    font-stretch: 80%;
+    font-size: 14px;
+  }
+  .seg button small {
+    color: var(--ink3);
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+  .seg button[aria-pressed="true"] {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    background: var(--surface);
+  }
+  .model-note {
+    color: var(--ink2);
+    font-size: 13px;
+    margin: 10px 0 12px;
+  }
+  .macro-row output {
+    color: var(--accent);
+  }
+  .macro-row input[type="range"] {
+    background: linear-gradient(var(--line), var(--line)) center / 1px 100% no-repeat;
+  }
+
+  /* Rating */
+  .rate {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .rate button {
+    padding: 12px 8px;
+    font-weight: 600;
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+  }
+  .rate button[data-r="2"] {
+    border-color: var(--good);
+    color: var(--good);
+  }
+  .rate button[data-r="1"] {
+    border-color: var(--mid);
+    color: var(--mid);
+  }
+  .rate button[data-r="0"] {
+    border-color: var(--bad);
+    color: var(--bad);
+  }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0 10px;
+  }
+  .tags button {
+    font-size: 12px;
+    padding: 4px 9px;
+    border-radius: 999px;
+  }
+  .tags button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  textarea {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 8px 10px;
+    resize: vertical;
+    min-height: 54px;
+  }
+  .opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 10px;
+    color: var(--ink2);
+    font-size: 13px;
+    align-items: center;
+  }
+  .toast {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink3);
+    min-height: 1.4em;
+    margin-top: 8px;
+  }
+
+  /* Queue */
+  .queue {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .queue select {
+    padding: 6px 8px;
+  }
+
+  /* Matrix */
+  .matrix-wrap {
+    overflow-x: auto;
+  }
+  table.matrix {
+    border-collapse: separate;
+    border-spacing: 3px;
+    width: 100%;
+    min-width: 330px;
+    font-variant-numeric: tabular-nums;
+  }
+  .matrix th {
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 10.5px;
+    color: var(--ink3);
+    padding: 2px;
+    white-space: nowrap;
+  }
+  .matrix th.rowh {
+    text-align: right;
+    padding-right: 6px;
+  }
+  .matrix td {
+    height: 34px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    border-radius: 3px;
+    background: var(--sunk);
+    color: var(--ink3);
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .matrix td:hover {
+    border-color: var(--ink3);
+  }
+  .matrix td.cur {
+    border-color: var(--accent);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink3);
+  }
+  .legend i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+
+  /* Params readout */
+  .params-wrap {
+    overflow-x: auto;
+  }
+  table.params {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .params th,
+  .params td {
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .params th {
+    font-weight: 500;
+    color: var(--ink3);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .params td.num {
+    font-family: var(--mono);
+    text-align: right;
+  }
+  .params td.src {
+    color: var(--ink3);
+    font-size: 11.5px;
+    white-space: normal;
+  }
+  @media (max-width: 520px) {
+    .params .src,
+    .params th:last-child {
+      display: none;
+    }
+  }
+  .params tr.moved td.num:last-of-type {
+    color: var(--accent);
+  }
+
+  /* Log */
+  .log {
+    display: grid;
+    gap: 4px;
+    font-size: 12.5px;
+  }
+  .log div {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: baseline;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 4px;
+  }
+  .log .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .log .t {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .log .m {
+    font-family: var(--mono);
+    color: var(--ink3);
+    font-size: 11px;
+  }
+  .empty {
+    color: var(--ink3);
+    font-size: 13px;
+  }
+  .scope {
+    width: 100%;
+    height: 54px;
+    display: block;
+    margin-top: 12px;
+    border-radius: 4px;
+    background: var(--sunk);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Atmospheric <small>Tuning Lab</small></h1>
+    <div class="storage" id="storageLine">Ratings are saved in this browser</div>
+  </header>
+
+  <div class="bench">
+    <div class="col">
+      <section class="panel" aria-labelledby="scnLbl">
+        <div class="label" id="scnLbl">Scenario <span id="queueInfo">deck 1 / 24</span></div>
+        <div class="scn">
+          <div class="scn-name" id="scnName">Sahara, midday</div>
+          <div class="scn-sub" id="scnSub">Tamanrasset · 44 °C · bone dry</div>
+        </div>
+        <div class="transport">
+          <button class="primary" id="playBtn">Play <kbd>Space</kbd></button>
+          <button id="nextBtn">Next <kbd>N</kbd></button>
+          <select id="pattern" aria-label="Audition pattern">
+            <option value="chords">Chords</option>
+            <option value="arp">Arpeggio</option>
+            <option value="melody">Melody</option>
+            <option value="low">Low line</option>
+          </select>
+          <span class="empty">Play notes yourself: <kbd>Q</kbd>–<kbd>I</kbd></span>
+        </div>
+        <canvas class="scope" id="scope" width="600" height="54" aria-hidden="true"></canvas>
+      </section>
+
+      <section class="panel" aria-labelledby="climLbl">
+        <div class="label" id="climLbl">Climate inputs <span>drag to explore</span></div>
+        <div class="rows" id="climateRows"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="modelLbl">
+        <div class="label" id="modelLbl">Control model</div>
+        <div class="seg" id="modelSeg">
+          <button data-m="A" aria-pressed="false"><b>A · Sealed ticket</b><small>Nature sets everything. Macros are small trims.</small></button>
+          <button data-m="B" aria-pressed="true"><b>B · Leash</b><small>Nature sets a home. Macros pull away from it.</small></button>
+          <button data-m="C" aria-pressed="false"><b>C · What if</b><small>Macros bend the weather, not the synth.</small></button>
+        </div>
+        <p class="model-note" id="modelNote"></p>
+        <div class="rows" id="macroRows"></div>
+        <div class="transport">
+          <button id="resetMacros">Reset macros to nature</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="parLbl">
+        <div class="label" id="parLbl">Engine readout <span>nature → after macros</span></div>
+        <div class="params-wrap"><table class="params" id="paramTable"></table></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-labelledby="rateLbl">
+        <div class="label" id="rateLbl">Verdict <span>keys 1 · 2 · 3</span></div>
+        <div class="rate">
+          <button data-r="2">Inspiring<kbd>1</kbd></button>
+          <button data-r="1">Usable<kbd>2</kbd></button>
+          <button data-r="0">Not inspiring<kbd>3</kbd></button>
+        </div>
+        <div class="tags" id="tags"></div>
+        <textarea id="note" placeholder="What would make it better? e.g. reverb tail too long for an arp"></textarea>
+        <div class="opts">
+          <label><input type="checkbox" id="autoNext" checked /> Next scenario after rating</label>
+          <button id="exportBtn">Export ratings</button>
+        </div>
+        <div class="toast" id="toast" role="status"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="qLbl">
+        <div class="label" id="qLbl">What to test next</div>
+        <div class="queue">
+          <button id="qDeck">Curated deck</button>
+          <button id="qGaps">Fill coverage gaps</button>
+          <button id="qRandom">Random place on Earth</button>
+          <select id="sweepAxis" aria-label="Sweep axis">
+            <option value="">Sweep one input…</option>
+            <option value="temp">Temperature −30 → 46 °C</option>
+            <option value="humidity">Humidity 10 → 100 %</option>
+            <option value="precip">Precipitation none → storm</option>
+            <option value="wind">Wind calm → storm</option>
+            <option value="sun">Sun: midnight → noon</option>
+            <option value="moon">Moon: new → full → new</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="mxLbl">
+        <div class="label" id="mxLbl">Coverage matrix <span id="mxCount">0 rated</span></div>
+        <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+        <div class="legend">
+          <span><i style="background: var(--good)"></i>mostly inspiring</span>
+          <span><i style="background: var(--mid)"></i>usable</span>
+          <span><i style="background: var(--bad)"></i>not inspiring</span>
+          <span>Click a cell to test a climate inside it</span>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="logLbl">
+        <div class="label" id="logLbl">Recent verdicts</div>
+        <div class="log" id="log"><div class="empty" style="display: block; border: 0">No verdicts yet. Press Play, listen, then press 1, 2 or 3.</div></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  "use strict";
+  // ================================================================
+  // NATURE MAPPING — climate -> synth parameters.
+  // Pure functions only; this block is what gets ported to C++ for
+  // the JUCE plugin, so keep it free of Tone.js and the DOM.
+  // ================================================================
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const norm = (v, lo, hi) => clamp((v - lo) / (hi - lo), 0, 1);
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  // Five harmonic "wavetable" frames, 16 partials each, ordered cold -> hot
+  const FRAMES = [
+    { name: "Glass", p: [1, 0, 0.5, 0, 0, 0, 0.35, 0, 0, 0, 0.25, 0, 0, 0.15, 0, 0] },
+    { name: "Breath", p: [1, 0.25, 0.08, 0.03, 0.01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { name: "Reed", p: [1, 0, 0.33, 0, 0.2, 0, 0.14, 0, 0.11, 0, 0.09, 0, 0.07, 0, 0.06, 0] },
+    { name: "String", p: Array.from({ length: 16 }, (_, i) => 1 / (i + 1)) },
+    { name: "Brass", p: [0.6, 0.8, 1, 0.9, 0.7, 0.5, 0.35, 0.25, 0.18, 0.12, 0.08, 0.05, 0.03, 0.02, 0.01, 0.01] },
+  ];
+  function framePartials(pos) {
+    const x = clamp(pos, 0, 1) * (FRAMES.length - 1);
+    const i = Math.min(FRAMES.length - 2, Math.floor(x));
+    const t = x - i;
+    return FRAMES[i].p.map((a, k) => +lerp(a, FRAMES[i + 1].p[k], t).toFixed(4));
+  }
+  function frameName(pos) {
+    const x = clamp(pos, 0, 1) * (FRAMES.length - 1);
+    const i = Math.round(x);
+    const j = x > i ? i + 1 : i - 1;
+    const t = Math.abs(x - i);
+    return t < 0.2 || !FRAMES[j] ? FRAMES[i].name : FRAMES[i].name + "→" + FRAMES[j].name;
+  }
+
+  // Deterministic per-day/per-place variation (the "lottery" part)
+  function seedRand(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Derived 0..1 "forces". intensity scales only the extreme forces.
+  function forces(c, intensity = 1) {
+    const fullness = 1 - Math.abs(c.moon - 0.5) * 2; // 1 = full moon
+    const day = norm(c.sun, -12, 40);
+    const moonlight = (1 - day) * fullness * 0.35 * (1 - c.clouds * 0.7);
+    return {
+      energy: norm(c.temp, -25, 40), // temperature = speed + harmonics
+      heat: Math.min(1.25, norm(c.temp, 32, 45) * intensity), // breaking apart
+      cold: Math.min(1.25, norm(-c.temp, 10, 30) * intensity), // frozen, crystalline
+      wet: clamp(0.55 * c.precip + 0.45 * norm(c.humidity, 40, 100), 0, 1),
+      drench: Math.min(1.25, norm(0.55 * c.precip + 0.45 * norm(c.humidity, 40, 100), 0.7, 1) * intensity),
+      humid: norm(c.humidity, 30, 100),
+      motion: norm(c.wind, 0, 20),
+      gale: Math.min(1.25, norm(c.wind, 14, 28) * intensity),
+      light: clamp(day * (1 - 0.5 * c.clouds) + moonlight, 0, 1),
+      fullness,
+      dark: 1 - day,
+      low: norm(1013 - c.pressure, 0, 45), // low pressure = weight
+    };
+  }
+
+  function natureParams(c, intensity = 1) {
+    const f = forces(c, intensity);
+    const r = seedRand(c.seed || 1);
+    const seedFrame = (r() - 0.5) * 0.24;
+    const seedDelay = [0.75, 1, 1.5][Math.floor(r() * 3)];
+    const seedChorus = 0.8 + r() * 0.4;
+    const P = {};
+    P.frame = clamp(0.08 + 0.84 * f.energy + seedFrame, 0, 1);
+    P.spread = 3 + 10 * f.humid + 18 * f.heat; // cents between layers
+    P.sub = clamp(0.1 + 0.35 * f.low + 0.2 * (1 - f.fullness) * f.dark, 0, 0.7);
+    P.shimmer = clamp(0.4 * f.fullness * f.dark + 0.3 * f.cold, 0, 0.6);
+    P.attack = clamp((0.005 + 1.4 * (1 - f.energy) ** 2) * (0.7 + 0.6 * f.wet) * (1 - 0.9 * f.heat), 0.003, 3);
+    P.decay = 0.3 + 1.5 * f.wet;
+    P.sustain = clamp(0.72 + 0.2 * f.wet - 0.3 * f.heat - 0.15 * f.gale, 0.2, 1);
+    P.release = clamp((0.25 + 3.2 * f.wet + 1.2 * f.cold) * (1 - 0.6 * f.heat), 0.08, 8);
+    P.drive = clamp(0.3 * norm(c.temp, 18, 32) + 0.7 * f.heat, 0, 1);
+    P.bits = f.heat > 0.01 ? clamp(Math.round(16 - 12 * f.heat ** 1.4), 4, 16) : 16;
+    const bright = 0.5 * f.light + 0.3 * f.energy + 0.2 * (1 - 0.5 * f.wet);
+    P.cutoff = 200 * 2 ** (bright * 5.5);
+    P.q = 0.8 + 5 * f.gale + 2 * f.cold;
+    P.tilt = -10 + 13 * f.light - 2 * c.clouds; // dB, high shelf
+    P.chorusDepth = 0.2 + 0.6 * f.humid;
+    P.chorusWet = 0.12 + 0.45 * norm(c.humidity, 50, 100);
+    P.chorusRate = (0.3 + 3 * f.energy) * seedChorus;
+    P.vibDepth = clamp(0.02 + 0.22 * f.motion + 0.2 * f.gale, 0, 0.6);
+    P.vibRate = 1.5 + 5 * f.energy + 3 * f.motion;
+    P.tremDepth = clamp(0.45 * f.gale + 0.85 * f.heat, 0, 1);
+    P.tremRate = 2 + 10 * f.heat + 4 * f.gale + 3 * f.energy;
+    P.delayTime = clamp((0.25 + 0.3 * f.humid - 0.12 * f.heat) * seedDelay, 0.06, 0.9);
+    P.delayFb = clamp(0.12 + 0.45 * f.wet + 0.2 * f.drench, 0, 0.85);
+    P.delayWet = clamp(0.04 + 0.35 * c.precip + 0.25 * f.drench, 0, 0.7);
+    P.verbDecay = clamp(1.2 + 7 * f.wet + 3 * f.cold + 6 * f.drench, 0.6, 18);
+    P.verbWet = clamp(0.12 + 0.42 * f.wet + 0.3 * f.drench, 0, 0.92);
+    P.noise = clamp(0.5 * c.precip + 0.35 * f.gale, 0, 0.8); // rain + gust bed
+    const snow = c.temp < 1 ? 1 : 0; // snow muffles: darker, softer bed
+    P.noiseFreq = (500 + 4000 * c.precip) * (snow ? 0.3 : 1) + 1500 * f.gale;
+    P.noise *= snow ? 0.6 : 1;
+    // Loudness compensation from offline renders of the deck
+    // (ridge fit over 248 offline renders, trim=0, target ≈ -24 dBFS RMS)
+    P.trim = clamp(
+      1.01 * P.drive - 3.7 * P.sub - 1.21 * P.verbWet - 2.45 * P.delayFb - 2.78 * P.noise + 2.25 * P.chorusWet - 1.91 * P.tremDepth + 0.17 * (Math.log2(P.cutoff) - 10),
+      -9,
+      9
+    );
+    return P;
+  }
+
+  // ---- The three control models ----
+  const MODELS = {
+    A: {
+      note: "The sound is today's, full stop. Four macros nudge it slightly in performance; nothing can undo a heatwave or a downpour.",
+      macros: [
+        ["tone", "Tone"],
+        ["bloom", "Bloom"],
+        ["space", "Space"],
+        ["motion", "Motion"],
+      ],
+    },
+    B: {
+      note: "Every macro starts at nature's position for today and can travel a long way from it. Climate decides how far: on a drenched day Space can't go fully dry. Intensity tames or exaggerates the extremes.",
+      macros: [
+        ["tone", "Tone"],
+        ["bloom", "Bloom"],
+        ["space", "Space"],
+        ["motion", "Motion"],
+        ["intensity", "Intensity"],
+      ],
+    },
+    C: {
+      note: "You never touch synth parameters. You ask what today would sound like warmer, wetter, windier or later, and the same nature mapping answers. Tone is the one direct control.",
+      macros: [
+        ["warmer", "Warmer"],
+        ["wetter", "Wetter"],
+        ["windier", "Windier"],
+        ["later", "Later"],
+        ["tone", "Tone"],
+      ],
+    },
+  };
+
+  // m: macro values in -1..1, 0 = nature
+  function resolve(model, c, m) {
+    const g = (k) => m[k] || 0;
+    if (model === "C") {
+      const c2 = {
+        ...c,
+        temp: c.temp + 15 * g("warmer"),
+        humidity: clamp(c.humidity + 40 * g("wetter"), 5, 100),
+        precip: clamp(c.precip + 0.5 * g("wetter"), 0, 1),
+        wind: clamp(c.wind + 10 * g("windier"), 0, 40),
+        sun: clamp(c.sun + 50 * g("later"), -40, 75),
+      };
+      const P = natureParams(c2);
+      P.cutoff = clamp(P.cutoff * 2 ** (2 * g("tone")), 60, 16000);
+      return { nature: natureParams(c), final: P };
+    }
+    const iK = g("intensity");
+    const intensity = model === "B" ? (iK >= 0 ? 1 + 0.6 * iK : 1 + iK) : 1;
+    const N = natureParams(c, 1);
+    const P = natureParams(c, intensity);
+    const f = forces(c, intensity);
+    const wide = model === "B";
+    const oct = wide ? 3 : 1;
+    P.cutoff = clamp(P.cutoff * 2 ** (oct * g("tone")), 60, 16000);
+    const b = g("bloom");
+    P.attack = clamp(P.attack * 2 ** ((wide ? 3 : 1.5) * b), 0.002, 4);
+    P.release = clamp(P.release * 2 ** ((wide ? 2.5 : 1) * b), 0.05, 12);
+    P.sustain = clamp(P.sustain + (wide ? 0.25 : 0.1) * b, 0.1, 1);
+    const s = g("space");
+    // Climate sets the floor and ceiling of the space
+    const floor = wide ? 0.45 * f.drench : P.verbWet * 0.75;
+    const ceil = wide ? 0.95 : Math.min(0.95, P.verbWet * 1.3);
+    P.verbWet = clamp(P.verbWet + (wide ? 0.55 : 0.2) * s, floor, ceil);
+    P.delayWet = clamp(P.delayWet + (wide ? 0.35 : 0.1) * s, wide ? 0.3 * f.drench : P.delayWet * 0.75, 0.75);
+    P.verbDecay = clamp(P.verbDecay * 2 ** ((wide ? 1 : 0.4) * s), 0.5, 20);
+    const mo = g("motion");
+    const ms = 2 ** ((wide ? 1.6 : 0.6) * mo);
+    P.vibDepth = clamp(P.vibDepth * ms, 0, 0.8);
+    P.chorusDepth = clamp(P.chorusDepth * ms, 0, 1);
+    P.tremDepth = clamp(P.tremDepth * ms + (wide && mo > 0 ? 0.15 * mo : 0), 0, 1);
+    return { nature: N, final: P };
+  }
+
+  // ================================================================
+  // SCENARIOS
+  // ================================================================
+  // sun = solar elevation in degrees; moon = phase 0..1 (0.5 = full)
+  const DECK = [
+    ["Sahara, midday", "Tamanrasset, DZ", { temp: 44, humidity: 8, precip: 0, wind: 6, clouds: 0, sun: 70, moon: 0.2, pressure: 1006 }],
+    ["Death Valley heat dome", "Furnace Creek, US", { temp: 47, humidity: 5, precip: 0, wind: 3, clouds: 0, sun: 55, moon: 0.7, pressure: 1002 }],
+    ["Monsoon night", "Mumbai, IN", { temp: 28, humidity: 96, precip: 0.85, wind: 9, clouds: 1, sun: -30, moon: 0.45, pressure: 998 }],
+    ["Equatorial thunderstorm", "Singapore", { temp: 27, humidity: 94, precip: 1, wind: 12, clouds: 1, sun: 25, moon: 0.1, pressure: 1004 }],
+    ["Polar night, new moon", "McMurdo, AQ", { temp: -31, humidity: 60, precip: 0.05, wind: 8, clouds: 0.2, sun: -25, moon: 0.02, pressure: 990 }],
+    ["Polar night, full moon", "Longyearbyen, NO", { temp: -18, humidity: 70, precip: 0, wind: 3, clouds: 0, sun: -20, moon: 0.5, pressure: 1015 }],
+    ["Drizzle at dusk", "Trondheim, NO", { temp: 6, humidity: 88, precip: 0.3, wind: 5, clouds: 0.9, sun: -2, moon: 0.62, pressure: 1008 }],
+    ["Winter gale", "Reykjavík, IS", { temp: 1, humidity: 80, precip: 0.4, wind: 22, clouds: 0.95, sun: 3, moon: 0.3, pressure: 972 }],
+    ["Patagonian wind, clear", "El Chaltén, AR", { temp: 9, humidity: 45, precip: 0, wind: 19, clouds: 0.2, sun: 35, moon: 0.8, pressure: 1001 }],
+    ["Humid summer evening", "Tokyo, JP", { temp: 30, humidity: 78, precip: 0, wind: 2, clouds: 0.4, sun: 4, moon: 0.55, pressure: 1009 }],
+    ["Fog morning", "San Francisco, US", { temp: 13, humidity: 99, precip: 0.05, wind: 4, clouds: 1, sun: 8, moon: 0.9, pressure: 1016 }],
+    ["Grey office afternoon", "London, GB", { temp: 14, humidity: 72, precip: 0.1, wind: 5, clouds: 0.85, sun: 20, moon: 0.35, pressure: 1012 }],
+    ["Perfect spring noon", "Kyoto, JP", { temp: 21, humidity: 50, precip: 0, wind: 3, clouds: 0.15, sun: 62, moon: 0.25, pressure: 1020 }],
+    ["Mediterranean heat", "Seville, ES", { temp: 38, humidity: 22, precip: 0, wind: 4, clouds: 0, sun: 50, moon: 0.4, pressure: 1010 }],
+    ["Desert night", "Wadi Rum, JO", { temp: 12, humidity: 20, precip: 0, wind: 2, clouds: 0, sun: -40, moon: 0.5, pressure: 1014 }],
+    ["Snowfall, still air", "Sapporo, JP", { temp: -4, humidity: 85, precip: 0.5, wind: 1, clouds: 1, sun: 15, moon: 0.15, pressure: 1006 }],
+    ["Blizzard", "Winnipeg, CA", { temp: -24, humidity: 75, precip: 0.7, wind: 20, clouds: 1, sun: 10, moon: 0.75, pressure: 985 }],
+    ["Highland dawn", "La Paz, BO", { temp: 2, humidity: 40, precip: 0, wind: 6, clouds: 0.3, sun: 1, moon: 0.05, pressure: 1028 }],
+    ["Rainforest afternoon", "Manaus, BR", { temp: 32, humidity: 90, precip: 0.45, wind: 2, clouds: 0.7, sun: 40, moon: 0.6, pressure: 1007 }],
+    ["Typhoon landfall", "Okinawa, JP", { temp: 27, humidity: 98, precip: 1, wind: 34, clouds: 1, sun: 30, moon: 0.95, pressure: 955 }],
+    ["Dry cold sunshine", "Ulaanbaatar, MN", { temp: -15, humidity: 55, precip: 0, wind: 3, clouds: 0, sun: 18, moon: 0.3, pressure: 1035 }],
+    ["Midnight sun", "Tromsø, NO", { temp: 11, humidity: 70, precip: 0, wind: 4, clouds: 0.3, sun: 3, moon: 0.5, pressure: 1018 }],
+    ["Mild clear night", "Lisbon, PT", { temp: 17, humidity: 65, precip: 0, wind: 3, clouds: 0, sun: -35, moon: 0.85, pressure: 1019 }],
+    ["Outback dust wind", "Alice Springs, AU", { temp: 39, humidity: 12, precip: 0, wind: 15, clouds: 0.1, sun: 45, moon: 0.1, pressure: 1003 }],
+  ];
+
+  const TEMP_BANDS = [
+    ["≤ −15", -40, -15],
+    ["−15…0", -15, 0],
+    ["0…10", 0, 10],
+    ["10…20", 10, 20],
+    ["20…30", 20, 30],
+    ["30…38", 30, 38],
+    ["≥ 38", 38, 48],
+  ];
+  const WET_BANDS = ["Dry", "Humid", "Wet", "Drenched"];
+  function wetBand(c) {
+    if (c.precip >= 0.7 || (c.humidity >= 92 && c.precip >= 0.4)) return 3;
+    if (c.precip >= 0.25) return 2;
+    if (c.humidity >= 70) return 1;
+    return 0;
+  }
+  function tempBand(c) {
+    const i = TEMP_BANDS.findIndex(([, lo, hi]) => c.temp >= lo && c.temp < hi);
+    return i < 0 ? (c.temp < -15 ? 0 : 6) : i;
+  }
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function randomExtras(c) {
+    return {
+      wind: c.wind ?? +rnd(0, Math.random() < 0.15 ? 28 : 12).toFixed(1),
+      sun: c.sun ?? Math.round(rnd(-40, 70)),
+      moon: +Math.random().toFixed(2),
+      pressure: c.pressure ?? Math.round(rnd(980, 1032)),
+      seed: (Math.random() * 2 ** 32) >>> 0,
+    };
+  }
+  function climateInCell(ti, wi) {
+    const [, lo, hi] = TEMP_BANDS[ti];
+    const temp = +rnd(lo, hi).toFixed(1);
+    const w = [
+      { humidity: rnd(8, 65), precip: 0, clouds: rnd(0, 0.4) },
+      { humidity: rnd(70, 95), precip: rnd(0, 0.2), clouds: rnd(0.3, 0.9) },
+      { humidity: rnd(75, 95), precip: rnd(0.3, 0.65), clouds: rnd(0.7, 1) },
+      { humidity: rnd(92, 100), precip: rnd(0.75, 1), clouds: 1 },
+    ][wi];
+    const c = { temp, humidity: Math.round(w.humidity), precip: +w.precip.toFixed(2), clouds: +w.clouds.toFixed(2) };
+    return { ...c, ...randomExtras(c) };
+  }
+  const ARCHETYPES = [
+    ["Desert", [25, 46], [5, 30], 0],
+    ["Tropical wet", [24, 34], [75, 98], 0.5],
+    ["Temperate", [2, 24], [55, 90], 0.25],
+    ["Subarctic", [-25, 8], [60, 90], 0.25],
+    ["Polar", [-38, -5], [50, 80], 0.1],
+    ["Mediterranean", [14, 38], [25, 70], 0.05],
+    ["Highland", [-8, 16], [30, 70], 0.15],
+    ["Monsoon", [26, 33], [85, 100], 0.85],
+  ];
+  function randomEarth() {
+    const [name, t, h, wetP] = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
+    const precip = Math.random() < wetP ? +rnd(0.2, 1).toFixed(2) : 0;
+    const c = {
+      temp: +rnd(t[0], t[1]).toFixed(1),
+      humidity: Math.round(rnd(h[0], h[1])),
+      precip,
+      clouds: precip ? +rnd(0.7, 1).toFixed(2) : +rnd(0, 0.8).toFixed(2),
+    };
+    return { name: "Somewhere " + name.toLowerCase(), place: "Random " + name + " climate", c: { ...c, ...randomExtras(c) } };
+  }
+
+  // ================================================================
+  // UI: climate inputs
+  // ================================================================
+  const $ = (s) => document.querySelector(s);
+  const BEAUFORT = [0.5, 1.6, 3.4, 5.5, 8, 10.8, 13.9, 17.2, 20.8, 24.5, 28.5, 32.7];
+  const BF_NAMES = ["Calm", "Light air", "Light breeze", "Gentle breeze", "Moderate", "Fresh breeze", "Strong breeze", "Near gale", "Gale", "Strong gale", "Storm", "Violent storm", "Hurricane"];
+  const beaufort = (w) => {
+    const i = BEAUFORT.findIndex((x) => w < x);
+    const n = i < 0 ? 12 : i;
+    return `Bft ${n} ${BF_NAMES[n]}`;
+  };
+  const moonName = (p) =>
+    p < 0.03 || p > 0.97 ? "New" : p < 0.22 ? "Waxing cres." : p < 0.28 ? "First qtr" : p < 0.47 ? "Waxing gib." : p < 0.53 ? "Full" : p < 0.72 ? "Waning gib." : p < 0.78 ? "Last qtr" : "Waning cres.";
+  const sunName = (e) => (e < -18 ? "Night" : e < -6 ? "Twilight" : e < 0 ? "Dusk/dawn" : e < 15 ? "Low sun" : e < 45 ? "Day" : "High sun");
+  const precipName = (p, t = 10) =>
+    p < 0.02 ? "None" : t < 1 ? (p < 0.25 ? "Light snow" : p < 0.6 ? "Snow" : "Heavy snow") : p < 0.25 ? "Drizzle" : p < 0.55 ? "Rain" : p < 0.8 ? "Downpour" : "Storm";
+
+  const CLIMATE = [
+    ["temp", "Temperature", -35, 48, 0.5, (v) => `${v.toFixed(1)} °C`],
+    ["humidity", "Humidity", 5, 100, 1, (v) => `${Math.round(v)} %RH`],
+    ["precip", "Precip", 0, 1, 0.01, (v) => precipName(v, state.c ? state.c.temp : 10)],
+    ["wind", "Wind", 0, 36, 0.5, (v) => `${v.toFixed(1)} m/s`],
+    ["clouds", "Cloud cover", 0, 1, 0.05, (v) => `${Math.round(v * 8)}/8 okta`],
+    ["sun", "Sun", -45, 75, 1, (v) => `${Math.round(v)}° ${sunName(v)}`],
+    ["moon", "Moon", 0, 1, 0.01, (v) => `${moonName(v)} ${Math.round((1 - Math.cos(v * 2 * Math.PI)) * 50)}%`],
+    ["pressure", "Pressure", 950, 1040, 1, (v) => `${Math.round(v)} hPa`],
+  ];
+
+  const state = {
+    model: "B",
+    c: null,
+    name: "",
+    place: "",
+    macros: {},
+    queue: [],
+    qi: 0,
+    qLabel: "deck",
+    tags: new Set(),
+    ratings: [],
+    playing: false,
+  };
+
+  function buildClimateRows() {
+    const host = $("#climateRows");
+    host.innerHTML = "";
+    for (const [k, label, min, max, step, fmt] of CLIMATE) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<label for="c_${k}">${label}</label><input type="range" id="c_${k}" min="${min}" max="${max}" step="${step}"><output id="o_${k}"></output>`;
+      host.appendChild(row);
+      const inp = row.querySelector("input");
+      inp.addEventListener("input", () => {
+        state.c[k] = parseFloat(inp.value);
+        row.querySelector("output").textContent = fmt(state.c[k]);
+        state.name = state.name.endsWith(" (edited)") ? state.name : state.name + " (edited)";
+        $("#scnName").textContent = state.name;
+        update();
+      });
+    }
+  }
+  function syncClimateRows() {
+    for (const [k, , , , , fmt] of CLIMATE) {
+      $("#c_" + k).value = state.c[k];
+      $("#o_" + k).textContent = fmt(state.c[k]);
+    }
+  }
+
+  function buildMacroRows() {
+    const host = $("#macroRows");
+    host.innerHTML = "";
+    $("#modelNote").textContent = MODELS[state.model].note;
+    for (const [k, label] of MODELS[state.model].macros) {
+      const row = document.createElement("div");
+      row.className = "row macro-row";
+      row.innerHTML = `<label for="m_${k}">${label}</label><input type="range" id="m_${k}" min="-1" max="1" step="0.01" value="${state.macros[k] || 0}"><output id="mo_${k}"></output>`;
+      host.appendChild(row);
+      const inp = row.querySelector("input");
+      const out = row.querySelector("output");
+      const show = () => (out.textContent = macroText(k, parseFloat(inp.value)));
+      inp.addEventListener("input", () => {
+        state.macros[k] = parseFloat(inp.value);
+        show();
+        update();
+      });
+      inp.addEventListener("dblclick", () => {
+        inp.value = 0;
+        state.macros[k] = 0;
+        show();
+        update();
+      });
+      show();
+    }
+  }
+  function macroText(k, v) {
+    if (Math.abs(v) < 0.02) return "nature";
+    const s = v > 0 ? "+" : "−";
+    const a = Math.abs(v);
+    if (k === "warmer") return `${s}${(15 * a).toFixed(1)} °C`;
+    if (k === "windier") return `${s}${(10 * a).toFixed(1)} m/s`;
+    if (k === "wetter") return `${s}${Math.round(40 * a)} %RH`;
+    if (k === "later") return `${s}${Math.round(50 * a)}° sun`;
+    if (k === "intensity") return `× ${(v >= 0 ? 1 + 0.6 * v : 1 + v).toFixed(2)}`;
+    if (k === "tone") {
+      const oct = state.model === "B" ? 3 : state.model === "A" ? 1 : 2;
+      return `${s}${(oct * a).toFixed(1)} oct`;
+    }
+    return `${s}${Math.round(a * 100)}%`;
+  }
+
+  // ================================================================
+  // AUDIO ENGINE (Tone.js) — one sound
+  // ================================================================
+  let E = null;
+  function buildEngine() {
+    const T = window.Tone;
+    const out = new T.Gain(0.8);
+    const limiter = new T.Limiter(-1.5);
+    const analyser = new T.Analyser("waveform", 512);
+    out.chain(limiter, T.getDestination());
+    limiter.connect(analyser);
+    const reverb = new T.Reverb({ decay: 3, preDelay: 0.02, wet: 0.3 });
+    const delay = new T.FeedbackDelay({ delayTime: 0.3, feedback: 0.3, wet: 0.1 });
+    const trem = new T.Tremolo({ frequency: 4, depth: 0 }).start();
+    const vib = new T.Vibrato({ frequency: 4, depth: 0.05 });
+    const chorus = new T.Chorus({ frequency: 1, delayTime: 3.5, depth: 0.4, wet: 0.2 }).start();
+    const hiShelf = new T.Filter({ type: "highshelf", frequency: 2500, gain: 0 });
+    const loShelf = new T.Filter({ type: "lowshelf", frequency: 220, gain: 0 });
+    const filter = new T.Filter({ type: "lowpass", frequency: 2000, Q: 1, rolloff: -24 });
+    // Bit reduction as a quantizing waveshaper (no AudioWorklet needed)
+    const crush = new T.WaveShaper((x) => x, 4096);
+    const crushMix = new T.CrossFade(0);
+    const dist = new T.Distortion({ distortion: 0, oversample: "2x" });
+    dist.wet.value = 0;
+    const pre = new T.Gain(1);
+    pre.connect(dist);
+    dist.connect(crushMix.a);
+    dist.chain(crush, crushMix.b);
+    crushMix.chain(filter, loShelf, hiShelf, chorus, vib, trem, delay, reverb, out);
+
+    const voiceOpts = (partials) => ({
+      maxPolyphony: 10,
+      voice: T.Synth,
+      options: {
+        oscillator: { type: "custom", partials },
+        envelope: { attack: 0.05, decay: 0.5, sustain: 0.8, release: 1 },
+      },
+    });
+    const mk = (partials, vol) => {
+      const p = new T.PolySynth(voiceOpts(partials));
+      p.volume.value = vol;
+      p.connect(pre);
+      return p;
+    };
+    const layerA = mk(FRAMES[1].p, -12);
+    const layerB = mk(FRAMES[1].p, -12);
+    const sub = new T.PolySynth({ maxPolyphony: 10, voice: T.Synth, options: { oscillator: { type: "sine" } } });
+    sub.connect(pre);
+    const shimmer = mk(FRAMES[0].p, -60);
+
+    // Weather bed: filtered pink noise, gated by playing notes
+    const noise = new T.Noise("pink").start();
+    const noiseBp = new T.Filter({ type: "bandpass", frequency: 2000, Q: 0.7 });
+    const noiseGate = new T.Gain(0);
+    const noiseLevel = new T.Gain(0);
+    const gust = new T.LFO({ frequency: 0.2, min: 0.3, max: 1 }).start();
+    gust.connect(noiseLevel.gain);
+    noise.chain(noiseBp, noiseGate, noiseLevel, delay);
+
+    return { T, out, limiter, analyser, reverb, delay, trem, vib, chorus, hiShelf, loShelf, filter, crush, crushMix, lastBits: 16, dist, pre, layerA, layerB, sub, shimmer, noiseBp, noiseGate, noiseLevel, gust, P: null, lastDecay: 3, decayTimer: null };
+  }
+
+  const dB = (g) => (g <= 0.0001 ? -80 : 20 * Math.log10(g));
+  function applyToEngine(P) {
+    if (!E) return;
+    const { T } = E;
+    const r = 0.25;
+    E.P = P;
+    const parts = framePartials(P.frame);
+    const env = { attack: P.attack, decay: P.decay, sustain: P.sustain, release: P.release };
+    E.layerA.set({ oscillator: { partials: parts }, envelope: env, detune: P.spread / 2 });
+    E.layerB.set({ oscillator: { partials: parts }, envelope: env, detune: -P.spread / 2 });
+    E.sub.set({ envelope: env });
+    E.shimmer.set({ envelope: { ...env, attack: P.attack * 1.5 + 0.05 } });
+    E.sub.volume.rampTo(dB(P.sub) - 8, r);
+    E.shimmer.volume.rampTo(dB(P.shimmer) - 14, r);
+    E.dist.distortion = P.drive * 0.9;
+    E.dist.wet.rampTo(clamp(P.drive * 1.3, 0, 1), r);
+    if (P.bits !== E.lastBits) {
+      E.lastBits = P.bits;
+      const steps = 2 ** (P.bits - 1);
+      E.crush.setMap((x) => Math.round(x * steps) / steps);
+    }
+    E.crushMix.fade.rampTo(P.bits < 16 ? clamp((16 - P.bits) / 8, 0, 1) : 0, r);
+    E.filter.frequency.rampTo(P.cutoff, r);
+    E.filter.Q.rampTo(P.q, r);
+    E.hiShelf.gain.rampTo(P.tilt, r);
+    E.loShelf.gain.rampTo(-P.tilt * 0.35, r);
+    E.chorus.depth = P.chorusDepth;
+    E.chorus.frequency.rampTo(P.chorusRate, r);
+    E.chorus.wet.rampTo(P.chorusWet, r);
+    E.vib.depth.rampTo(P.vibDepth, r);
+    E.vib.frequency.rampTo(P.vibRate, r);
+    E.trem.depth.rampTo(P.tremDepth, r);
+    E.trem.frequency.rampTo(P.tremRate, r);
+    E.delay.delayTime.rampTo(P.delayTime, r);
+    E.delay.feedback.rampTo(P.delayFb, r);
+    E.delay.wet.rampTo(P.delayWet, r);
+    E.reverb.wet.rampTo(P.verbWet, r);
+    E.noiseBp.frequency.rampTo(P.noiseFreq, r);
+    E.noiseLevel.gain.rampTo(P.noise * 0.25, r);
+    E.out.gain.rampTo(0.8 * T.dbToGain(P.trim), r);
+    // Regenerating the reverb impulse is costly; only do it on real change
+    if (Math.abs(P.verbDecay - E.lastDecay) > 0.4) {
+      clearTimeout(E.decayTimer);
+      E.decayTimer = setTimeout(() => {
+        E.lastDecay = P.verbDecay;
+        E.reverb.decay = P.verbDecay;
+      }, 250);
+    }
+  }
+
+  function playNote(note, dur, time, vel = 0.8) {
+    if (!E) return;
+    const { T, P } = E;
+    const t = time ?? T.now();
+    E.layerA.triggerAttackRelease(note, dur, t, vel);
+    E.layerB.triggerAttackRelease(note, dur, t, vel);
+    const f = T.Frequency(note);
+    if (P.sub > 0.05) E.sub.triggerAttackRelease(f.transpose(-12).toFrequency(), dur, t, vel);
+    if (P.shimmer > 0.05) E.shimmer.triggerAttackRelease(f.transpose(12).toFrequency(), dur, t, vel * 0.7);
+    if (P.noise > 0.02) {
+      const g = E.noiseGate.gain;
+      g.cancelScheduledValues(t);
+      g.setTargetAtTime(1, t, 0.05 + P.attack / 3);
+      g.setTargetAtTime(0, t + dur, Math.max(0.05, P.release / 3));
+    }
+  }
+  function noteOn(note) {
+    if (!E) return;
+    const vel = 0.8;
+    E.layerA.triggerAttack(note, undefined, vel);
+    E.layerB.triggerAttack(note, undefined, vel);
+    const f = E.T.Frequency(note);
+    if (E.P.sub > 0.05) E.sub.triggerAttack(f.transpose(-12).toFrequency(), undefined, vel);
+    if (E.P.shimmer > 0.05) E.shimmer.triggerAttack(f.transpose(12).toFrequency(), undefined, vel * 0.7);
+    if (E.P.noise > 0.02) E.noiseGate.gain.setTargetAtTime(1, E.T.now(), 0.05 + E.P.attack / 3);
+  }
+  function noteOff(note) {
+    if (!E) return;
+    E.layerA.triggerRelease(note);
+    E.layerB.triggerRelease(note);
+    const f = E.T.Frequency(note);
+    E.sub.triggerRelease(f.transpose(-12).toFrequency());
+    E.shimmer.triggerRelease(f.transpose(12).toFrequency());
+    E.noiseGate.gain.setTargetAtTime(0, E.T.now(), Math.max(0.05, E.P.release / 3));
+  }
+
+  // Audition patterns (bars at 84 bpm)
+  const CHORDS = [
+    ["C3", "G3", "D4", "E4"],
+    ["A2", "E3", "C4", "G4"],
+    ["F2", "C3", "A3", "E4"],
+    ["G2", "D3", "B3", "D4"],
+  ];
+  // Each pattern: [time, note, duration in beats]
+  const PATTERNS = {
+    chords: () => CHORDS.flatMap((ch, i) => ch.map((n) => [`${i * 2}:0:0`, n, 6])),
+    arp: () =>
+      CHORDS.flatMap((ch, i) => {
+        const tones = [...ch, ch[1].replace(/\d/, (d) => +d + 1)];
+        return Array.from({ length: 32 }, (_, k) => [`${i * 2}:${Math.floor(k / 4)}:${k % 4}`, tones[k % 5], 0.25]);
+      }),
+    melody: () =>
+      ["E4", "G4", "A4", "G4", "D4", "E4", "C4", "D4", "E4", "G4", "B4", "A4", "G4", "E4", "D4", "C4"].map((n, k) => [`${Math.floor(k / 2)}:${(k % 2) * 2}:0`, n, 1.5]),
+    low: () =>
+      ["C2", "C2", "G2", "A1", "A1", "E2", "F1", "F2", "C2", "G1", "G1", "D2"].map((n, k) => [`${Math.floor((k * 2) / 3)}:${((k * 2) % 3) + (k % 3 === 2 ? 1 : 0)}:0`, n, 0.5]),
+  };
+  let part = null;
+  function setPattern(name) {
+    if (!E) return;
+    const { T } = E;
+    if (part) part.dispose();
+    const events = PATTERNS[name]().map(([time, note, dur]) => ({ time, note, dur }));
+    part = new T.Part((t, ev) => playNote(ev.note, (ev.dur * 60) / T.Transport.bpm.value, t), events);
+    part.loop = true;
+    part.loopEnd = "8m";
+    part.start(0);
+  }
+
+  async function ensureAudio() {
+    if (E) return true;
+    if (!window.Tone) {
+      toast("The audio library didn't load. Check your connection and reload the page.");
+      return false;
+    }
+    await Tone.start();
+    E = buildEngine();
+    Tone.Transport.bpm.value = 84;
+    E.P = currentResolved().final;
+    applyToEngine(E.P);
+    E.lastDecay = E.P.verbDecay;
+    E.reverb.decay = E.P.verbDecay;
+    setPattern($("#pattern").value);
+    drawScope();
+    return true;
+  }
+  async function togglePlay() {
+    if (!(await ensureAudio())) return;
+    state.playing = !state.playing;
+    if (state.playing) Tone.Transport.start("+0.05");
+    else Tone.Transport.stop();
+    $("#playBtn").firstChild.textContent = state.playing ? "Stop " : "Play ";
+  }
+
+  function drawScope() {
+    const cv = $("#scope");
+    const ctx = cv.getContext("2d");
+    const css = getComputedStyle(document.documentElement);
+    const loop = () => {
+      requestAnimationFrame(loop);
+      if (!E) return;
+      const w = cv.width,
+        h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = css.getPropertyValue("--accent").trim() || "#9a6a1c";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      const v = E.analyser.getValue();
+      for (let i = 0; i < v.length; i++) {
+        const x = (i / (v.length - 1)) * w;
+        const y = h / 2 - v[i] * h * 0.45;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    };
+    loop();
+  }
+
+  // ================================================================
+  // Readout
+  // ================================================================
+  const READOUT = [
+    ["Waveform", (P) => frameName(P.frame), "temperature + daily seed"],
+    ["Attack", (P) => fmtS(P.attack), "cold slow, heat instant"],
+    ["Release", (P) => fmtS(P.release), "humidity, cold"],
+    ["Drive", (P) => pct(P.drive), "heat above 18 °C"],
+    ["Bit depth", (P) => (P.bits < 16 ? P.bits + " bit" : "clean"), "heat above 32 °C"],
+    ["Filter", (P) => fmtHz(P.cutoff), "light + warmth"],
+    ["Brightness", (P) => `${P.tilt >= 0 ? "+" : ""}${P.tilt.toFixed(1)} dB`, "sun, clouds, moonlight"],
+    ["Unison spread", (P) => `${P.spread.toFixed(0)} ct`, "humidity, heat"],
+    ["Sub / moon glow", (P) => `${pct(P.sub)} / ${pct(P.shimmer)}`, "pressure, moon at night"],
+    ["Vibrato", (P) => `${pct(P.vibDepth)} @ ${P.vibRate.toFixed(1)} Hz`, "wind; rate from warmth"],
+    ["Tremolo", (P) => `${pct(P.tremDepth)} @ ${P.tremRate.toFixed(1)} Hz`, "gales, extreme heat"],
+    ["Delay", (P) => `${pct(P.delayWet)} · fb ${pct(P.delayFb)}`, "rain, drench"],
+    ["Reverb", (P) => `${pct(P.verbWet)} · ${P.verbDecay.toFixed(1)} s`, "humidity, rain, cold"],
+    ["Rain/wind bed", (P) => pct(P.noise), "precipitation, gales"],
+  ];
+  const fmtS = (s) => (s < 1 ? Math.round(s * 1000) + " ms" : s.toFixed(2) + " s");
+  const fmtHz = (f) => (f < 1000 ? Math.round(f) + " Hz" : (f / 1000).toFixed(1) + " kHz");
+  const pct = (v) => Math.round(v * 100) + "%";
+  function renderReadout(R) {
+    const rows = READOUT.map(([name, fn, src]) => {
+      const a = fn(R.nature),
+        b = fn(R.final);
+      return `<tr class="${a !== b ? "moved" : ""}"><td>${name}</td><td class="num">${a}</td><td class="num">${b}</td><td class="src">${src}</td></tr>`;
+    }).join("");
+    $("#paramTable").innerHTML = `<tr><th>Param</th><th style="text-align:right">Nature</th><th style="text-align:right">Final</th><th>Driven by</th></tr>${rows}`;
+  }
+
+  // ================================================================
+  // Flow
+  // ================================================================
+  function currentResolved() {
+    return resolve(state.model, state.c, state.macros);
+  }
+  function update() {
+    const R = currentResolved();
+    renderReadout(R);
+    applyToEngine(R.final);
+    renderMatrix();
+    $("#scnSub").textContent = describe(state);
+  }
+  function describe(s) {
+    const c = s.c;
+    return `${s.place} · ${c.temp.toFixed(0)} °C · ${Math.round(c.humidity)}%RH · ${precipName(c.precip, c.temp).toLowerCase()} · ${beaufort(c.wind).replace(/^Bft \d+ /, "").toLowerCase()} · ${sunName(c.sun).toLowerCase()}`;
+  }
+  function loadScenario(s) {
+    state.c = { seed: (Math.random() * 2 ** 32) >>> 0, ...s.c };
+    state.name = s.name;
+    state.place = s.place;
+    state.macros = {};
+    state.tags.clear();
+    renderTags();
+    $("#note").value = "";
+    $("#scnName").textContent = s.name;
+    syncClimateRows();
+    buildMacroRows();
+    $("#queueInfo").textContent = `${state.qLabel} ${state.qi + 1} / ${state.queue.length}`;
+    update();
+  }
+  function setQueue(label, list) {
+    state.qLabel = label;
+    state.queue = list;
+    state.qi = 0;
+    loadScenario(list[0]);
+  }
+  function next() {
+    if (state.qLabel === "random") {
+      state.queue.push(randomEarth());
+    } else if (state.qLabel === "gaps") {
+      state.queue.push(gapScenario());
+    }
+    state.qi = (state.qi + 1) % state.queue.length;
+    loadScenario(state.queue[state.qi]);
+  }
+  const deckList = () => DECK.map(([name, place, c]) => ({ name, place, c }));
+  function gapScenario() {
+    // pick the least-tested cell (ties broken randomly)
+    const counts = cellStats();
+    let best = [],
+      min = Infinity;
+    counts.forEach((row, ti) =>
+      row.forEach((cell, wi) => {
+        if (cell.n < min) {
+          min = cell.n;
+          best = [[ti, wi]];
+        } else if (cell.n === min) best.push([ti, wi]);
+      })
+    );
+    const [ti, wi] = best[Math.floor(Math.random() * best.length)];
+    return { name: `Gap: ${TEMP_BANDS[ti][0]} °C, ${WET_BANDS[wi].toLowerCase()}`, place: "Coverage cell", c: climateInCell(ti, wi) };
+  }
+  function sweep(axis) {
+    const base = { ...state.c };
+    const steps = {
+      temp: [-30, -15, -5, 5, 15, 25, 32, 38, 42, 46],
+      humidity: [10, 30, 50, 70, 85, 95, 100],
+      precip: [0, 0.15, 0.35, 0.6, 0.8, 1],
+      wind: [0, 3, 6, 10, 15, 20, 26, 34],
+      sun: [-40, -18, -8, -2, 5, 15, 30, 50, 70],
+      moon: [0, 0.12, 0.25, 0.37, 0.5, 0.63, 0.75, 0.88],
+    }[axis];
+    const lbl = CLIMATE.find((x) => x[0] === axis);
+    setQueue(
+      "sweep",
+      steps.map((v) => ({ name: `Sweep ${lbl[1].toLowerCase()}: ${lbl[5](v)}`, place: state.place.replace(/ \(.*/, ""), c: { ...base, [axis]: v } }))
+    );
+  }
+
+  // ================================================================
+  // Ratings
+  // ================================================================
+  const TAGS = ["Too dark", "Too bright", "Too wet", "Too dry", "Too harsh", "Too tame", "Too static", "Too busy", "Muddy lows", "Thin", "Pitch wobble", "Love the texture"];
+  function renderTags() {
+    $("#tags").innerHTML = TAGS.map((t) => `<button aria-pressed="${state.tags.has(t)}">${t}</button>`).join("");
+    $("#tags")
+      .querySelectorAll("button")
+      .forEach((b) =>
+        b.addEventListener("click", () => {
+          const t = b.textContent;
+          state.tags.has(t) ? state.tags.delete(t) : state.tags.add(t);
+          b.setAttribute("aria-pressed", state.tags.has(t));
+        })
+      );
+  }
+
+  let db = null;
+  const LS = "atmospheric.lab.ratings";
+  const local = {
+    load() {
+      try {
+        return JSON.parse(localStorage.getItem(LS) || "[]");
+      } catch (e) {
+        return [];
+      }
+    },
+    save(list) {
+      try {
+        localStorage.setItem(LS, JSON.stringify(list));
+      } catch (e) {}
+    },
+  };
+
+  async function rate(score) {
+    const R = currentResolved();
+    const round = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === "number" ? +v.toFixed(4) : v]));
+    const row = {
+      ts: new Date().toISOString(),
+      score, // 2 inspiring, 1 usable, 0 not inspiring
+      model: state.model,
+      scenario: state.name,
+      place: state.place,
+      pattern: $("#pattern").value,
+      climate: round(state.c),
+      macros: round(state.macros),
+      params: round(R.final),
+      tags: [...state.tags],
+      note: $("#note").value.trim(),
+      cell: [tempBand(state.c), wetBand(state.c)],
+    };
+    const label = ["Not inspiring", "Usable", "Inspiring"][score];
+    if (db) {
+      try {
+        await db.collection("ratings").add(row);
+        toast(`Saved: ${label} · ${state.name}`);
+      } catch (e) {
+        db = null;
+        storeLocal(row);
+        $("#storageLine").textContent = "Ratings are saved in this browser (shared store refused the write)";
+        toast(`Saved in this browser: ${label}`);
+      }
+    } else {
+      storeLocal(row);
+      toast(`Saved: ${label} · ${state.name}`);
+    }
+    if ($("#autoNext").checked) next();
+  }
+  function storeLocal(row) {
+    state.ratings.push({ id: "l" + Date.now(), ...row });
+    local.save(state.ratings);
+    renderAfterRatings();
+  }
+  function renderAfterRatings() {
+    renderMatrix();
+    renderLog();
+  }
+
+  function cellStats() {
+    const m = TEMP_BANDS.map(() => WET_BANDS.map(() => ({ n: 0, sum: 0 })));
+    for (const r of state.ratings) {
+      if (r.model !== state.model || !r.cell) continue;
+      const cell = m[r.cell[0]]?.[r.cell[1]];
+      if (cell) {
+        cell.n++;
+        cell.sum += r.score / 2;
+      }
+    }
+    return m;
+  }
+  function renderMatrix() {
+    if (!state.c) return;
+    const m = cellStats();
+    const cur = [tempBand(state.c), wetBand(state.c)];
+    let html = `<tr><th></th>${WET_BANDS.map((w) => `<th>${w}</th>`).join("")}</tr>`;
+    m.forEach((row, ti) => {
+      html += `<tr><th class="rowh">${TEMP_BANDS[ti][0]} °C</th>`;
+      row.forEach((cell, wi) => {
+        let style = "";
+        let txt = "·";
+        if (cell.n) {
+          const avg = cell.sum / cell.n;
+          const col = avg >= 0.67 ? "var(--good)" : avg >= 0.34 ? "var(--mid)" : "var(--bad)";
+          const strength = 30 + Math.min(cell.n, 5) * 10;
+          style = `background: color-mix(in srgb, ${col} ${strength}%, var(--sunk)); color: var(--ink)`;
+          txt = `${cell.n}× ${Math.round(avg * 100)}`;
+        }
+        const isCur = cur[0] === ti && cur[1] === wi;
+        html += `<td data-t="${ti}" data-w="${wi}" class="${isCur ? "cur" : ""}" style="${style}" title="${TEMP_BANDS[ti][0]} °C, ${WET_BANDS[wi]}">${txt}</td>`;
+      });
+      html += "</tr>";
+    });
+    $("#matrix").innerHTML = html;
+    const n = state.ratings.filter((r) => r.model === state.model).length;
+    $("#mxCount").textContent = `model ${state.model}: ${n} rated · ${state.ratings.length} total`;
+  }
+  function renderLog() {
+    const last = state.ratings.slice(-8).reverse();
+    if (!last.length) return;
+    const colors = ["var(--bad)", "var(--mid)", "var(--good)"];
+    $("#log").innerHTML = last
+      .map((r) => {
+        const extra = [r.tags?.join(", "), r.note].filter(Boolean).join(" — ");
+        return `<div><span class="dot" style="background:${colors[r.score]}"></span><span class="t" title="${escapeHtml(extra)}">${escapeHtml(r.scenario)}${extra ? ` <span class="m">${escapeHtml(extra)}</span>` : ""}</span><span class="m">${r.model} · ${r.climate.temp.toFixed(0)}°</span></div>`;
+      })
+      .join("");
+  }
+  const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+
+  async function exportRatings() {
+    const data = JSON.stringify(state.ratings, null, 1);
+    const filename = `atmospheric-ratings-${new Date().toISOString().slice(0, 10)}.json`;
+    const dl = window.claude?.use ? await window.claude.use("downloads") : null;
+    if (dl) {
+      try {
+        await dl.save({ filename, data });
+        toast("Export handed to your browser");
+      } catch (e) {
+        toast("Export cancelled");
+      }
+      return;
+    }
+    try {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+      a.download = filename;
+      a.click();
+      toast("Exported " + state.ratings.length + " ratings");
+    } catch (e) {
+      toast("Export isn't available in this view");
+    }
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    $("#toast").textContent = msg;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => ($("#toast").textContent = ""), 4000);
+  }
+
+  // ================================================================
+  // Wiring
+  // ================================================================
+  $("#playBtn").addEventListener("click", togglePlay);
+  $("#nextBtn").addEventListener("click", next);
+  $("#pattern").addEventListener("change", (e) => E && setPattern(e.target.value));
+  $("#resetMacros").addEventListener("click", () => {
+    state.macros = {};
+    buildMacroRows();
+    update();
+  });
+  document.querySelectorAll("#modelSeg button").forEach((b) =>
+    b.addEventListener("click", () => {
+      state.model = b.dataset.m;
+      document.querySelectorAll("#modelSeg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      state.macros = {};
+      buildMacroRows();
+      update();
+    })
+  );
+  document.querySelectorAll(".rate button").forEach((b) => b.addEventListener("click", () => rate(+b.dataset.r)));
+  $("#qDeck").addEventListener("click", () => setQueue("deck", deckList()));
+  $("#qGaps").addEventListener("click", () => setQueue("gaps", [gapScenario()]));
+  $("#qRandom").addEventListener("click", () => setQueue("random", [randomEarth()]));
+  $("#sweepAxis").addEventListener("change", (e) => {
+    if (e.target.value) sweep(e.target.value);
+    e.target.value = "";
+  });
+  $("#matrix").addEventListener("click", (e) => {
+    const td = e.target.closest("td");
+    if (!td) return;
+    const ti = +td.dataset.t,
+      wi = +td.dataset.w;
+    setQueue("cell", Array.from({ length: 6 }, (_, k) => ({ name: `${TEMP_BANDS[ti][0]} °C, ${WET_BANDS[wi].toLowerCase()} #${k + 1}`, place: "Coverage cell", c: climateInCell(ti, wi) })));
+  });
+  $("#exportBtn").addEventListener("click", exportRatings);
+
+  const KEYS = { q: "C4", w: "D4", e: "E4", r: "F4", t: "G4", y: "A4", u: "B4", i: "C5" };
+  const held = new Set();
+  window.addEventListener("keydown", async (e) => {
+    if (e.target.closest("textarea, input[type=text], select")) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === " ") {
+      e.preventDefault();
+      togglePlay();
+    } else if (k === "n") next();
+    else if (k === "1") rate(2);
+    else if (k === "2") rate(1);
+    else if (k === "3") rate(0);
+    else if (KEYS[k] && !held.has(k)) {
+      if (!(await ensureAudio())) return;
+      held.add(k);
+      noteOn(KEYS[k]);
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    const k = e.key.toLowerCase();
+    if (held.has(k)) {
+      held.delete(k);
+      noteOff(KEYS[k]);
+    }
+  });
+
+  // ================================================================
+  // Boot
+  // ================================================================
+  buildClimateRows();
+  renderTags();
+  state.ratings = local.load();
+  setQueue("deck", deckList());
+  renderAfterRatings();
+
+  (async () => {
+    if (!window.claude?.use) return;
+    const d = await window.claude.use("db");
+    if (!d) return;
+    db = d;
+    $("#storageLine").textContent = "Ratings are saved to this lab's shared log";
+    db.collection("ratings").onSnapshot(
+      (snap) => {
+        state.ratings = snap.docs.map((x) => ({ id: x.id, ...x.data() })).sort((a, b) => (a.ts < b.ts ? -1 : 1));
+        renderAfterRatings();
+      },
+      () => {
+        db = null;
+        $("#storageLine").textContent = "Ratings are saved in this browser";
+      }
+    );
+  })();
+</script>
