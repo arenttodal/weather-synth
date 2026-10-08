@@ -105,8 +105,8 @@ jobs:
         run: |
           Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
           Expand-Archive pluginval.zip -DestinationPath pv
-          & pv\pluginval.exe --strictness-level 7 --timeout-ms 600000 --validate-in-process build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & pv\pluginval.exe --strictness-level 7 --timeout-ms 600000 --verbose --output-dir pluginval-logs build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
+          if ($LASTEXITCODE -ne 0) { Get-ChildItem pluginval-logs -ErrorAction SilentlyContinue | Get-Content -Tail 200; exit 1 }
       - name: Package
         shell: pwsh
         run: |
@@ -118,6 +118,9 @@ jobs:
           Compress-Archive -Path $d -DestinationPath dist\Atmospheric-Windows.zip
       - uses: actions/upload-artifact@v4
         with: { name: Atmospheric-Windows, path: dist/Atmospheric-Windows.zip }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: pluginval-Windows, path: pluginval-logs, if-no-files-found: ignore }
 
   linux:
     name: Linux
