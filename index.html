@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Atmospheric — Weather Synth</title>
+    <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@300;400&display=swap");
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #06080c;
+        --surface: rgba(12, 16, 24, 0.85);
+        --surface2: rgba(18, 24, 36, 0.6);
+        --border: rgba(255, 255, 255, 0.06);
+        --border2: rgba(255, 255, 255, 0.1);
+        --text: #d8e2f0;
+        --text2: #8a9bb4;
+        --text3: #566882;
+        --accent: #4da6ff;
+        --accent2: #7bc8ff;
+        --warm: #ff9f5b;
+        --cool: #5baaff;
+        --green: #6ee7a0;
+        --red: #ff6b6b;
+        --glow: rgba(77, 166, 255, 0.15);
+        --sky-top: #06080c;
+        --sky-mid: #0a1020;
+        --sky-bot: #101828;
+        --font: "DM Sans", system-ui, sans-serif;
+        --mono: "JetBrains Mono", "SF Mono", monospace;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow-x: hidden;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 15px;
+        line-height: 1.5;
+        transition: background 1.2s ease;
+      }
+
+      /* Sky gradient overlay */
+      .sky-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: linear-gradient(
+          180deg,
+          var(--sky-top) 0%,
+          var(--sky-mid) 50%,
+          var(--sky-bot) 100%
+        );
+        transition: all 1.5s ease;
+      }
+
+      /* Canvas for weather particles */
+      #weatherCanvas {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      /* Layout */
+      .app {
+        position: relative;
+        z-index: 2;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 24px 40px;
+      }
+
+      /* Header */
+      .header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding: 20px 0 16px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 20px;
+      }
+      .header h1 {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--text2);
+      }
+      .header .ver {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+      }
+
+      /* Weather banner */
+      .weather-banner {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 24px 28px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
+      }
+      .weather-banner::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.08),
+          transparent
+        );
+      }
+      .weather-main {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .weather-temp {
+        font-size: 56px;
+        font-weight: 300;
+        line-height: 1;
+        letter-spacing: -2px;
+      }
+      .weather-temp .unit {
+        font-size: 20px;
+        color: var(--text2);
+        font-weight: 400;
+        vertical-align: super;
+      }
+      .weather-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .weather-cond {
+        font-size: 18px;
+        font-weight: 500;
+      }
+      .weather-loc {
+        font-size: 13px;
+        color: var(--text2);
+      }
+      .weather-time {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text3);
+      }
+      .weather-stats {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+      }
+      .weather-stat {
+        text-align: center;
+      }
+      .weather-stat .val {
+        font-family: var(--mono);
+        font-size: 15px;
+        font-weight: 400;
+      }
+      .weather-stat .lbl {
+        font-size: 11px;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 2px;
+      }
+
+      /* Main grid */
+      .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
+      }
+
+      /* Cards */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        backdrop-filter: blur(16px);
+        position: relative;
+      }
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 20px;
+        right: 20px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.05),
+          transparent
+        );
+      }
+      .card-title {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text3);
+        margin-bottom: 16px;
+      }
+
+      /* Transport / Start */
+      .transport {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        padding: 10px 18px;
+        border-radius: 10px;
+        border: 1px solid var(--border2);
+        background: var(--surface2);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+      }
+      .btn:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        background: rgba(30, 40, 60, 0.7);
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn-start {
+        background: linear-gradient(
+          135deg,
+          rgba(77, 166, 255, 0.15),
+          rgba(77, 166, 255, 0.05)
+        );
+        border-color: rgba(77, 166, 255, 0.3);
+        color: var(--accent2);
+        box-shadow: 0 0 20px rgba(77, 166, 255, 0.08);
+      }
+      .btn-start:hover {
+        background: linear-gradient(
+          135deg,
+          rgba(77, 166, 255, 0.25),
+          rgba(77, 166, 255, 0.1)
+        );
+        box-shadow: 0 0 30px rgba(77, 166, 255, 0.15);
+      }
+      .btn-start.active {
+        background: linear-gradient(
+          135deg,
+          rgba(110, 231, 160, 0.15),
+          rgba(110, 231, 160, 0.05)
+        );
+        border-color: rgba(110, 231, 160, 0.3);
+        color: var(--green);
+        box-shadow: 0 0 20px rgba(110, 231, 160, 0.08);
+      }
+      .btn-preset {
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+      .btn-preset.active {
+        border-color: var(--accent);
+        color: var(--accent2);
+        box-shadow: 0 0 12px var(--glow);
+      }
+
+      /* Selects & Inputs */
+      select,
+      input[type="text"] {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border2);
+        background: rgba(10, 14, 22, 0.8);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        outline: none;
+      }
+      select:focus,
+      input:focus {
+        border-color: rgba(77, 166, 255, 0.3);
+      }
+      select option {
+        background: #0c1018;
+      }
+
+      /* Range sliders */
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 4px;
+        border-radius: 4px;
+        outline: none;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.08);
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 8px rgba(77, 166, 255, 0.3);
+      }
+
+      /* Param rows */
+      .param-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .param-row label {
+        font-size: 12px;
+        color: var(--text2);
+        min-width: 60px;
+        font-family: var(--mono);
+      }
+      .param-row input[type="range"] {
+        flex: 1;
+      }
+      .param-row .val {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        min-width: 50px;
+        text-align: right;
+      }
+
+      /* Preset buttons row */
+      .preset-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      /* Section divider */
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin: 16px 0;
+      }
+
+      /* Mapping table */
+      .map-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .map-table th {
+        text-align: left;
+        padding: 8px 6px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid var(--border);
+      }
+      .map-table td {
+        padding: 8px 6px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+      }
+      .map-table td:nth-child(2) {
+        font-family: var(--mono);
+        color: var(--accent2);
+        font-size: 12px;
+      }
+      .map-table td:nth-child(3) {
+        font-size: 12px;
+        color: var(--text2);
+      }
+
+      /* Meters */
+      .meter-row {
+        display: flex;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .meter-item {
+        flex: 1;
+      }
+      .meter-label {
+        font-size: 11px;
+        color: var(--text3);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .meter-bar {
+        height: 6px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      .meter-fill {
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.4s ease;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+      }
+
+      /* Knobs grid */
+      .knobs-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .knob-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 14px 8px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(10, 14, 22, 0.5);
+      }
+      .knob-label {
+        font-size: 11px;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .knob-canvas {
+        width: 72px;
+        height: 72px;
+        cursor: pointer;
+      }
+      .knob-val {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text2);
+      }
+
+      /* Keyboard hint */
+      .kbd-hint {
+        margin-top: 16px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgba(10, 14, 22, 0.5);
+        border: 1px solid var(--border);
+      }
+      .kbd-hint span {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent2);
+      }
+      .kbd-hint .dim {
+        color: var(--text3);
+        font-size: 12px;
+      }
+
+      /* Weather source toggle */
+      .weather-source {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgba(10, 14, 22, 0.5);
+        border: 1px solid var(--border);
+      }
+      .weather-source label {
+        font-size: 12px;
+        color: var(--text2);
+      }
+      .weather-source input[type="text"] {
+        width: 200px;
+      }
+
+      /* Status line */
+      .status-line {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        margin-top: 8px;
+      }
+
+      /* Footer */
+      .footer {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .footer .chain {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text3);
+      }
+      .footer .mode-tag {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: rgba(77, 166, 255, 0.08);
+        border: 1px solid rgba(77, 166, 255, 0.15);
+        color: var(--accent2);
+        font-family: var(--mono);
+      }
+
+      /* Day mode overrides */
+      body.day {
+        --bg: #e8eef6;
+        --surface: rgba(255, 255, 255, 0.8);
+        --surface2: rgba(255, 255, 255, 0.5);
+        --border: rgba(0, 0, 0, 0.06);
+        --border2: rgba(0, 0, 0, 0.1);
+        --text: #0a1220;
+        --text2: #4a5c72;
+        --text3: #7a8da4;
+        --sky-top: #87ceeb;
+        --sky-mid: #b0d8f0;
+        --sky-bot: #d4e8f8;
+      }
+      body.day select,
+      body.day input[type="text"] {
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--text);
+      }
+      body.day input[type="range"] {
+        background: rgba(0, 0, 0, 0.08);
+      }
+      body.day input[type="range"]::-webkit-slider-thumb {
+        background: #333;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      body.day .knob-wrap {
+        background: rgba(255, 255, 255, 0.4);
+      }
+      body.day .kbd-hint,
+      body.day .weather-source {
+        background: rgba(255, 255, 255, 0.4);
+      }
+
+      body.dusk {
+        --sky-top: #1a1040;
+        --sky-mid: #3d2060;
+        --sky-bot: #c06040;
+      }
+
+      /* Location Picker — floating top-right */
+      .loc-picker {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        background: rgba(10, 14, 22, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        transition: background 0.3s, border-color 0.3s;
+      }
+      body.day .loc-picker {
+        background: rgba(255, 255, 255, 0.85);
+        border-color: rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+      .loc-picker .icon {
+        font-size: 16px;
+        line-height: 1;
+      }
+      .loc-picker select {
+        padding: 6px 28px 6px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(20, 28, 44, 0.8);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='%238a9bb4'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+      }
+      body.day .loc-picker select {
+        background: rgba(255, 255, 255, 0.7);
+        border-color: rgba(0, 0, 0, 0.1);
+        color: var(--text);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='%234a5c72'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+      }
+      .loc-picker .loc-flavor {
+        font-size: 11px;
+        color: var(--text3);
+        font-family: var(--mono);
+        max-width: 140px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Responsive */
+      @media (max-width: 800px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+        .weather-banner {
+          grid-template-columns: 1fr;
+        }
+        .weather-stats {
+          justify-content: flex-start;
+          margin-top: 8px;
+        }
+        .weather-temp {
+          font-size: 42px;
+        }
+        .loc-picker {
+          top: auto;
+          bottom: 16px;
+          right: 16px;
+          left: 16px;
+          justify-content: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sky-bg"></div>
+    <canvas id="weatherCanvas"></canvas>
+
+    <!-- Location Picker -->
+    <div class="loc-picker">
+      <span class="icon">🌍</span>
+      <select id="locSelect">
+        <option value="trondheim">Trondheim, Norway</option>
+        <option value="sahara">Sahara Desert, Algeria</option>
+        <option value="tokyo">Tokyo, Japan</option>
+        <option value="reykjavik">Reykjavík, Iceland</option>
+        <option value="mumbai">Mumbai, India</option>
+        <option value="patagonia">Patagonia, Argentina</option>
+        <option value="singapore">Singapore</option>
+        <option value="mcmurdo">McMurdo Station, Antarctica</option>
+      </select>
+      <span class="loc-flavor" id="locFlavor">Nordic coastal · cold</span>
+    </div>
+
+    <div class="app">
+      <!-- Header -->
+      <div class="header">
+        <h1>Atmospheric</h1>
+        <span class="ver">Weather Synth · v4.0</span>
+      </div>
+
+      <!-- Weather Banner -->
+      <div class="weather-banner">
+        <div class="weather-main">
+          <div class="weather-temp">
+            <span id="dispTemp">—</span><span class="unit">°C</span>
+          </div>
+          <div class="weather-info">
+            <div class="weather-cond" id="dispCond">Initializing…</div>
+            <div class="weather-loc" id="dispLoc">—</div>
+            <div class="weather-time" id="dispTime">--:--</div>
+          </div>
+        </div>
+        <div class="weather-stats">
+          <div class="weather-stat">
+            <div class="val" id="dispWind">—</div>
+            <div class="lbl">Wind m/s</div>
+          </div>
+          <div class="weather-stat">
+            <div class="val" id="dispHumid">—</div>
+            <div class="lbl">Humidity</div>
+          </div>
+          <div class="weather-stat">
+            <div class="val" id="dispMoon">—</div>
+            <div class="lbl">Moon</div>
+          </div>
+          <div class="weather-stat">
+            <div class="val" id="dispPreset">—</div>
+            <div class="lbl">Auto Preset</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-grid">
+        <!-- Left Column -->
+        <div>
+          <!-- Transport -->
+          <div class="card">
+            <div class="card-title">Engine</div>
+            <div class="transport">
+              <button class="btn btn-start" id="startBtn">▶ Start Audio</button>
+              <button class="btn" id="modeBtn">Mono</button>
+              <select id="scaleSelect">
+                <option value="C_major">C Major</option>
+                <option value="C_minor">C Minor</option>
+                <option value="D_dorian">D Dorian</option>
+                <option value="A_aeolian">A Aeolian</option>
+                <option value="E_phrygian">E Phrygian</option>
+                <option value="F_lydian">F Lydian</option>
+              </select>
+              <select id="octaveSelect">
+                <option>2</option>
+                <option>3</option>
+                <option selected>4</option>
+                <option>5</option>
+                <option>6</option>
+              </select>
+              <div class="param-row" style="margin: 0">
+                <label>Vol</label>
+                <input
+                  type="range"
+                  id="masterVol"
+                  min="-36"
+                  max="0"
+                  value="-12"
+                  step="1"
+                  style="width: 100px"
+                />
+                <span class="val" id="masterLbl">-12 dB</span>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="card-title">Presets</div>
+            <div class="preset-row">
+              <button class="btn btn-preset active" id="corePad">
+                Soft FM Pad
+              </button>
+              <button class="btn btn-preset" id="coreBass">
+                Bitcrush Bass
+              </button>
+              <button class="btn btn-preset" id="warmPad">Warm Tape</button>
+              <button class="btn btn-preset" id="glassPreset">
+                Glass Bell
+              </button>
+              <button class="btn btn-preset" id="driftPreset">Drift</button>
+            </div>
+
+            <div class="divider"></div>
+            <div class="card-title">Envelope</div>
+            <div class="param-row">
+              <label>Attack</label
+              ><input
+                type="range"
+                id="adsrA"
+                min="0.001"
+                max="3"
+                step="0.001"
+                value="0.35"
+              /><span class="val" id="adsrAVal">0.35s</span>
+            </div>
+            <div class="param-row">
+              <label>Decay</label
+              ><input
+                type="range"
+                id="adsrD"
+                min="0.01"
+                max="2.5"
+                step="0.01"
+                value="0.50"
+              /><span class="val" id="adsrDVal">0.50s</span>
+            </div>
+            <div class="param-row">
+              <label>Sustain</label
+              ><input
+                type="range"
+                id="adsrS"
+                min="0"
+                max="1"
+                step="0.01"
+                value="0.85"
+              /><span class="val" id="adsrSVal">0.85</span>
+            </div>
+            <div class="param-row">
+              <label>Release</label
+              ><input
+                type="range"
+                id="adsrR"
+                min="0.05"
+                max="5"
+                step="0.01"
+                value="1.60"
+              /><span class="val" id="adsrRVal">1.60s</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 8px">
+              <button class="btn" id="adsrReset" style="font-size: 12px">
+                Reset ADSR
+              </button>
+              <button class="btn" id="holdBtn" style="font-size: 12px">
+                Hold: Off
+              </button>
+            </div>
+
+            <div class="divider"></div>
+            <div class="card-title">Weather Trims</div>
+            <div class="knobs-grid">
+              <div class="knob-wrap">
+                <div class="knob-label">Cutoff</div>
+                <canvas
+                  class="knob-canvas"
+                  id="knobCutoff"
+                  width="144"
+                  height="144"
+                ></canvas>
+                <div class="knob-val" id="knobCutoffVal">±0 Hz</div>
+              </div>
+              <div class="knob-wrap">
+                <div class="knob-label">Reverb</div>
+                <canvas
+                  class="knob-canvas"
+                  id="knobReverb"
+                  width="144"
+                  height="144"
+                ></canvas>
+                <div class="knob-val" id="knobReverbVal">±0.00</div>
+              </div>
+              <div class="knob-wrap">
+                <div class="knob-label">Vibrato</div>
+                <canvas
+                  class="knob-canvas"
+                  id="knobVibe"
+                  width="144"
+                  height="144"
+                ></canvas>
+                <div class="knob-val" id="knobVibeVal">±0.00</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="kbd-hint">
+              <span>A S D F G H J</span>
+              <span class="dim">— scale keys</span>&nbsp;&nbsp;
+              <span>W E</span>
+              <span class="dim">— passing tones</span>&nbsp;&nbsp;
+              <span>Space</span>
+              <span class="dim">— hold toggle</span>&nbsp;&nbsp;
+              <span class="dim">MIDI auto-detected</span>
+            </div>
+
+            <!-- Weather Source -->
+            <div class="weather-source">
+              <label>Weather:</label>
+              <button class="btn" id="srcToggle" style="font-size: 12px">
+                Simulated ✓
+              </button>
+              <input
+                type="text"
+                id="owmKey"
+                placeholder="OpenWeatherMap API key"
+              />
+              <button class="btn" id="liveBtn" style="font-size: 12px">
+                Go Live
+              </button>
+              <div class="status-line" id="statusLine">
+                Using simulated weather for Trondheim
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div>
+          <div class="card">
+            <div class="card-title">Weather → Sound Mapping</div>
+            <table class="map-table">
+              <tr>
+                <th>Param</th>
+                <th>Value</th>
+                <th>Maps to</th>
+              </tr>
+              <tr>
+                <td>Temperature</td>
+                <td id="mapTemp">—</td>
+                <td>Oscillator + detune</td>
+              </tr>
+              <tr>
+                <td>Condition</td>
+                <td id="mapCond">—</td>
+                <td>Reverb wet/decay</td>
+              </tr>
+              <tr>
+                <td>Wind</td>
+                <td id="mapWind">—</td>
+                <td>Vibrato depth & rate</td>
+              </tr>
+              <tr>
+                <td>Moon Phase</td>
+                <td id="mapMoon">—</td>
+                <td>Filter cutoff + scale</td>
+              </tr>
+              <tr>
+                <td>Humidity</td>
+                <td id="mapHumid">—</td>
+                <td>Chorus + warmth</td>
+              </tr>
+            </table>
+
+            <div class="meter-row">
+              <div class="meter-item">
+                <div class="meter-label">Cutoff</div>
+                <div class="meter-bar">
+                  <div
+                    class="meter-fill"
+                    id="meterCutoff"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+              <div class="meter-item">
+                <div class="meter-label">Reverb</div>
+                <div class="meter-bar">
+                  <div
+                    class="meter-fill"
+                    id="meterReverb"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div class="meter-row" style="margin-top: 8px">
+              <div class="meter-item">
+                <div class="meter-label">Vibrato</div>
+                <div class="meter-bar">
+                  <div
+                    class="meter-fill"
+                    id="meterVibrato"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+              <div class="meter-item">
+                <div class="meter-label">Detune</div>
+                <div class="meter-bar">
+                  <div
+                    class="meter-fill"
+                    id="meterDetune"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Notes Visualizer -->
+          <div class="card" style="margin-top: 20px">
+            <div class="card-title">Active Notes</div>
+            <canvas
+              id="noteViz"
+              width="600"
+              height="100"
+              style="width: 100%; height: 80px; border-radius: 8px"
+            ></canvas>
+          </div>
+
+          <!-- Waveform scope -->
+          <div class="card" style="margin-top: 20px">
+            <div class="card-title">Scope</div>
+            <canvas
+              id="scope"
+              width="600"
+              height="120"
+              style="width: 100%; height: 100px; border-radius: 8px"
+            ></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span class="chain">Osc → Filter → Vibrato → Reverb → Out</span>
+        <span class="mode-tag" id="engineTag">SIMULATED</span>
+      </div>
+    </div>
+
+    <script>
+      // =====================================================
+      // ATMOSPHERIC — Weather-Reactive Synthesizer v4.0
+      // =====================================================
+
+      // --- Scales ---
+      const SCALES = {
+        C_major: ["C", "D", "E", "F", "G", "A", "B"],
+        C_minor: ["C", "D", "D#", "F", "G", "G#", "A#"],
+        D_dorian: ["D", "E", "F", "G", "A", "B", "C"],
+        A_aeolian: ["A", "B", "C", "D", "E", "F", "G"],
+        E_phrygian: ["E", "F", "G", "A", "B", "C", "D"],
+        F_lydian: ["F", "G", "A", "B", "C", "D", "E"],
+      };
+      const KEYMAP = ["a", "s", "d", "f", "g", "h", "j"];
+      const PASSING = { w: 1, e: 2 };
+
+      // --- Helpers ---
+      const $ = (s) => document.querySelector(s);
+      const $$ = (s) => document.querySelectorAll(s);
+      const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+      const linmap = (v, lo, hi, oLo, oHi) =>
+        oLo + clamp((v - lo) / (hi - lo), 0, 1) * (oHi - oLo);
+      const noteName = (n, o) => `${n}${o}`;
+
+      // --- State ---
+      const S = {
+        audioReady: false,
+        hold: false,
+        poly: false,
+        preset: "corePadFM",
+        temp: 4,
+        cond: "Clouds",
+        wind: 5,
+        moon: 0.48,
+        humidity: 72,
+        loc: "Trondheim, NO",
+        isDay: false,
+        adsr: { A: 0.35, D: 0.5, S: 0.85, R: 1.6 },
+        trim: { cutoff: 0, reverb: 0, vib: 0 },
+        liveMode: false,
+      };
+      let instrument = null,
+        filter = null,
+        vibrato = null,
+        reverb = null,
+        analyser = null;
+
+      // --- Location Profiles ---
+      // Each location has: seasonal temp curves, wet chance, wind base, sunrise/sunset per month, humidity range, timezone offset, flavor text
+      const LOCATIONS = {
+        trondheim: {
+          name: "Trondheim, NO",
+          flavor: "Nordic coastal · cold",
+          tempBase: [-4, -3, 0, 4, 9, 13, 15, 14, 10, 5, 1, -2],
+          wetChance: [
+            0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.25, 0.3, 0.35, 0.45, 0.5, 0.55,
+          ],
+          windBase: [8, 7, 6, 5, 4, 3, 3, 4, 5, 6, 7, 8],
+          sunrise: [9, 8, 7, 6, 5, 4, 3, 4, 6, 7, 8, 9],
+          sunset: [15, 16, 18, 20, 21, 23, 23, 21, 19, 17, 15, 14],
+          humidBase: 70,
+          humidRange: 25,
+          diurnal: 3,
+          snowThresh: 1,
+          tzOff: 1,
+        },
+        sahara: {
+          name: "Sahara Desert, DZ",
+          flavor: "Arid extreme · scorching",
+          tempBase: [15, 18, 22, 27, 33, 40, 43, 42, 38, 30, 22, 16],
+          wetChance: [
+            0.02, 0.02, 0.02, 0.01, 0.01, 0.0, 0.0, 0.01, 0.02, 0.03, 0.02,
+            0.02,
+          ],
+          windBase: [6, 7, 8, 9, 8, 7, 5, 5, 6, 6, 6, 6],
+          sunrise: [7, 7, 6, 6, 6, 5, 5, 6, 6, 6, 7, 7],
+          sunset: [18, 18, 19, 19, 19, 20, 20, 19, 19, 18, 18, 17],
+          humidBase: 18,
+          humidRange: 12,
+          diurnal: 8,
+          snowThresh: -99,
+          tzOff: 1,
+        },
+        tokyo: {
+          name: "Tokyo, JP",
+          flavor: "Humid subtropical · rainy",
+          tempBase: [5, 6, 10, 15, 20, 23, 27, 28, 24, 18, 13, 7],
+          wetChance: [
+            0.25, 0.3, 0.35, 0.35, 0.4, 0.55, 0.5, 0.45, 0.5, 0.45, 0.3, 0.25,
+          ],
+          windBase: [4, 4, 4, 4, 3, 3, 3, 3, 4, 4, 4, 4],
+          sunrise: [7, 6, 6, 5, 5, 4, 5, 5, 5, 6, 6, 7],
+          sunset: [17, 17, 18, 18, 19, 19, 19, 18, 18, 17, 17, 16],
+          humidBase: 55,
+          humidRange: 35,
+          diurnal: 4,
+          snowThresh: 0,
+          tzOff: 9,
+        },
+        reykjavik: {
+          name: "Reykjavík, IS",
+          flavor: "Subarctic wind · stark",
+          tempBase: [-1, -1, 0, 3, 7, 10, 12, 11, 8, 4, 1, -1],
+          wetChance: [
+            0.55, 0.5, 0.5, 0.45, 0.4, 0.35, 0.35, 0.4, 0.5, 0.55, 0.55, 0.55,
+          ],
+          windBase: [12, 11, 10, 9, 8, 7, 7, 8, 10, 11, 12, 12],
+          sunrise: [11, 9, 8, 6, 4, 3, 3, 5, 7, 8, 10, 11],
+          sunset: [16, 17, 19, 21, 22, 24, 23, 21, 19, 18, 16, 15],
+          humidBase: 75,
+          humidRange: 15,
+          diurnal: 2,
+          snowThresh: 2,
+          tzOff: 0,
+        },
+        mumbai: {
+          name: "Mumbai, IN",
+          flavor: "Tropical monsoon · humid",
+          tempBase: [25, 26, 28, 30, 32, 30, 28, 28, 28, 30, 29, 26],
+          wetChance: [
+            0.02, 0.02, 0.02, 0.03, 0.15, 0.7, 0.8, 0.75, 0.55, 0.2, 0.05, 0.02,
+          ],
+          windBase: [3, 3, 3, 4, 5, 8, 8, 7, 5, 3, 3, 3],
+          sunrise: [7, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7],
+          sunset: [18, 18, 19, 19, 19, 19, 19, 19, 18, 18, 18, 18],
+          humidBase: 65,
+          humidRange: 30,
+          diurnal: 2,
+          snowThresh: -99,
+          tzOff: 5.5,
+        },
+        patagonia: {
+          name: "Patagonia, AR",
+          flavor: "Fierce wind · dramatic",
+          // Southern hemisphere: seasons flipped
+          tempBase: [14, 13, 10, 7, 4, 1, 0, 2, 5, 8, 11, 13],
+          wetChance: [
+            0.2, 0.2, 0.25, 0.3, 0.35, 0.35, 0.3, 0.3, 0.25, 0.2, 0.2, 0.2,
+          ],
+          windBase: [10, 10, 11, 12, 13, 13, 13, 12, 12, 11, 10, 10],
+          sunrise: [6, 6, 7, 7, 8, 9, 9, 8, 7, 7, 6, 5],
+          sunset: [21, 20, 20, 19, 18, 17, 17, 18, 19, 20, 21, 21],
+          humidBase: 45,
+          humidRange: 20,
+          diurnal: 5,
+          snowThresh: 1,
+          tzOff: -3,
+        },
+        singapore: {
+          name: "Singapore, SG",
+          flavor: "Equatorial · lush warm rain",
+          tempBase: [27, 27, 28, 28, 28, 28, 28, 28, 27, 27, 27, 27],
+          wetChance: [
+            0.5, 0.4, 0.45, 0.5, 0.5, 0.45, 0.45, 0.45, 0.5, 0.55, 0.6, 0.55,
+          ],
+          windBase: [3, 3, 3, 2, 2, 3, 3, 3, 2, 2, 3, 3],
+          sunrise: [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+          sunset: [19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19],
+          humidBase: 80,
+          humidRange: 15,
+          diurnal: 1.5,
+          snowThresh: -99,
+          tzOff: 8,
+        },
+        mcmurdo: {
+          name: "McMurdo, Antarctica",
+          flavor: "Polar ice · alien silence",
+          // Southern hemisphere polar
+          tempBase: [-8, -12, -20, -25, -28, -30, -32, -30, -26, -20, -12, -6],
+          wetChance: [
+            0.15, 0.15, 0.2, 0.25, 0.3, 0.3, 0.25, 0.25, 0.2, 0.2, 0.15, 0.15,
+          ],
+          windBase: [8, 8, 10, 12, 14, 15, 15, 14, 12, 10, 8, 8],
+          sunrise: [0, 4, 6, 8, 0, 0, 0, 0, 6, 4, 0, 0], // 0 = 24h sun or dark
+          sunset: [24, 22, 18, 16, 0, 0, 0, 0, 18, 20, 24, 24],
+          humidBase: 55,
+          humidRange: 20,
+          diurnal: 1,
+          snowThresh: 5,
+          tzOff: 12,
+          polar: true, // special: perpetual day in summer, perpetual night in winter
+        },
+      };
+
+      let currentLocationKey = "trondheim";
+
+      // --- Simulated Weather ---
+      function simulateWeather() {
+        const L = LOCATIONS[currentLocationKey];
+        const now = new Date();
+        const h = now.getHours();
+        const m = now.getMonth();
+        // Temperature
+        const seasonBase = L.tempBase[m];
+        const diurnal = Math.sin(((h - 6) / 24) * Math.PI * 2) * L.diurnal;
+        const temp = seasonBase + diurnal + (Math.random() - 0.5) * 2;
+        // Condition
+        const wetChance = L.wetChance[m];
+        const r = Math.random();
+        let cond = "Clear";
+        if (r < wetChance * 0.4) cond = temp < L.snowThresh ? "Snow" : "Rain";
+        else if (r < wetChance * 0.8) cond = "Clouds";
+        else if (r < wetChance * 0.95) cond = "Drizzle";
+        // Wind
+        const wind = L.windBase[m] + (Math.random() - 0.3) * 4;
+        // Humidity
+        const humidity = Math.round(
+          L.humidBase + (Math.random() - 0.5) * 2 * L.humidRange
+        );
+        // Moon
+        const lp = 2551443;
+        const ns = 947182440;
+        const moon = ((now / 1000 - ns) % lp) / lp;
+        // Day/night
+        let isDay;
+        if (L.polar) {
+          // McMurdo: Nov-Jan = polar day, May-Jul = polar night
+          isDay = m >= 10 || m <= 1; // roughly
+        } else {
+          const localH = (h + L.tzOff + 24) % 24;
+          isDay = localH >= L.sunrise[m] && localH < L.sunset[m];
+        }
+
+        return {
+          temp: Math.round(temp * 10) / 10,
+          cond,
+          wind: Math.max(0, Math.round(wind * 10) / 10),
+          humidity: clamp(humidity, 5, 100),
+          moon,
+          isDay,
+          loc: L.name,
+          hour: h,
+        };
+      }
+
+      // --- Moon phase name ---
+      function moonName(phase) {
+        if (phase < 0.03 || phase > 0.97) return "New";
+        if (phase < 0.22) return "Waxing Cres.";
+        if (phase < 0.28) return "First Qtr";
+        if (phase < 0.47) return "Waxing Gib.";
+        if (phase < 0.53) return "Full";
+        if (phase < 0.72) return "Waning Gib.";
+        if (phase < 0.78) return "Last Qtr";
+        return "Waning Cres.";
+      }
+
+      // --- Audio Init ---
+      async function initAudio() {
+        if (S.audioReady) return;
+        await Tone.start();
+        filter = new Tone.Filter(1400, "lowpass", -12);
+        vibrato = new Tone.Vibrato({ frequency: 4, depth: 0.12 });
+        reverb = new Tone.Reverb({ decay: 6, wet: 0.25 });
+        await reverb.generate();
+        analyser = new Tone.Analyser("waveform", 256);
+        // Connect analyser at destination
+        Tone.Destination.connect(analyser);
+        S.audioReady = true;
+        loadPreset(S.preset);
+        Tone.Destination.volume.value = parseInt($("#masterVol").value);
+        $("#startBtn").textContent = "● Running";
+        $("#startBtn").classList.add("active");
+        // Start scopes
+        drawScope();
+        // Apply current weather
+        applyWeather();
+      }
+
+      function connectInst(inst) {
+        if (instrument) {
+          try {
+            instrument.disconnect();
+            instrument.dispose();
+          } catch (e) {}
+        }
+        instrument = inst;
+        instrument.chain(filter, vibrato, reverb, Tone.Destination);
+        applyADSR();
+      }
+
+      // --- Presets ---
+      function loadPreset(name) {
+        S.preset = name;
+        $$(".btn-preset").forEach((b) => b.classList.remove("active"));
+        const map = {
+          corePadFM: "#corePad",
+          coreBass: "#coreBass",
+          warmPad: "#warmPad",
+          glass: "#glassPreset",
+          drift: "#driftPreset",
+        };
+        const el = $(map[name]);
+        if (el) el.classList.add("active");
+        if (!S.audioReady) return;
+        const p = S.poly;
+        if (name === "corePadFM") {
+          const o = {
+            harmonicity: 0.5,
+            modulationIndex: 5,
+            oscillator: { type: "sine" },
+            modulation: { type: "sine" },
+            envelope: { attack: 0.35, decay: 0.5, sustain: 0.85, release: 1.6 },
+            modulationEnvelope: {
+              attack: 0.2,
+              decay: 0.3,
+              sustain: 0.6,
+              release: 1.0,
+            },
+          };
+          connectInst(
+            p
+              ? new Tone.PolySynth(Tone.FMSynth, o).set({ maxPolyphony: 8 })
+              : new Tone.FMSynth(o)
+          );
+          setFx(1400, 0.12, 4, 0.28, 7);
+          S.adsr = { A: 0.35, D: 0.5, S: 0.85, R: 1.6 };
+        } else if (name === "coreBass") {
+          const o = {
+            oscillator: { type: "sawtooth" },
+            envelope: {
+              attack: 0.01,
+              decay: 0.25,
+              sustain: 0.5,
+              release: 0.25,
+            },
+          };
+          connectInst(
+            p
+              ? new Tone.PolySynth(Tone.Synth, o).set({ maxPolyphony: 8 })
+              : new Tone.Synth(o)
+          );
+          setFx(380, 0.06, 5, 0.12, 3.5);
+          S.adsr = { A: 0.01, D: 0.25, S: 0.5, R: 0.25 };
+        } else if (name === "warmPad") {
+          const o = {
+            oscillator: { type: "triangle" },
+            envelope: { attack: 0.6, decay: 0.6, sustain: 0.85, release: 1.8 },
+          };
+          connectInst(
+            p
+              ? new Tone.PolySynth(Tone.Synth, o).set({ maxPolyphony: 8 })
+              : new Tone.Synth(o)
+          );
+          setFx(1200, 0.1, 4, 0.35, 8);
+          S.adsr = { A: 0.6, D: 0.6, S: 0.85, R: 1.8 };
+        } else if (name === "glass") {
+          const o = {
+            harmonicity: 3.5,
+            modulationIndex: 12,
+            oscillator: { type: "sine" },
+            modulation: { type: "square" },
+            envelope: { attack: 0.005, decay: 1.2, sustain: 0.1, release: 2.5 },
+            modulationEnvelope: {
+              attack: 0.01,
+              decay: 0.8,
+              sustain: 0.0,
+              release: 1.5,
+            },
+          };
+          connectInst(
+            p
+              ? new Tone.PolySynth(Tone.FMSynth, o).set({ maxPolyphony: 8 })
+              : new Tone.FMSynth(o)
+          );
+          setFx(3200, 0.02, 6, 0.45, 9);
+          S.adsr = { A: 0.005, D: 1.2, S: 0.1, R: 2.5 };
+        } else if (name === "drift") {
+          const o = {
+            harmonicity: 0.25,
+            modulationIndex: 2,
+            oscillator: { type: "triangle" },
+            modulation: { type: "sine" },
+            envelope: { attack: 1.5, decay: 1.0, sustain: 0.9, release: 3.0 },
+            modulationEnvelope: {
+              attack: 0.8,
+              decay: 0.6,
+              sustain: 0.7,
+              release: 2.0,
+            },
+          };
+          connectInst(
+            p
+              ? new Tone.PolySynth(Tone.FMSynth, o).set({ maxPolyphony: 8 })
+              : new Tone.FMSynth(o)
+          );
+          setFx(900, 0.18, 2.5, 0.55, 12);
+          S.adsr = { A: 1.5, D: 1.0, S: 0.9, R: 3.0 };
+        }
+        syncADSR();
+        applyADSR();
+        applyWeather();
+      }
+
+      function setFx(cutoff, vibD, vibF, wet, decay) {
+        if (!filter) return;
+        filter.frequency.value = cutoff;
+        vibrato.depth = vibD;
+        vibrato.frequency.value = vibF;
+        reverb.wet.value = wet;
+        reverb.decay = decay;
+      }
+
+      // --- ADSR ---
+      function applyADSR() {
+        if (!instrument) return;
+        const { A, D, S: Sus, R } = S.adsr;
+        const env = { attack: A, decay: D, sustain: Sus, release: R };
+        if (instrument instanceof Tone.PolySynth) {
+          instrument.set({ envelope: env });
+          instrument.set({
+            modulationEnvelope: {
+              attack: Math.max(0.01, A * 0.6),
+              decay: Math.max(0.05, D * 0.6),
+              sustain: clamp(Sus * 0.85, 0, 1),
+              release: Math.max(0.05, R * 0.6),
+            },
+          });
+        } else {
+          if (instrument.envelope)
+            Object.assign(instrument.envelope, {
+              attack: A,
+              decay: D,
+              sustain: Sus,
+              release: R,
+            });
+          if (instrument.modulationEnvelope) {
+            instrument.modulationEnvelope.attack = Math.max(0.01, A * 0.6);
+            instrument.modulationEnvelope.decay = Math.max(0.05, D * 0.6);
+            instrument.modulationEnvelope.sustain = clamp(Sus * 0.85, 0, 1);
+            instrument.modulationEnvelope.release = Math.max(0.05, R * 0.6);
+          }
+        }
+      }
+      function syncADSR() {
+        $("#adsrA").value = S.adsr.A;
+        $("#adsrAVal").textContent = S.adsr.A.toFixed(2) + "s";
+        $("#adsrD").value = S.adsr.D;
+        $("#adsrDVal").textContent = S.adsr.D.toFixed(2) + "s";
+        $("#adsrS").value = S.adsr.S;
+        $("#adsrSVal").textContent = S.adsr.S.toFixed(2);
+        $("#adsrR").value = S.adsr.R;
+        $("#adsrRVal").textContent = S.adsr.R.toFixed(2) + "s";
+      }
+
+      // --- Weather → Sound ---
+      function choosePreset(temp, cond, wind) {
+        const wet = /rain|snow|drizzle|cloud/i.test(cond);
+        if (wet) return "warmPad";
+        if (!wet && wind >= 12 && temp >= 8) return "coreBass";
+        return "corePadFM";
+      }
+
+      function applyWeather() {
+        const { temp, cond, wind, moon, humidity } = S;
+        // Update display
+        $("#dispTemp").textContent = Math.round(temp);
+        $("#dispCond").textContent = cond;
+        $("#dispLoc").textContent = S.loc;
+        $("#dispWind").textContent = wind.toFixed(1);
+        $("#dispHumid").textContent = humidity + "%";
+        $("#dispMoon").textContent = moonName(moon);
+        // Mapping display
+        $("#mapTemp").textContent = temp.toFixed(1) + "°C";
+        $("#mapCond").textContent = cond;
+        $("#mapWind").textContent = wind.toFixed(1) + " m/s";
+        $("#mapMoon").textContent =
+          moon.toFixed(2) + " (" + moonName(moon) + ")";
+        $("#mapHumid").textContent = humidity + "%";
+
+        if (!instrument || !filter) return;
+
+        // Osc type from temp
+        const oscType =
+          temp <= 0
+            ? "sawtooth"
+            : temp >= 25
+            ? "sine"
+            : temp < 12
+            ? "sawtooth"
+            : "sine";
+        try {
+          instrument.set({ oscillator: { type: oscType } });
+        } catch (e) {}
+        if (!(instrument instanceof Tone.PolySynth) && instrument.detune) {
+          instrument.detune.value = linmap(temp, -10, 35, -5, 5);
+        }
+
+        // Reverb from condition
+        let wet = /rain|snow|drizzle|cloud/i.test(cond) ? 0.6 : 0.22;
+        // Vibrato from wind
+        let vibD = clamp(wind / 20, 0, 0.6),
+          vibF = linmap(wind, 0, 20, 3, 8);
+        // Filter from moon
+        let phase = moon <= 0.5 ? moon * 2 : (1 - moon) * 2;
+        let cutoff = 400 + phase * (3500 - 400);
+        // Apply trims
+        cutoff = clamp(cutoff + S.trim.cutoff, 100, 8000);
+        wet = clamp(wet + S.trim.reverb, 0, 1);
+        vibD = clamp(vibD + S.trim.vib, 0, 0.9);
+        // Commit
+        reverb.wet.value = wet;
+        vibrato.depth = vibD;
+        vibrato.frequency.value = vibF;
+        filter.frequency.value = cutoff;
+        // Scale selection
+        $("#scaleSelect").value = phase > 0.55 ? "C_major" : "C_minor";
+        // Auto preset
+        const rec = choosePreset(temp, cond, wind);
+        const presetNames = {
+          corePadFM: "FM Pad",
+          coreBass: "Bass",
+          warmPad: "Warm Tape",
+          glass: "Glass",
+          drift: "Drift",
+        };
+        $("#dispPreset").textContent = presetNames[rec] || rec;
+        // Meters
+        setMeter("meterCutoff", (cutoff - 100) / (8000 - 100));
+        setMeter("meterReverb", wet);
+        setMeter("meterVibrato", vibD / 0.9);
+        setMeter("meterDetune", linmap(Math.abs(temp), 0, 35, 0, 1));
+        // Theme
+        updateTheme(S.isDay);
+        renderWeatherViz(cond);
+      }
+
+      function setMeter(id, frac) {
+        const el = $("#" + id);
+        if (el) el.style.width = clamp(frac, 0, 1) * 100 + "%";
+      }
+
+      // --- Theme ---
+      let lastIsDay = null;
+      function updateTheme(isDay) {
+        if (lastIsDay === isDay) return;
+        lastIsDay = isDay;
+        document.body.classList.toggle("day", !!isDay);
+        document.body.classList.toggle("dusk", !isDay);
+      }
+
+      // --- Weather Canvas Particles ---
+      const wCanvas = $("#weatherCanvas");
+      const wCtx = wCanvas.getContext("2d");
+      let particles = [];
+      let lastCondGroup = "";
+
+      function resizeCanvas() {
+        wCanvas.width = window.innerWidth;
+        wCanvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      function renderWeatherViz(cond) {
+        const group = /rain/i.test(cond)
+          ? "rain"
+          : /snow/i.test(cond)
+          ? "snow"
+          : /cloud/i.test(cond)
+          ? "clouds"
+          : "clear";
+        if (group === lastCondGroup) return;
+        lastCondGroup = group;
+        particles = [];
+        const W = wCanvas.width,
+          H = wCanvas.height;
+        if (group === "rain") {
+          for (let i = 0; i < 200; i++)
+            particles.push({
+              type: "rain",
+              x: Math.random() * W,
+              y: Math.random() * H,
+              speed: 8 + Math.random() * 12,
+              len: 10 + Math.random() * 20,
+              opacity: 0.3 + Math.random() * 0.4,
+            });
+        } else if (group === "snow") {
+          for (let i = 0; i < 120; i++)
+            particles.push({
+              type: "snow",
+              x: Math.random() * W,
+              y: Math.random() * H,
+              speed: 0.5 + Math.random() * 1.5,
+              radius: 1 + Math.random() * 3,
+              drift: Math.random() * 2 - 1,
+              opacity: 0.4 + Math.random() * 0.5,
+            });
+        } else if (group === "clouds") {
+          for (let i = 0; i < 8; i++)
+            particles.push({
+              type: "cloud",
+              x: Math.random() * W,
+              y: 50 + Math.random() * H * 0.3,
+              w: 120 + Math.random() * 200,
+              h: 40 + Math.random() * 60,
+              speed: 0.15 + Math.random() * 0.3,
+              opacity: 0.06 + Math.random() * 0.06,
+            });
+        }
+        // Clear has stars at night
+        if (group === "clear" && !S.isDay) {
+          for (let i = 0; i < 80; i++)
+            particles.push({
+              type: "star",
+              x: Math.random() * W,
+              y: Math.random() * H * 0.7,
+              radius: 0.5 + Math.random() * 1.5,
+              twinkle: Math.random() * Math.PI * 2,
+              speed: 0.5 + Math.random() * 1.5,
+            });
+        }
+      }
+
+      function animateWeather() {
+        const W = wCanvas.width,
+          H = wCanvas.height;
+        wCtx.clearRect(0, 0, W, H);
+        for (const p of particles) {
+          if (p.type === "rain") {
+            wCtx.strokeStyle = `rgba(140,180,255,${p.opacity})`;
+            wCtx.lineWidth = 1;
+            wCtx.beginPath();
+            wCtx.moveTo(p.x, p.y);
+            wCtx.lineTo(p.x - 2, p.y + p.len);
+            wCtx.stroke();
+            p.y += p.speed;
+            p.x -= 0.3;
+            if (p.y > H) {
+              p.y = -p.len;
+              p.x = Math.random() * W;
+            }
+          } else if (p.type === "snow") {
+            wCtx.fillStyle = `rgba(220,230,255,${p.opacity})`;
+            wCtx.beginPath();
+            wCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            wCtx.fill();
+            p.y += p.speed;
+            p.x += Math.sin(Date.now() / 2000 + p.drift) * 0.3;
+            if (p.y > H) {
+              p.y = -10;
+              p.x = Math.random() * W;
+            }
+          } else if (p.type === "cloud") {
+            wCtx.fillStyle = `rgba(180,200,220,${p.opacity})`;
+            wCtx.beginPath();
+            // Fluffy cloud shape
+            const cx = p.x,
+              cy = p.y;
+            wCtx.ellipse(cx, cy, p.w / 2, p.h / 2, 0, 0, Math.PI * 2);
+            wCtx.fill();
+            wCtx.beginPath();
+            wCtx.ellipse(
+              cx - p.w * 0.25,
+              cy - p.h * 0.3,
+              p.w * 0.3,
+              p.h * 0.35,
+              0,
+              0,
+              Math.PI * 2
+            );
+            wCtx.fill();
+            wCtx.beginPath();
+            wCtx.ellipse(
+              cx + p.w * 0.2,
+              cy - p.h * 0.2,
+              p.w * 0.25,
+              p.h * 0.3,
+              0,
+              0,
+              Math.PI * 2
+            );
+            wCtx.fill();
+            p.x += p.speed;
+            if (p.x - p.w > W) {
+              p.x = -p.w;
+            }
+          } else if (p.type === "star") {
+            const tw =
+              Math.sin((Date.now() / 1000) * p.speed + p.twinkle) * 0.4 + 0.6;
+            wCtx.fillStyle = `rgba(200,215,255,${tw * 0.7})`;
+            wCtx.beginPath();
+            wCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            wCtx.fill();
+          }
+        }
+        requestAnimationFrame(animateWeather);
+      }
+      animateWeather();
+
+      // --- Scope / Waveform ---
+      const scopeCanvas = $("#scope");
+      const scopeCtx = scopeCanvas.getContext("2d");
+      function drawScope() {
+        if (!analyser) {
+          requestAnimationFrame(drawScope);
+          return;
+        }
+        const w = scopeCanvas.width,
+          h = scopeCanvas.height;
+        scopeCtx.clearRect(0, 0, w, h);
+        const data = analyser.getValue();
+        const isDay = document.body.classList.contains("day");
+        scopeCtx.strokeStyle = isDay
+          ? "rgba(77,166,255,0.6)"
+          : "rgba(123,200,255,0.5)";
+        scopeCtx.lineWidth = 2;
+        scopeCtx.beginPath();
+        for (let i = 0; i < data.length; i++) {
+          const x = (i / data.length) * w;
+          const y = ((1 - data[i]) / 2) * h;
+          i === 0 ? scopeCtx.moveTo(x, y) : scopeCtx.lineTo(x, y);
+        }
+        scopeCtx.stroke();
+        // Glow
+        scopeCtx.strokeStyle = isDay
+          ? "rgba(77,166,255,0.15)"
+          : "rgba(123,200,255,0.12)";
+        scopeCtx.lineWidth = 6;
+        scopeCtx.beginPath();
+        for (let i = 0; i < data.length; i++) {
+          const x = (i / data.length) * w;
+          const y = ((1 - data[i]) / 2) * h;
+          i === 0 ? scopeCtx.moveTo(x, y) : scopeCtx.lineTo(x, y);
+        }
+        scopeCtx.stroke();
+        requestAnimationFrame(drawScope);
+      }
+
+      // --- Note Visualizer ---
+      const noteCanvas = $("#noteViz");
+      const noteCtx = noteCanvas.getContext("2d");
+      const activeNoteViz = new Map(); // note -> {x, brightness}
+      function drawNoteViz() {
+        const w = noteCanvas.width,
+          h = noteCanvas.height;
+        noteCtx.clearRect(0, 0, w, h);
+        const scale = SCALES[$("#scaleSelect").value] || SCALES.C_major;
+        const oct = parseInt($("#octaveSelect").value);
+        const barW = w / scale.length;
+        for (let i = 0; i < scale.length; i++) {
+          const note = noteName(scale[i], oct);
+          const isActive = activeNoteViz.has(note);
+          const brightness = isActive ? 1 : 0;
+          const isDay = document.body.classList.contains("day");
+          if (isActive) {
+            noteCtx.fillStyle = isDay
+              ? "rgba(77,166,255,0.3)"
+              : "rgba(77,166,255,0.2)";
+            noteCtx.fillRect(i * barW + 2, 0, barW - 4, h);
+            // Glow bar
+            noteCtx.fillStyle = "rgba(77,166,255,0.6)";
+            noteCtx.fillRect(i * barW + 2, h - 8, barW - 4, 8);
+          }
+          // Note label
+          noteCtx.fillStyle = isActive
+            ? isDay
+              ? "#1a6dcc"
+              : "#7bc8ff"
+            : isDay
+            ? "#7a8da4"
+            : "#566882";
+          noteCtx.font = '12px "JetBrains Mono",monospace';
+          noteCtx.textAlign = "center";
+          noteCtx.fillText(scale[i] + oct, i * barW + barW / 2, h / 2 + 4);
+        }
+        requestAnimationFrame(drawNoteViz);
+      }
+      drawNoteViz();
+
+      // --- Knob Drawing ---
+      class Knob {
+        constructor(canvasId, min, max, val, step, onChange) {
+          this.canvas = $(canvasId);
+          this.ctx = this.canvas.getContext("2d");
+          this.min = min;
+          this.max = max;
+          this.val = val;
+          this.step = step;
+          this.onChange = onChange;
+          this.dragging = false;
+          this.lastY = 0;
+          this.draw();
+          this.canvas.addEventListener("mousedown", (e) => {
+            this.dragging = true;
+            this.lastY = e.clientY;
+          });
+          this.canvas.addEventListener(
+            "touchstart",
+            (e) => {
+              this.dragging = true;
+              this.lastY = e.touches[0].clientY;
+            },
+            { passive: true }
+          );
+          window.addEventListener("mousemove", (e) => {
+            if (!this.dragging) return;
+            const dy = this.lastY - e.clientY;
+            this.lastY = e.clientY;
+            this.val = clamp(this.val + dy * this.step * 2, this.min, this.max);
+            this.draw();
+            this.onChange(this.val);
+          });
+          window.addEventListener(
+            "touchmove",
+            (e) => {
+              if (!this.dragging) return;
+              const dy = this.lastY - e.touches[0].clientY;
+              this.lastY = e.touches[0].clientY;
+              this.val = clamp(
+                this.val + dy * this.step * 2,
+                this.min,
+                this.max
+              );
+              this.draw();
+              this.onChange(this.val);
+            },
+            { passive: true }
+          );
+          window.addEventListener("mouseup", () => (this.dragging = false));
+          window.addEventListener("touchend", () => (this.dragging = false));
+          // Double-click reset
+          this.canvas.addEventListener("dblclick", () => {
+            this.val = (this.min + this.max) / 2;
+            this.draw();
+            this.onChange(this.val);
+          });
+        }
+        draw() {
+          const c = this.ctx,
+            w = this.canvas.width,
+            h = this.canvas.height;
+          const cx = w / 2,
+            cy = h / 2,
+            r = w / 2 - 16;
+          c.clearRect(0, 0, w, h);
+          const startAngle = 0.75 * Math.PI;
+          const endAngle = 2.25 * Math.PI;
+          const frac = (this.val - this.min) / (this.max - this.min);
+          const valAngle = startAngle + frac * (endAngle - startAngle);
+          const isDay = document.body.classList.contains("day");
+          // Track
+          c.beginPath();
+          c.arc(cx, cy, r, startAngle, endAngle);
+          c.strokeStyle = isDay ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.08)";
+          c.lineWidth = 6;
+          c.lineCap = "round";
+          c.stroke();
+          // Value arc
+          c.beginPath();
+          c.arc(cx, cy, r, startAngle, valAngle);
+          const grad = c.createLinearGradient(0, 0, w, h);
+          grad.addColorStop(0, "#4da6ff");
+          grad.addColorStop(1, "#7bffd6");
+          c.strokeStyle = grad;
+          c.lineWidth = 6;
+          c.lineCap = "round";
+          c.stroke();
+          // Thumb
+          const tx = cx + Math.cos(valAngle) * r;
+          const ty = cy + Math.sin(valAngle) * r;
+          c.beginPath();
+          c.arc(tx, ty, 7, 0, Math.PI * 2);
+          c.fillStyle = "#fff";
+          c.fill();
+          c.strokeStyle = "rgba(0,0,0,0.2)";
+          c.lineWidth = 2;
+          c.stroke();
+          // Center glow
+          c.beginPath();
+          c.arc(cx, cy, r - 18, 0, Math.PI * 2);
+          c.fillStyle = isDay
+            ? "rgba(77,166,255,0.04)"
+            : "rgba(77,166,255,0.06)";
+          c.fill();
+        }
+      }
+
+      const knobCutoff = new Knob("#knobCutoff", -800, 800, 0, 10, (v) => {
+        S.trim.cutoff = v;
+        $("#knobCutoffVal").textContent =
+          (v > 0 ? "+" : "") + Math.round(v) + " Hz";
+        applyWeather();
+      });
+      const knobReverb = new Knob("#knobReverb", -0.3, 0.3, 0, 0.005, (v) => {
+        S.trim.reverb = v;
+        $("#knobReverbVal").textContent = (v > 0 ? "+" : "") + v.toFixed(2);
+        applyWeather();
+      });
+      const knobVibe = new Knob("#knobVibe", -0.2, 0.2, 0, 0.005, (v) => {
+        S.trim.vib = v;
+        $("#knobVibeVal").textContent = (v > 0 ? "+" : "") + v.toFixed(2);
+        applyWeather();
+      });
+
+      // --- Keyboard Input ---
+      const activeKeys = new Set();
+      const noteByKey = new Map();
+      function currentScale() {
+        return SCALES[$("#scaleSelect").value] || SCALES.C_major;
+      }
+      function baseOctave() {
+        return parseInt($("#octaveSelect").value);
+      }
+      function noteForIdx(i) {
+        const sc = currentScale();
+        const o = baseOctave();
+        return noteName(sc[i % sc.length], o + Math.floor(i / sc.length));
+      }
+
+      window.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (k === " ") {
+          S.hold = !S.hold;
+          $("#holdBtn").textContent = "Hold: " + (S.hold ? "On" : "Off");
+          e.preventDefault();
+          return;
+        }
+        if (!S.audioReady || activeKeys.has(k)) return;
+        let note = null;
+        const idx = KEYMAP.indexOf(k);
+        if (idx !== -1) {
+          note = noteForIdx(idx);
+        } else if (PASSING[k] != null) {
+          note = noteForIdx(PASSING[k]);
+        }
+        if (!note) return;
+        activeKeys.add(k);
+        noteByKey.set(k, note);
+        activeNoteViz.set(note, 1);
+        if (S.poly || S.hold) {
+          instrument &&
+            instrument.triggerAttack &&
+            instrument.triggerAttack(note);
+        } else {
+          instrument &&
+            instrument.triggerAttackRelease &&
+            instrument.triggerAttackRelease(note, 0.35);
+          setTimeout(() => activeNoteViz.delete(note), 350);
+        }
+      });
+      window.addEventListener("keyup", (e) => {
+        const k = e.key.toLowerCase();
+        activeKeys.delete(k);
+        const note = noteByKey.get(k);
+        if (
+          (S.poly || S.hold) &&
+          instrument &&
+          instrument.triggerRelease &&
+          note
+        ) {
+          instrument.triggerRelease(note);
+          noteByKey.delete(k);
+        }
+        activeNoteViz.delete(note);
+      });
+
+      // MIDI
+      if (navigator.requestMIDIAccess) {
+        navigator
+          .requestMIDIAccess()
+          .then((m) => {
+            for (const inp of m.inputs.values()) {
+              inp.onmidimessage = (msg) => {
+                if (!S.audioReady) return;
+                const [st, d1, d2] = msg.data,
+                  cmd = st & 0xf0;
+                if (cmd === 0x90 && d2 > 0) {
+                  const f = Tone.Frequency(d1, "midi").toFrequency();
+                  const nn = Tone.Frequency(d1, "midi").toNote();
+                  activeNoteViz.set(nn, 1);
+                  S.poly || S.hold
+                    ? instrument.triggerAttack(f)
+                    : instrument.triggerAttackRelease(f, 0.35);
+                } else if (cmd === 0x80 || (cmd === 0x90 && d2 === 0)) {
+                  const f = Tone.Frequency(d1, "midi").toFrequency();
+                  const nn = Tone.Frequency(d1, "midi").toNote();
+                  activeNoteViz.delete(nn);
+                  if (S.poly || S.hold)
+                    instrument.triggerRelease && instrument.triggerRelease(f);
+                }
+              };
+            }
+          })
+          .catch(() => {});
+      }
+
+      // --- Live Weather (OWM) ---
+      let liveTimer = null;
+      async function fetchLive() {
+        const key = $("#owmKey").value.trim();
+        if (!key) {
+          $("#statusLine").textContent = "Enter API key first";
+          return;
+        }
+        try {
+          $("#statusLine").textContent = "Fetching…";
+          // Try browser geolocation first, fallback to Trondheim coords
+          let lat = 63.4305,
+            lon = 10.3951;
+          try {
+            const pos = await new Promise((res, rej) =>
+              navigator.geolocation.getCurrentPosition(res, rej, {
+                timeout: 8000,
+              })
+            );
+            lat = pos.coords.latitude;
+            lon = pos.coords.longitude;
+          } catch (e) {}
+          const r = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=metric`
+          );
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const w = await r.json();
+          S.temp = w.main?.temp ?? S.temp;
+          S.cond = w.weather?.[0]?.main || "Clear";
+          S.wind = w.wind?.speed ?? S.wind;
+          S.humidity = w.main?.humidity ?? 70;
+          S.loc = (w.name || "Unknown") + ", " + (w.sys?.country || "");
+          const tz = w.timezone ?? 0;
+          const local = new Date((w.dt + tz) * 1000);
+          const h = local.getUTCHours();
+          S.isDay = h >= 6 && h < 20;
+          const lp = 2551443;
+          const ns = 947182440;
+          S.moon = ((Date.now() / 1000 - ns) % lp) / lp;
+          applyWeather();
+          $("#dispTime").textContent = local.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC",
+          });
+          $("#statusLine").textContent = `Live: ${S.loc} — ${
+            S.cond
+          }, ${Math.round(S.temp)}°C`;
+          $("#engineTag").textContent = "LIVE";
+        } catch (e) {
+          $("#statusLine").textContent = "Error: " + e.message;
+        }
+      }
+
+      // --- Event Wiring ---
+      $("#startBtn").addEventListener("click", initAudio);
+      $("#masterVol").addEventListener("input", (e) => {
+        const v = parseInt(e.target.value);
+        if (S.audioReady) Tone.Destination.volume.value = v;
+        $("#masterLbl").textContent = v + " dB";
+      });
+      $("#modeBtn").addEventListener("click", () => {
+        S.poly = !S.poly;
+        $("#modeBtn").textContent = S.poly ? "Poly" : "Mono";
+        if (S.audioReady) loadPreset(S.preset);
+      });
+      $("#corePad").addEventListener("click", () => loadPreset("corePadFM"));
+      $("#coreBass").addEventListener("click", () => loadPreset("coreBass"));
+      $("#warmPad").addEventListener("click", () => loadPreset("warmPad"));
+      $("#glassPreset").addEventListener("click", () => loadPreset("glass"));
+      $("#driftPreset").addEventListener("click", () => loadPreset("drift"));
+      $("#holdBtn").addEventListener("click", () => {
+        S.hold = !S.hold;
+        $("#holdBtn").textContent = "Hold: " + (S.hold ? "On" : "Off");
+      });
+      $("#adsrReset").addEventListener("click", () => {
+        loadPreset(S.preset); // resets ADSR to preset default
+      });
+      ["A", "D", "S", "R"].forEach((p) => {
+        const el = $("#adsr" + p);
+        el.addEventListener("input", (e) => {
+          S.adsr[p] = parseFloat(e.target.value);
+          const suffix = p === "S" ? "" : "s";
+          $("#adsr" + p + "Val").textContent = S.adsr[p].toFixed(2) + suffix;
+          applyADSR();
+        });
+      });
+      $("#srcToggle").addEventListener("click", () => {
+        S.liveMode = !S.liveMode;
+        $("#srcToggle").textContent = S.liveMode ? "Live API" : "Simulated ✓";
+        $("#engineTag").textContent = S.liveMode ? "LIVE" : "SIMULATED";
+        if (!S.liveMode) {
+          clearInterval(liveTimer);
+          liveTimer = null;
+          runSimulated();
+        }
+      });
+      $("#liveBtn").addEventListener("click", () => {
+        S.liveMode = true;
+        $("#srcToggle").textContent = "Live API";
+        fetchLive();
+        clearInterval(liveTimer);
+        liveTimer = setInterval(fetchLive, 10 * 60 * 1000);
+      });
+
+      // --- Location Picker ---
+      $("#locSelect").addEventListener("change", (e) => {
+        currentLocationKey = e.target.value;
+        const L = LOCATIONS[currentLocationKey];
+        $("#locFlavor").textContent = L.flavor;
+        if (!S.liveMode) runSimulated();
+      });
+
+      // --- Simulated Weather Loop ---
+      function runSimulated() {
+        const w = simulateWeather();
+        S.temp = w.temp;
+        S.cond = w.cond;
+        S.wind = w.wind;
+        S.humidity = w.humidity;
+        S.moon = w.moon;
+        S.isDay = w.isDay;
+        S.loc = w.loc;
+        const now = new Date();
+        $("#dispTime").textContent = now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        // Auto-switch preset on location change
+        const rec = choosePreset(S.temp, S.cond, S.wind);
+        if (S.audioReady && rec !== S.preset) {
+          loadPreset(rec);
+        }
+        applyWeather();
+      }
+      // Run simulated immediately and every 60s
+      runSimulated();
+      setInterval(() => {
+        if (!S.liveMode) runSimulated();
+      }, 60000);
+
+      // Update clock every second
+      setInterval(() => {
+        if (!S.liveMode) {
+          const now = new Date();
+          $("#dispTime").textContent = now.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>
