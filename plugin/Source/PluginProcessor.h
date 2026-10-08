@@ -67,7 +67,8 @@ private:
     void setStatus (Status, const juce::String&);
 
     atmos::Engine engine;
-    atmos::Day day, homeDay;
+    atmos::Day day, homeDay; // 'day' is written on the message thread; dayLock guards it for state saves
+    juce::CriticalSection dayLock;
     bool previewing = false, stateRestored = false, dealtOnce = false;
     Status statusNow = Status::dealing;
     juce::String statusText;

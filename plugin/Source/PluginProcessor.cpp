@@ -99,7 +99,11 @@ void AtmosProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
 
 void AtmosProcessor::applyDay (const Day& d)
 {
-    day = d;
+    {
+        // Hosts may save the project from another thread at any moment
+        const juce::ScopedLock sl (dayLock);
+        day = d;
+    }
     const Climate c = d.climate();
     const double frame = natureParams (c).frame;
     if (std::abs (frame - lastFrame) > 0.0005)
@@ -222,8 +226,13 @@ void AtmosProcessor::getStateInformation (juce::MemoryBlock& dest)
     juce::XmlElement root ("Atmospheric");
     root.setAttribute ("version", 1);
     // Save the Day the user is hearing (a globe preview included), so the project reopens as it sounded
+    Day snapshot;
+    {
+        const juce::ScopedLock sl (dayLock);
+        snapshot = day;
+    }
     auto* dayXml = root.createNewChildElement ("Day");
-    dayXml->addTextElement (juce::JSON::toString (day.toVar(), true));
+    dayXml->addTextElement (juce::JSON::toString (snapshot.toVar(), true));
     if (auto macros = apvts.copyState().createXml()) root.addChildElement (macros.release());
     copyXmlToBinary (root, dest);
 }
