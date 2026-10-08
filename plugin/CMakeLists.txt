@@ -103,9 +103,9 @@ endif()
 
 # ---- Loads the built plugin like a DAW would (see tests/HostCheck.cpp)
 if(ATMOS_BUILD_TESTS)
-    juce_add_console_app(AtmosHostCheck PRODUCT_NAME "AtmosHostCheck")
+    juce_add_console_app(AtmosHostCheck PRODUCT_NAME "AtmosHostCheck" PLUGINHOST_AU TRUE)
     target_sources(AtmosHostCheck PRIVATE tests/HostCheck.cpp)
-    target_compile_definitions(AtmosHostCheck PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+    target_compile_definitions(AtmosHostCheck PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
         JUCE_USE_FLAC=0 JUCE_USE_OGGVORBIS=0 JUCE_MODAL_LOOPS_PERMITTED=1)
     target_link_libraries(AtmosHostCheck PRIVATE juce::juce_audio_processors juce::juce_gui_basics
         juce::juce_recommended_config_flags)
