@@ -1,0 +1,15 @@
+{
+  "name": "atmospheric-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Weather relay for the Atmospheric synth: keeps the OpenWeatherMap key off users' machines",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}

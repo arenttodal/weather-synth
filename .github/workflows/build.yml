@@ -1,0 +1,166 @@
+name: Build Atmospheric
+
+on:
+  push:
+    paths: ["plugin/**", "server/**", "installer/**", ".github/workflows/build.yml", "lab.html", "tools/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JUCE_TAG: "8.0.4"
+
+jobs:
+  relay:
+    name: Relay server tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm test
+        working-directory: server
+      - name: Lab and plugin mapping agree
+        run: |
+          node tools/gen-vectors.mjs
+          git diff --exit-code plugin/tests/vectors.json || (echo "::error::lab.html mapping changed; run node tools/gen-vectors.mjs and commit" && exit 1)
+
+  macos:
+    name: macOS (universal)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >
+          cmake -S plugin -B build -DCMAKE_BUILD_TYPE=Release -DATMOS_FETCH_JUCE=ON -DATMOS_JUCE_TAG=$JUCE_TAG
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+      - name: Build
+        run: cmake --build build --config Release -j 4
+      - name: Unit tests
+        run: ./build/AtmosTests_artefacts/Release/AtmosTests --snapshot editor.png
+      - name: Sign ad hoc
+        run: |
+          A=build/Atmospheric_artefacts/Release
+          for b in "$A/VST3/Atmospheric.vst3" "$A/AU/Atmospheric.component" "$A/Standalone/Atmospheric.app"; do
+            codesign --force --deep --sign - "$b"
+          done
+      - name: Host check (VST3 + AU)
+        run: |
+          A=build/Atmospheric_artefacts/Release
+          ./build/AtmosHostCheck_artefacts/Release/AtmosHostCheck "$A/VST3/Atmospheric.vst3"
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$A/AU/Atmospheric.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          sleep 2
+          auval -v aumu Atm1 Atmo
+      - name: pluginval
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+          ./pluginval.app/Contents/MacOS/pluginval --strictness-level 7 --timeout-ms 600000 --validate-in-process \
+            --output-dir pluginval-logs build/Atmospheric_artefacts/Release/VST3/Atmospheric.vst3
+      - name: Package
+        run: |
+          A=build/Atmospheric_artefacts/Release
+          D=dist/Atmospheric-macOS
+          mkdir -p "$D"
+          cp -R "$A/VST3/Atmospheric.vst3" "$A/AU/Atmospheric.component" "$A/Standalone/Atmospheric.app" "$D/"
+          cp installer/macos/Install.command installer/macos/Uninstall.command "installer/macos/READ ME.txt" "$D/"
+          chmod +x "$D/Install.command" "$D/Uninstall.command"
+          (cd dist && ditto -c -k --sequesterRsrc --keepParent Atmospheric-macOS Atmospheric-macOS.zip)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Atmospheric-macOS
+          path: |
+            dist/Atmospheric-macOS.zip
+            editor.png
+            editor-globe.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pluginval-macOS
+          path: pluginval-logs
+          if-no-files-found: ignore
+
+  windows:
+    name: Windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S plugin -B build -G "Visual Studio 17 2022" -A x64 -DATMOS_FETCH_JUCE=ON -DATMOS_JUCE_TAG=${{ env.JUCE_TAG }}
+      - name: Build
+        run: cmake --build build --config Release -j 4
+      - name: Unit tests
+        run: build\AtmosTests_artefacts\Release\AtmosTests.exe
+      - name: Host check
+        run: build\AtmosHostCheck_artefacts\Release\AtmosHostCheck.exe build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
+      - name: pluginval
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath pv
+          & pv\pluginval.exe --strictness-level 7 --timeout-ms 600000 --validate-in-process build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Package
+        shell: pwsh
+        run: |
+          $d = "dist\Atmospheric-Windows"
+          New-Item -ItemType Directory -Force -Path $d | Out-Null
+          Copy-Item -Recurse build\Atmospheric_artefacts\Release\VST3\Atmospheric.vst3 $d
+          Copy-Item build\Atmospheric_artefacts\Release\Standalone\Atmospheric.exe $d
+          Copy-Item installer\windows\Install.ps1 $d
+          Compress-Archive -Path $d -DestinationPath dist\Atmospheric-Windows.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: Atmospheric-Windows, path: dist/Atmospheric-Windows.zip }
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build xvfb libasound2-dev libcurl4-openssl-dev libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libgl1-mesa-dev
+      - name: Build
+        run: |
+          cmake -S plugin -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DATMOS_FETCH_JUCE=ON -DATMOS_JUCE_TAG=$JUCE_TAG
+          cmake --build build
+      - name: Tests and host check
+        run: |
+          xvfb-run -a ./build/AtmosTests_artefacts/Release/AtmosTests
+          xvfb-run -a ./build/AtmosHostCheck_artefacts/Release/AtmosHostCheck build/Atmospheric_artefacts/Release/VST3/Atmospheric.vst3
+      - name: Package
+        run: |
+          mkdir -p dist/Atmospheric-Linux
+          cp -R build/Atmospheric_artefacts/Release/VST3/Atmospheric.vst3 build/Atmospheric_artefacts/Release/Standalone/Atmospheric dist/Atmospheric-Linux/
+          (cd dist && zip -qr Atmospheric-Linux.zip Atmospheric-Linux)
+      - uses: actions/upload-artifact@v4
+        with: { name: Atmospheric-Linux, path: dist/Atmospheric-Linux.zip }
+
+  release:
+    name: Publish download
+    needs: [relay, macos, windows, linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Update the "latest" pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest --prerelease --target "$GITHUB_SHA" \
+            --title "Atmospheric test build ($(date -u +%Y-%m-%d) · ${GITHUB_SHA::7})" \
+            --notes "Built from ${GITHUB_REF_NAME} at ${GITHUB_SHA}. macOS: unzip, then right-click Install.command > Open." \
+            artifacts/Atmospheric-macOS/dist/Atmospheric-macOS.zip \
+            artifacts/Atmospheric-Windows/Atmospheric-Windows.zip \
+            artifacts/Atmospheric-Linux/Atmospheric-Linux.zip

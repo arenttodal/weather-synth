@@ -1,0 +1,29 @@
+ATMOSPHERIC (test build)
+One sound, dealt by your sky.
+
+INSTALL
+1. Right-click "Install.command" and choose Open, then Open again.
+   (macOS asks because this test build isn't signed by Apple yet.)
+   If that's blocked, open Terminal, type   bash   and a space, drag
+   Install.command into the window, and press Return.
+2. Rescan plugins in your DAW. Atmospheric appears as an instrument
+   (VST3 and Audio Unit). The standalone app is in ~/Applications.
+
+PLAYING
+- Five knobs start where today's weather put them (12 o'clock).
+  Double-click a knob to return it to nature.
+- Keep this Day saves today's sound to your Days list.
+- Projects remember their Day: open the project tomorrow and it sounds
+  the same. "Hear today" swaps in today's sky.
+- Place: follow your connection's location, or fix a city.
+
+ADMIN
+- Cmd+Shift+G (or Cmd+W where the host allows, or triple-click the sky
+  card) opens the globe. Click anywhere to hear that sky right now.
+
+FILES
+- Kept Days and settings: ~/Library/Application Support/Atmospheric/
+- settings.json "relayUrl" overrides the weather server address.
+
+UNINSTALL
+- Run Uninstall.command.
