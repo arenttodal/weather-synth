@@ -93,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S plugin -B build -G "Visual Studio 17 2022" -A x64 "-DATMOS_FETCH_JUCE=ON" "-DATMOS_JUCE_TAG=${{ env.JUCE_TAG }}"
+        run: cmake -S plugin -B build -G "Visual Studio 17 2022" -A x64 "-DATMOS_FETCH_JUCE=ON" "-DATMOS_JUCE_TAG=${{ env.JUCE_TAG }}" "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /DNDEBUG /Zi" "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE=/DEBUG /OPT:REF /OPT:ICF" "-DCMAKE_EXE_LINKER_FLAGS_RELEASE=/DEBUG /OPT:REF /OPT:ICF" "-DCMAKE_MODULE_LINKER_FLAGS_RELEASE=/DEBUG /OPT:REF /OPT:ICF"
       - name: Build
         run: cmake --build build --config Release -j 4
       - name: Unit tests

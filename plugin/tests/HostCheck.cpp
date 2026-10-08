@@ -60,6 +60,12 @@ static float run (juce::AudioPluginInstance& p, double sr, int block, int blocks
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    // Print where it died if anything crashes (symbols need debug info next to the binaries)
+    juce::SystemStats::setApplicationCrashHandler ([] (void*) {
+        std::printf ("\n*** CRASH ***\n%s\n", juce::SystemStats::getStackBacktrace().toRawUTF8());
+        std::fflush (stdout);
+        std::_Exit (3);
+    });
     if (argc < 2)
     {
         std::printf ("usage: AtmosHostCheck <path to .vst3 or .component>\n");
@@ -194,6 +200,33 @@ int main (int argc, char** argv)
         juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
         ed.reset();
         EXPECT (finite.load(), "background-thread automation with the editor on screen");
+    }
+    // pluginval's "Editor Automation" verbatim: no audio, every parameter set from a
+    // background thread every 10 ms, 1000 times, editor on screen
+    {
+        std::unique_ptr<juce::AudioProcessorEditor> ed (inst->createEditorIfNeeded());
+       #if ! JUCE_LINUX
+        ed->addToDesktop (juce::ComponentPeer::windowHasTitleBar);
+        ed->setVisible (true);
+       #endif
+        std::atomic<bool> done { false };
+        auto params = inst->getParameters();
+        std::thread worker ([&] {
+            juce::Random wr (5);
+            for (int n = 0; n < 1000; ++n)
+            {
+                for (auto* prm : params)
+                    prm->setValue (wr.nextFloat());
+                juce::Thread::sleep (10);
+            }
+            done = true;
+        });
+        while (! done)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (10);
+        worker.join();
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
+        ed.reset();
+        EXPECT (true, "pluginval-style editor automation (no audio, all parameters, 10 s)");
     }
     second.reset();
     inst.reset();
