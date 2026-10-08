@@ -46,9 +46,10 @@ public:
     bool keepDay (const juce::String& name);
     void loadDay (const atmos::Day&);
     bool dayIsCurrent() const; // false when the loaded Day is from an earlier date
-    const atmos::Day& currentDay() const { return day; }
-    atmos::Climate currentClimate() const { return day.climate(); }
-    const atmos::CoreSound& currentSound() const { return sound; }
+    // Copies taken under the lock: the host may restore a project from another thread
+    atmos::Day currentDay() const;
+    atmos::Climate currentClimate() const { return currentDay().climate(); }
+    atmos::CoreSound currentSound() const;
     atmos::Patch currentPatch() const; // what the engine is playing (core sound + weather + macros)
     Status status() const { return statusNow; }
     juce::String statusMessage() const { return statusText; }
@@ -81,7 +82,9 @@ private:
     atmos::Day day, homeDay;
     atmos::CoreSound sound;
     juce::CriticalSection dayLock;
-    bool previewing = false, stateRestored = false, dealtOnce = false;
+    bool previewing = false, dealtOnce = false;
+    std::atomic<bool> stateRestored { false };
+    std::atomic<int> dayGeneration { 0 }; // bumped whenever something else sets the Day, so a late weather reply can't overwrite it
     Status statusNow = Status::dealing;
     juce::String statusText;
 

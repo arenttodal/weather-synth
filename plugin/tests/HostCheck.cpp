@@ -118,6 +118,58 @@ int main (int argc, char** argv)
     juce::MemoryBlock state2;
     second->getStateInformation (state2);
     EXPECT (state2 == state, "restored instance saves identical state (same Day)");
+    if (state2 != state)
+    {
+        // Show what differs (plugin state is XML inside JUCE's binary wrapper)
+        auto text = [] (const juce::MemoryBlock& m) {
+            // VST3 wraps the plugin's own state as base64 inside XML; AU and raw states are plain
+            std::string bytes ((const char*) m.getData(), m.getSize());
+            for (auto& ch : bytes)
+                if (ch == 0) ch = ' ';
+            juce::String raw = juce::String::fromUTF8 (bytes.data(), (int) bytes.size());
+            if (raw.contains ("<IComponent>"))
+                {
+                    juce::MemoryBlock inner;
+                    inner.fromBase64Encoding (raw.fromFirstOccurrenceOf ("<IComponent>", false, false).upToFirstOccurrenceOf ("</IComponent>", false, false).trim());
+                    auto t = juce::String::fromUTF8 ((const char*) inner.getData(), (int) inner.getSize());
+                    return t.fromFirstOccurrenceOf ("<?xml", true, false);
+                }
+            return raw;
+        };
+        {
+            auto xa = juce::parseXML (juce::String::fromUTF8 ((const char*) state.getData(), (int) state.getSize()));
+            auto xb = juce::parseXML (juce::String::fromUTF8 ((const char*) state2.getData(), (int) state2.getSize()));
+            if (xa && xb)
+                for (auto* ca : xa->getChildIterator())
+                {
+                    auto* cb = xb->getChildByName (ca->getTagName());
+                    std::printf ("    section %s: %s\n", ca->getTagName().toRawUTF8(),
+                                 cb == nullptr ? "missing" : ca->isEquivalentTo (cb, false) ? "same" : "differs");
+                    if (cb && ! ca->isEquivalentTo (cb, false))
+                        std::printf ("      %s\n      %s\n", ca->getAllSubText().substring (0, 200).toRawUTF8(), cb->getAllSubText().substring (0, 200).toRawUTF8());
+                }
+            std::printf ("    sizes %d / %d\n", (int) state.getSize(), (int) state2.getSize());
+            const auto* pa = (const char*) state.getData();
+            const auto* pb = (const char*) state2.getData();
+            for (size_t i = 0; i < juce::jmin (state.getSize(), state2.getSize()); ++i)
+                if (pa[i] != pb[i])
+                {
+                    const size_t from = i > 80 ? i - 80 : 0;
+                    std::printf ("    first difference at byte %d:\n      %s\n      %s\n", (int) i,
+                                 juce::String (pa + from, 160).toRawUTF8(), juce::String (pb + from, 160).toRawUTF8());
+                    break;
+                }
+        }
+        juce::StringArray a, b;
+        a.addLines (text (state));
+        b.addLines (text (state2));
+        for (int i = 0, shown = 0; i < juce::jmax (a.size(), b.size()) && shown < 8; ++i)
+            if (a[i] != b[i])
+            {
+                std::printf ("    saved:    %s\n    restored: %s\n", a[i].substring (0, 160).toRawUTF8(), b[i].substring (0, 160).toRawUTF8());
+                ++shown;
+            }
+    }
 
     // Editor open/close a few times
     if (inst->hasEditor())

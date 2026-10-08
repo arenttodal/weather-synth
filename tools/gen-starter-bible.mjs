@@ -1,4 +1,4 @@
-// Writes designer/starter-bible.json: nine starting core sounds with boundaries.
+// Writes designer/starter-bible.json and plugin/Resources/bible.json: the starting core sounds with boundaries.
 // Each parameter's box defaults to a moderate width around its home value;
 // a sound overrides the box where its weather should be allowed to go further.
 //   node tools/gen-starter-bible.mjs
@@ -7,20 +7,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-// Mirror of engine/atmos/Params.h (ranges and scales)
-const P = {
-  srcType: [0, 3, 0, "c"], srcFrame: [0, 1, 0.35], fmRatio: [0.5, 8, 2, "l"], fmIndex: [0, 10, 2.5], fmFeedback: [0, 1, 0],
-  sawVoices: [1, 7, 5], sawDetune: [0, 60, 18], pluckDamp: [0, 1, 0.4], pluckBright: [0, 1, 0.6], srcSpread: [0, 40, 6],
-  srcSub: [0, 1, 0.2], srcShimmer: [0, 1, 0], srcBreath: [0, 1, 0], attack: [0.002, 4, 0.08, "l"], decay: [0.05, 6, 0.8, "l"],
-  sustain: [0, 1, 0.75], release: [0.05, 12, 1.2, "l"], vibDepth: [0, 1, 0.05], vibRate: [0.1, 10, 4.5, "l"], glide: [0, 1, 0.15],
-  drive: [0, 1, 0], crushBits: [4, 16, 16], crushRate: [0, 1, 0], filtType: [0, 4, 0, "c"], cutoff: [40, 18000, 2400, "l"],
-  resonance: [0, 0.9, 0.12], filtDrive: [0, 1, 0.1], filtEnv: [-1, 1, 0.15], filtEnvDecay: [0.02, 4, 0.6, "l"], tilt: [-12, 6, 0],
-  kalAmount: [0, 1, 0], kalFocus: [0, 1, 0.5], kalSpread: [0, 1, 0.5], movMode: [0, 4, 2, "c"], movAmount: [0, 1, 0.3],
-  movA: [0, 1, 0.45], movB: [0, 1, 0.6], movC: [0, 1, 0.6], echoType: [0, 1, 0, "c"], echoSend: [0, 1, 0.1], echoTime: [40, 1200, 375, "l"],
-  echoFeedback: [0, 1, 0.4], echoTone: [0, 1, 0.5], echoAge: [0, 1, 0.35], echoStereo: [0, 2, 1, "c"], spaceType: [0, 3, 2, "c"],
-  spaceSend: [0, 1, 0.3], spaceDecay: [0.2, 12, 2.5, "l"], spaceSize: [0, 1, 0.5], spaceDamping: [0, 1, 0.4], spaceMod: [0, 1, 0.4],
-  spacePreDelay: [0, 250, 10], bedLevel: [0, 1, 0], bedColour: [200, 8000, 1800, "l"], outGain: [-24, 6, 0],
-};
+// Ranges and scales, read from engine/atmos/Params.h (the single source of truth)
+const P = {};
+for (const m of fs.readFileSync(path.join(root, "engine/atmos/Params.h"), "utf8").matchAll(
+  /\{ "(\w+)", "[^"]*", "[^"]*", ([-\d.]+), ([-\d.]+), ([-\d.]+), Scale::(\w+)/g))
+  P[m[1]] = [+m[2], +m[3], +m[4], m[5] === "choice" ? "c" : m[5] === "log" ? "l" : undefined];
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 function box(id, home) {
   const [min, max, , kind] = P[id];
@@ -39,39 +30,56 @@ function sound(name, anchor, home, wide = {}) {
   return { id: name.toLowerCase().replace(/[^a-z]+/g, "-"), name, anchor, params };
 }
 
+// Ten analogue starting points (Prophet-5, Memorymoog, OB, Juno lineage). Every sound drifts a little
+// (slop), saturates a little (drive) and sits in a real space.
+const analogue = { slop: 0.35, drive: 0.15 };
 const sounds = [
-  sound("Frost Glass", { temp: -12, wet: 0.3, light: 0.6 },
-    { srcFrame: 0, srcShimmer: 0.35, srcSub: 0.1, attack: 0.6, release: 3, sustain: 0.8, filtType: 1, cutoff: 3500, kalAmount: 0.25, kalFocus: 0.7,
-      movMode: 2, movAmount: 0.2, movA: 0.2, spaceType: 1, spaceSend: 0.45, spaceDecay: 6, echoSend: 0.15, vibDepth: 0.02 }),
-  sound("Polar Night", { temp: -22, wet: 0.2, light: 0.0 },
-    { srcFrame: 0.14, srcSub: 0.5, srcShimmer: 0.15, attack: 1.2, release: 4, cutoff: 700, filtEnv: 0.05, spaceType: 1, spaceSend: 0.55,
-      spaceDecay: 9, spaceSize: 0.8, kalAmount: 0.4, movMode: 1, movAmount: 0.2, tilt: -4 }, { spaceDecay: [5, 12] }),
-  sound("Fog Choir", { temp: 8, wet: 0.75, light: 0.3 },
-    { srcFrame: 0.86, srcSpread: 12, attack: 0.4, release: 2.5, filtType: 1, cutoff: 900, tilt: -4, kalAmount: 0.55, movMode: 2, movAmount: 0.4,
-      spaceType: 2, spaceSend: 0.5, spaceDecay: 4, echoType: 1, echoSend: 0.25, srcBreath: 0.15 }),
-  sound("Drizzle Reed", { temp: 10, wet: 0.6, light: 0.5 },
-    { srcFrame: 0.43, cutoff: 1800, resonance: 0.2, filtEnv: 0.3, attack: 0.03, decay: 0.6, sustain: 0.6, release: 0.9, movMode: 1, movAmount: 0.3,
-      echoType: 0, echoSend: 0.35, echoFeedback: 0.45, echoStereo: 1, spaceType: 0, spaceSend: 0.3, bedLevel: 0.2 }),
-  sound("Mild Breath", { temp: 16, wet: 0.35, light: 0.7 },
-    { srcFrame: 0.2, attack: 0.05, release: 1, cutoff: 2600, movMode: 2, movAmount: 0.25, spaceType: 2, spaceSend: 0.25, srcBreath: 0.1 }),
-  sound("Spring Pluck", { temp: 20, wet: 0.3, light: 0.85 },
-    { srcType: 3, pluckDamp: 0.35, pluckBright: 0.6, filtType: 1, cutoff: 6000, attack: 0.002, decay: 1.5, sustain: 0.0, release: 1.2,
-      echoSend: 0.3, echoTime: 330, spaceType: 0, spaceSend: 0.25, movMode: 0, srcSub: 0.1 }),
-  sound("Monsoon Kaleidoscope", { temp: 28, wet: 0.9, light: 0.4 },
-    { srcType: 2, sawVoices: 5, sawDetune: 14, cutoff: 1400, kalAmount: 0.7, kalSpread: 0.65, spaceType: 1, spaceSend: 0.7, spaceDecay: 7,
-      echoType: 1, echoSend: 0.4, echoFeedback: 0.6, bedLevel: 0.35, movMode: 2, movAmount: 0.35, attack: 0.25, release: 3 },
-    { spaceSend: [0.45, 1], echoFeedback: [0.4, 0.85], kalAmount: [0.45, 1] }),
-  sound("Heat Brass", { temp: 38, wet: 0.1, light: 1.0 },
-    { srcFrame: 1.0, drive: 0.35, cutoff: 5000, filtEnv: 0.35, attack: 0.01, decay: 0.4, sustain: 0.65, release: 0.5, movMode: 3, movAmount: 0.3,
-      spaceType: 3, spaceSend: 0.2, echoSend: 0.2, echoAge: 0.6, vibDepth: 0.1, srcSpread: 10 },
-    { drive: [0.15, 0.9], crushBits: [6, 16], crushRate: [0, 0.6], movAmount: [0.15, 0.9], movA: [0.4, 1] }),
-  sound("Storm FM", { temp: 15, wet: 0.95, light: 0.2 },
-    { srcType: 1, fmRatio: 2, fmIndex: 4, fmFeedback: 0.2, cutoff: 1600, resonance: 0.35, movMode: 1, movAmount: 0.4, spaceType: 1,
-      spaceSend: 0.6, bedLevel: 0.5, echoType: 1, echoSend: 0.4, attack: 0.02, release: 1.5 },
-    { bedLevel: [0.25, 1], resonance: [0.15, 0.7], movAmount: [0.2, 0.9] }),
+  sound("Frost Strings", { temp: 0, wet: 0.3, light: 0.7 }, { ...analogue,
+    oscAWave: 0, oscBWave: 1, oscBInterval: 1, oscBDetune: 9, mixA: 0.8, mixB: 0.7, mixSub: 0, filtType: 1, cutoff: 2600, resonance: 0.1,
+    keyTrack: 0.6, filtEnv: 0.25, fAttack: 0.5, fDecay: 2, fSustain: 0.6, fRelease: 2.5, attack: 0.45, decay: 2, sustain: 0.9, release: 2.2,
+    lfoRate: 5, vibDepth: 0.04, movMode: 2, movAmount: 0.45, movA: 0.3, movB: 0.7, spaceType: 1, spaceSend: 0.45, spaceDecay: 5, echoSend: 0.1 }),
+  sound("Polar Drone", { temp: -22, wet: 0.19, light: 0 }, { ...analogue,
+    oscAWave: 0, oscBWave: 1.6, oscBInterval: 0, oscBDetune: 4, mixA: 0.7, mixB: 0.6, mixSub: 0.5, filtType: 0, cutoff: 380, resonance: 0.35,
+    filtEnv: 0.15, fAttack: 2, fDecay: 4, fSustain: 0.5, fRelease: 4, attack: 1.5, decay: 3, sustain: 0.9, release: 5, lfoRate: 0.12, lfoFilter: 0.15,
+    movMode: 1, movAmount: 0.25, spaceType: 1, spaceSend: 0.55, spaceDecay: 9, spaceSize: 0.8, kalAmount: 0.3, tilt: -3 }, { spaceDecay: [5, 12] }),
+  sound("Fog Pad", { temp: 7, wet: 0.75, light: 0.3 }, { ...analogue,
+    oscAWave: 1, oscAPw: 0.3, lfoPwm: 0.45, lfoRate: 0.6, oscBWave: 0, oscBInterval: 3, mixA: 0.6, mixB: 0.45, mixNoise: 0.35, filtType: 2,
+    cutoff: 1100, resonance: 0.15, filtEnv: 0.15, fAttack: 1.2, fDecay: 3, fSustain: 0.7, fRelease: 3, attack: 0.9, decay: 2, sustain: 0.85, release: 3.5,
+    movMode: 2, movAmount: 0.5, spaceType: 2, spaceSend: 0.5, spaceDecay: 4, echoType: 1, echoSend: 0.2, tilt: -3 }, { mixNoise: [0.15, 0.8] }),
+  sound("Drizzle Keys", { temp: 11, wet: 0.55, light: 0.5 }, { ...analogue,
+    oscAWave: 0.6, oscAPw: 0.35, lfoPwm: 0.2, lfoRate: 1.2, oscBWave: 1, oscBDetune: 6, mixA: 0.8, mixB: 0.5, filtType: 1, cutoff: 900, resonance: 0.25,
+    filtEnv: 0.45, fAttack: 0.002, fDecay: 0.9, fSustain: 0.2, fRelease: 0.6, attack: 0.004, decay: 1.6, sustain: 0.45, release: 0.8, ampVel: 0.6, filtVel: 0.5,
+    movMode: 1, movAmount: 0.3, echoType: 0, echoSend: 0.3, echoFeedback: 0.4, echoStereo: 1, spaceType: 0, spaceSend: 0.3, bedLevel: 0.15 }),
+  sound("Velvet Brass", { temp: 26, wet: 0.42, light: 0.7 }, { ...analogue, drive: 0.2,
+    oscAWave: 0, oscBWave: 1, oscBDetune: 8, mixA: 0.85, mixB: 0.75, mixSub: 0.15, filtType: 1, cutoff: 700, resonance: 0.1, filtEnv: 0.55, keyTrack: 0.5,
+    fAttack: 0.09, fDecay: 0.7, fSustain: 0.55, fRelease: 0.4, attack: 0.06, decay: 0.8, sustain: 0.85, release: 0.45, pmEnvA: 0.03, vibDepth: 0.03,
+    lfoRate: 5.5, movMode: 2, movAmount: 0.25, spaceType: 2, spaceSend: 0.25, echoSend: 0.08 }),
+  sound("Spring Pluck", { temp: 20, wet: 0.3, light: 0.85 }, { ...analogue,
+    oscAWave: 0, oscBWave: 2, oscBInterval: 3, mixA: 0.85, mixB: 0.35, filtType: 0, cutoff: 500, resonance: 0.3, filtEnv: 0.7, keyTrack: 0.8, filtVel: 0.7,
+    fAttack: 0.001, fDecay: 0.35, fSustain: 0, fRelease: 0.3, attack: 0.001, decay: 1.2, sustain: 0, release: 0.6, ampVel: 0.6,
+    echoType: 0, echoSend: 0.35, echoTime: 330, echoStereo: 1, spaceType: 0, spaceSend: 0.25, movMode: 0 }),
+  sound("Heat Brass", { temp: 36, wet: 0.1, light: 1 }, { ...analogue, slop: 0.5, drive: 0.35,
+    voiceMode: 1, stackDetune: 12, oscAWave: 0, oscBWave: 1, oscBDetune: 10, mixA: 0.9, mixB: 0.8, mixSub: 0.25, filtType: 0, cutoff: 900, resonance: 0.2,
+    filtDrive: 0.5, filtEnv: 0.7, fAttack: 0.03, fDecay: 0.5, fSustain: 0.5, fRelease: 0.35, attack: 0.008, decay: 0.5, sustain: 0.8, release: 0.35,
+    pmEnvA: 0.05, pmOscB: 0.1, vibDepth: 0.05, movMode: 1, movAmount: 0.2, spaceType: 3, spaceSend: 0.2, echoSend: 0.15, echoAge: 0.6 },
+    { drive: [0.15, 0.95], crushBits: [6, 16], crushRate: [0, 0.6], pmOscB: [0, 0.6], slop: [0.3, 1], filtDrive: [0.3, 1] }),
+  sound("Thunder Bass", { temp: 16, wet: 0.95, light: 0.15 }, { ...analogue, drive: 0.3,
+    voiceMode: 2, stackDetune: 8, oscAWave: 0, oscBWave: 2, oscBInterval: 0, oscBDetune: 3, mixA: 0.85, mixB: 0.7, mixSub: 0.6, filtType: 0, cutoff: 220,
+    resonance: 0.35, filtDrive: 0.6, filtEnv: 0.5, keyTrack: 0.4, fAttack: 0.001, fDecay: 0.45, fSustain: 0.25, fRelease: 0.3, attack: 0.002, decay: 1.5,
+    sustain: 0.7, release: 0.35, portamento: 0.15, movMode: 0, bedLevel: 0.45, spaceType: 1, spaceSend: 0.25, echoSend: 0.1 },
+    { bedLevel: [0.25, 1], resonance: [0.15, 0.7] }),
+  sound("Monsoon Kaleidoscope", { temp: 28, wet: 0.9, light: 0.4 }, { ...analogue,
+    voiceMode: 1, stackDetune: 14, oscAWave: 0, oscBWave: 1, oscBDetune: 12, mixA: 0.8, mixB: 0.7, filtType: 2, cutoff: 1500, resonance: 0.2, filtEnv: 0.2,
+    fAttack: 0.6, fDecay: 2, fSustain: 0.6, fRelease: 3, attack: 0.35, decay: 2, sustain: 0.9, release: 3.5, kalAmount: 0.6, kalSpread: 0.65,
+    spaceType: 1, spaceSend: 0.65, spaceDecay: 7, echoType: 1, echoSend: 0.4, echoFeedback: 0.6, bedLevel: 0.35, movMode: 2, movAmount: 0.35 },
+    { spaceSend: [0.45, 1], echoFeedback: [0.4, 0.85], kalAmount: [0.4, 1] }),
+  sound("Night Bass", { temp: 10, wet: 0.3, light: 0.05 }, { ...analogue,
+    oscAWave: 1, oscAPw: 0.5, oscBWave: 0, oscBInterval: 0, mixA: 0.5, mixB: 0.8, mixSub: 0.4, filtType: 0, cutoff: 260, resonance: 0.15, filtDrive: 0.35,
+    filtEnv: 0.25, fAttack: 0.002, fDecay: 0.8, fSustain: 0.3, fRelease: 0.4, attack: 0.005, decay: 2, sustain: 0.8, release: 0.4, portamento: 0.1,
+    movMode: 1, movAmount: 0.2, spaceType: 0, spaceSend: 0.15, echoSend: 0.05 }),
 ];
 
-const out = { version: 1, sounds };
+const out = { version: 2, sounds };
 fs.writeFileSync(path.join(root, "designer/starter-bible.json"), JSON.stringify(out, null, 1));
 fs.mkdirSync(path.join(root, "plugin/Resources"), { recursive: true });
 fs.writeFileSync(path.join(root, "plugin/Resources/bible.json"), JSON.stringify(out));

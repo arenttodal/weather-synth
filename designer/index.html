@@ -1,6 +1,6 @@
 <meta charset="utf-8" />
 <title>Atmospheric Sound Designer</title>
-<meta name="description" content="Settle Atmospheric's core sounds: sources, wavetables and OSP effects, each with the boundaries the weather may move it within." />
+<meta name="description" content="Settle Atmospheric's core sounds: analogue oscillators, filters, envelopes and OSP effects, each with the boundaries the weather may move it within." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" />
 <style>
@@ -241,51 +241,68 @@
   // ---------------------------------------------------------------- schema (mirrors engine/atmos/Params.h)
   // Used until the engine reports its own schema; the two are checked against each other on start.
   const PARAMS = [
-    ["srcType","Source","Source",0,3,0,"choice","Wavetable|FM|Supersaw|Pluck"],["srcFrame","Wavetable","Source",0,1,.35,"linear"],
-    ["fmRatio","FM ratio","Source",.5,8,2,"log"],["fmIndex","FM index","Source",0,10,2.5,"linear"],["fmFeedback","FM feedback","Source",0,1,0,"linear"],
-    ["sawVoices","Saw voices","Source",1,7,5,"linear"],["sawDetune","Saw detune","Source",0,60,18,"linear"],["pluckDamp","Pluck damping","Source",0,1,.4,"linear"],
-    ["pluckBright","Pluck brightness","Source",0,1,.6,"linear"],["srcSpread","Layer spread","Source",0,40,6,"linear"],["srcSub","Sub octave","Source",0,1,.2,"linear"],
-    ["srcShimmer","Octave shimmer","Source",0,1,0,"linear"],["srcBreath","Breath noise","Source",0,1,0,"linear"],
-    ["attack","Attack","Voice",.002,4,.08,"log"],["decay","Decay","Voice",.05,6,.8,"log"],["sustain","Sustain","Voice",0,1,.75,"linear"],
-    ["release","Release","Voice",.05,12,1.2,"log"],["vibDepth","Vibrato","Voice",0,1,.05,"linear"],["vibRate","Vibrato rate","Voice",.1,10,4.5,"log"],["glide","Drift","Voice",0,1,.15,"linear"],
-    ["drive","Drive","Drive",0,1,0,"linear"],["crushBits","Bits","Drive",4,16,16,"linear"],["crushRate","Sample-rate crush","Drive",0,1,0,"linear"],
-    ["filtType","Filter","Character",0,4,0,"choice","LP24|LP12|HP12|BP12|Tilt"],["cutoff","Cutoff","Character",40,18000,2400,"log"],["resonance","Resonance","Character",0,.9,.12,"linear"],
-    ["filtDrive","Filter drive","Character",0,1,.1,"linear"],["filtEnv","Filter envelope","Character",-1,1,.15,"linear"],["filtEnvDecay","Filter env decay","Character",.02,4,.6,"log"],["tilt","Brightness","Character",-12,6,0,"linear"],
-    ["kalAmount","Kaleidoscope","Kaleidoscope",0,1,0,"linear"],["kalFocus","Focus","Kaleidoscope",0,1,.5,"linear"],["kalSpread","Spread","Kaleidoscope",0,1,.5,"linear"],
-    ["movMode","Movement","Movement",0,4,2,"choice","Off|Tape|Chorus|Pulse|Shaper"],["movAmount","Movement amount","Movement",0,1,.3,"linear"],
-    ["movA","Rate / wow / pattern","Movement",0,1,.45,"linear"],["movB","Width / flutter / shape","Movement",0,1,.6,"linear"],["movC","Stereo / wear / smooth","Movement",0,1,.6,"linear"],
-    ["echoType","Echo","Echo",0,1,0,"choice","Tape|BBD"],["echoSend","Echo send","Echo",0,1,.1,"linear"],["echoTime","Echo time","Echo",40,1200,375,"log"],
-    ["echoFeedback","Feedback","Echo",0,1,.4,"linear"],["echoTone","Echo tone","Echo",0,1,.5,"linear"],["echoAge","Echo age","Echo",0,1,.35,"linear"],["echoStereo","Echo stereo","Echo",0,2,1,"choice","Mono|Ping-pong|Wide"],
-    ["spaceType","Space","Space",0,3,2,"choice","Room|Hall|Plate|Spring"],["spaceSend","Space send","Space",0,1,.3,"linear"],["spaceDecay","Decay","Space",.2,12,2.5,"log"],
-    ["spaceSize","Size","Space",0,1,.5,"linear"],["spaceDamping","Damping","Space",0,1,.4,"linear"],["spaceMod","Modulation","Space",0,1,.4,"linear"],["spacePreDelay","Pre-delay","Space",0,250,10,"linear"],
-    ["bedLevel","Weather bed","Bed",0,1,0,"linear"],["bedColour","Bed colour","Bed",200,8000,1800,"log"],["outGain","Output","Output",-24,6,0,"linear"],
+    ["oscAWave","Osc A wave","Oscillators",0,1,0,"linear"],["oscAPw","Osc A pulse width","Oscillators",0.05,0.5,0.4,"linear"],
+    ["oscBWave","Osc B wave","Oscillators",0,2,1,"linear"],
+    ["oscBInterval","Osc B interval","Oscillators",0,4,1,"choice","-1 oct|Unison|+5th|+1 oct|+2 oct"],
+    ["oscBDetune","Osc B detune","Oscillators",0,40,7,"linear"],["oscSync","Sync A to B","Oscillators",0,1,0,"choice","Off|On"],
+    ["mixA","Osc A level","Oscillators",0,1,0.8,"linear"],["mixB","Osc B level","Oscillators",0,1,0.6,"linear"],
+    ["mixSub","Sub level","Oscillators",0,1,0.15,"linear"],["mixNoise","Noise level","Oscillators",0,1,0,"linear"],
+    ["slop","Analogue drift","Oscillators",0,1,0.3,"linear"],["voiceMode","Voices","Oscillators",0,2,0,"choice","Poly|Stack 2|Stack 4"],
+    ["stackDetune","Stack detune","Oscillators",0,40,10,"linear"],["portamento","Glide","Oscillators",0,1,0,"linear"],
+    ["filtType","Filter","Filter",0,3,0,"choice","Moog ladder|Prophet ladder|SEM lowpass|SEM bandpass"],
+    ["cutoff","Cutoff","Filter",30,16000,1800,"log"],["resonance","Resonance","Filter",0,1,0.2,"linear"],
+    ["filtDrive","Filter drive","Filter",0,1,0.25,"linear"],["keyTrack","Key tracking","Filter",0,1,0.5,"linear"],
+    ["filtEnv","Envelope amount","Filter",-1,1,0.4,"linear"],["filtVel","Velocity to filter","Filter",0,1,0.3,"linear"],
+    ["fAttack","Filter attack","Filter",0.001,8,0.01,"log"],["fDecay","Filter decay","Filter",0.02,10,0.6,"log"],
+    ["fSustain","Filter sustain","Filter",0,1,0.3,"linear"],["fRelease","Filter release","Filter",0.02,12,0.8,"log"],
+    ["attack","Attack","Amp",0.001,8,0.01,"log"],["decay","Decay","Amp",0.02,10,1,"log"],["sustain","Sustain","Amp",0,1,0.8,"linear"],
+    ["release","Release","Amp",0.02,12,0.6,"log"],["ampVel","Velocity to level","Amp",0,1,0.4,"linear"],
+    ["lfoRate","LFO rate","Modulation",0.05,20,4.5,"log"],["lfoShape","LFO shape","Modulation",0,3,0,"choice","Triangle|Saw|Square|Random"],
+    ["vibDepth","LFO to pitch","Modulation",0,1,0.03,"linear"],["lfoPwm","LFO to pulse width","Modulation",0,1,0,"linear"],
+    ["lfoFilter","LFO to filter","Modulation",0,1,0,"linear"],["pmEnvA","Poly-mod env > A pitch","Modulation",-1,1,0,"linear"],
+    ["pmOscB","Poly-mod B > cutoff","Modulation",0,1,0,"linear"],["drive","Saturation","Colour",0,1,0.15,"linear"],
+    ["tilt","Brightness","Colour",-12,6,0,"linear"],["crushBits","Bits","Colour",4,16,16,"linear"],
+    ["crushRate","Sample-rate crush","Colour",0,1,0,"linear"],["kalAmount","Kaleidoscope","Kaleidoscope",0,1,0,"linear"],
+    ["kalFocus","Focus","Kaleidoscope",0,1,0.5,"linear"],["kalSpread","Spread","Kaleidoscope",0,1,0.5,"linear"],
+    ["movMode","Movement","Movement",0,4,2,"choice","Off|Tape|Chorus|Pulse|Shaper"],["movAmount","Movement amount","Movement",0,1,0.3,"linear"],
+    ["movA","Rate / wow / pattern","Movement",0,1,0.45,"linear"],["movB","Width / flutter / shape","Movement",0,1,0.6,"linear"],
+    ["movC","Stereo / wear / smooth","Movement",0,1,0.6,"linear"],["echoType","Echo","Echo",0,1,0,"choice","Tape|BBD"],
+    ["echoSend","Echo send","Echo",0,1,0.1,"linear"],["echoTime","Echo time","Echo",40,1200,375,"log"],
+    ["echoFeedback","Feedback","Echo",0,1,0.4,"linear"],["echoTone","Echo tone","Echo",0,1,0.5,"linear"],
+    ["echoAge","Echo age","Echo",0,1,0.35,"linear"],["echoStereo","Echo stereo","Echo",0,2,1,"choice","Mono|Ping-pong|Wide"],
+    ["spaceType","Space","Space",0,3,2,"choice","Room|Hall|Plate|Spring"],["spaceSend","Space send","Space",0,1,0.3,"linear"],
+    ["spaceDecay","Decay","Space",0.2,12,2.5,"log"],["spaceSize","Size","Space",0,1,0.5,"linear"],["spaceDamping","Damping","Space",0,1,0.4,"linear"],
+    ["spaceMod","Modulation","Space",0,1,0.4,"linear"],["spacePreDelay","Pre-delay","Space",0,250,10,"linear"],
+    ["bedLevel","Weather bed","Bed",0,1,0,"linear"],["bedColour","Bed colour","Bed",200,8000,1800,"log"],
+    ["outGain","Output","Output",-24,6,0,"linear"],
   ].map(([id, name, group, min, max, def, scale, choices]) => ({ id, name, group, min, max, def, scale, choices: choices ? choices.split("|") : null }));
   const IDX = Object.fromEntries(PARAMS.map((p, i) => [p.id, i]));
-  const FRAMES = ["Glass", "Breath", "Hollow", "Reed", "Organ", "String", "Choir", "Brass"];
   // Which knob moves what (mirrors macroLean in engine/atmos/Bible.cpp)
-  const MACRO = { cutoff: "Tone", tilt: "Tone", attack: "Bloom", release: "Bloom", sustain: "Bloom", spaceSend: "Space", echoSend: "Space", spaceDecay: "Space", movAmount: "Motion", vibDepth: "Motion", kalSpread: "Motion" };
-  // Which source parameters matter for each source type
-  const SOURCE_ONLY = { srcFrame: [0], fmRatio: [1], fmIndex: [1], fmFeedback: [1], sawVoices: [2], sawDetune: [2], pluckDamp: [3], pluckBright: [3] };
+  const MACRO = { cutoff: "Tone", tilt: "Tone", filtEnv: "Tone", attack: "Bloom", release: "Bloom", sustain: "Bloom", fAttack: "Bloom", fRelease: "Bloom", spaceSend: "Space", echoSend: "Space", spaceDecay: "Space", movAmount: "Motion", vibDepth: "Motion", lfoPwm: "Motion", lfoFilter: "Motion", kalSpread: "Motion" };
+  // Parameters that only matter in some settings: hidden when they do nothing
+  const RELEVANT = { stackDetune: (s) => Math.round(s.params.voiceMode.home) > 0 };
 
   function fmt(p, v) {
     const id = p.id;
     if (p.scale === "choice") return p.choices[Math.round(v)] || "";
-    if (id === "srcFrame") { const x = v * 7, i = Math.floor(Math.min(6, x)), t = x - i; return t < 0.15 ? FRAMES[i] : t > 0.85 ? FRAMES[i + 1] : FRAMES[i] + "→" + FRAMES[i + 1]; }
+    if (id === "oscAWave") return v < 0.04 ? "saw" : v > 0.96 ? "pulse" : "saw+pulse " + Math.round(v * 100) + "%";
+    if (id === "oscBWave") return v < 0.04 ? "triangle" : Math.abs(v - 1) < 0.04 ? "saw" : v > 1.96 ? "pulse" : v < 1 ? "tri+saw" : "saw+pulse";
+    if (id === "oscAPw") return Math.round(v * 100) + "%";
+    if (id === "lfoRate") return v.toFixed(v < 1 ? 2 : 1) + " Hz";
+    if (id === "portamento") return v < 0.005 ? "off" : Math.round((0.004 + 0.9 * v * v) * 1000) + " ms";
+    if (id === "pmEnvA") return (v > 0 ? "+" : "") + (v * 24).toFixed(1) + " st";
+    if (id === "vibDepth") return (v * 100).toFixed(0) + " ct";
     if (id === "cutoff" || id === "bedColour") return v < 1000 ? Math.round(v) + " Hz" : (v / 1000).toFixed(1) + " k";
-    if (["attack", "decay", "release", "filtEnvDecay", "spaceDecay"].includes(id)) return v < 1 ? Math.round(v * 1000) + " ms" : v.toFixed(2) + " s";
+    if (["attack", "decay", "release", "fAttack", "fDecay", "fRelease", "spaceDecay"].includes(id)) return v < 1 ? Math.round(v * 1000) + " ms" : v.toFixed(2) + " s";
     if (id === "echoTime" || id === "spacePreDelay") return Math.round(v) + " ms";
     if (id === "tilt" || id === "outGain") return (v > 0 ? "+" : "") + v.toFixed(1) + " dB";
-    if (id === "srcSpread" || id === "sawDetune") return Math.round(v) + " ct";
+    if (id === "oscBDetune" || id === "stackDetune") return Math.round(v) + " ct";
     if (id === "crushBits") return v >= 15.5 ? "off" : Math.round(v) + " bit";
-    if (id === "sawVoices") return Math.round(v) + "";
-    if (id === "vibRate") return v.toFixed(1) + " Hz";
-    if (id === "fmRatio") return v.toFixed(2) + "×";
-    if (id === "fmIndex") return v.toFixed(1);
     if (id === "filtEnv") return (v > 0 ? "+" : "") + Math.round(v * 100) + "%";
     return Math.round(v * 100) + "%";
   }
   const toPos = (p, v) => p.scale === "log" ? Math.log(v / p.min) / Math.log(p.max / p.min) : (v - p.min) / (p.max - p.min);
-  const fromPos = (p, t) => { t = clamp(t, 0, 1); let v = p.scale === "log" ? p.min * Math.pow(p.max / p.min, t) : p.min + t * (p.max - p.min); if (p.id === "sawVoices" || p.id === "crushBits") v = Math.round(v); return v; };
+  const fromPos = (p, t) => { t = clamp(t, 0, 1); let v = p.scale === "log" ? p.min * Math.pow(p.max / p.min, t) : p.min + t * (p.max - p.min); if (p.id === "crushBits") v = Math.round(v); return v; };
 
   // ---------------------------------------------------------------- the bible
   let bible = null, sel = 0, mode = "home", chosenIdx = -1;
@@ -308,17 +325,18 @@
 
   // ---------------------------------------------------------------- storage: shared log when available, this browser otherwise
   let db = null, saveTimer = null;
-  const LS = "atmospheric.designer.bible";
+  const LS = "atmospheric.designer.bible.v2"; // v2: the analogue engine (v1 sounds are kept, not loaded)
+  const DOC = "bible/analogue";
   function scheduleSave() {
     $("#saveState").textContent = "Unsaved changes";
     clearTimeout(saveTimer);
     saveTimer = setTimeout(save, 1200);
   }
   async function save() {
-    const data = JSON.stringify({ version: 1, sounds: bible.sounds });
+    const data = JSON.stringify({ version: 2, sounds: bible.sounds });
     try { localStorage.setItem(LS, data); } catch (e) {}
     if (db) {
-      try { await db.doc("bible/current").set({ json: data, savedAt: new Date().toISOString() }); $("#saveState").textContent = "Saved to the shared log"; return; }
+      try { await db.doc(DOC).set({ json: data, savedAt: new Date().toISOString() }); $("#saveState").textContent = "Saved to the shared log"; return; }
       catch (e) { $("#saveState").textContent = "Saved in this browser (shared log refused)"; return; }
     }
     $("#saveState").textContent = "Saved in this browser";
@@ -328,7 +346,7 @@
       try {
         db = await window.claude.use("db");
         if (db) {
-          const snap = await db.doc("bible/current").get();
+          const snap = await db.doc(DOC).get();
           if (snap.exists) { bible = normalise(JSON.parse(snap.data().json)); $("#saveState").textContent = "Loaded from the shared log"; return; }
         }
       } catch (e) { db = null; }
@@ -388,7 +406,7 @@
 
   // ---------------------------------------------------------------- list + map
   function anchorText(a) { return `${Math.round(a.temp)} °C · ${a.wet < 0.33 ? "dry" : a.wet < 0.66 ? "damp" : "wet"} · ${a.light < 0.33 ? "night" : a.light < 0.66 ? "dim" : "bright"}`; }
-  function srcText(s) { const t = Math.round(s.params.srcType.home); return t === 0 ? fmt(PARAMS[IDX.srcFrame], s.params.srcFrame.home) + " wavetable" : ["", "FM", "Supersaw", "Pluck"][t]; }
+  function srcText(s) { const q = (id) => s.params[id].home, P = (id) => PARAMS[IDX[id]]; const vm = Math.round(q("voiceMode")); return fmt(P("filtType"), q("filtType")) + (vm ? " · " + fmt(P("voiceMode"), vm) : ""); }
   function renderList() {
     $("#count").textContent = bible.sounds.length;
     $("#sounds").innerHTML = bible.sounds.map((s, i) =>
@@ -459,16 +477,15 @@
   $("#sndName").addEventListener("input", (e) => { cur().name = e.target.value; renderList(); scheduleSave(); });
   $("#sndNotes").addEventListener("input", (e) => { cur().notes = e.target.value; scheduleSave(); });
 
-  const openGroups = new Set(["Source", "Voice", "Character"]);
+  const openGroups = new Set(["Oscillators", "Filter", "Amp"]);
   function renderEditor() {
     const s = cur();
     $("#sndName").value = s.name;
     $("#sndNotes").value = s.notes || "";
     renderAnchors();
     const groups = [...new Set(PARAMS.map((p) => p.group))];
-    const type = Math.round(s.params.srcType.home);
     $("#groups").innerHTML = groups.map((g) => {
-      const rows = PARAMS.map((p, i) => [p, i]).filter(([p]) => p.group === g && (!SOURCE_ONLY[p.id] || SOURCE_ONLY[p.id].includes(type))).map(([p, i]) => {
+      const rows = PARAMS.map((p, i) => [p, i]).filter(([p]) => p.group === g && (!RELEVANT[p.id] || RELEVANT[p.id](s))).map(([p, i]) => {
         const q = s.params[p.id];
         if (p.scale === "choice")
           return `<div class="prow"><span class="nm">${esc(p.name)}</span><select data-i="${i}" aria-label="${esc(p.name)}">${p.choices.map((c, k) => `<option value="${k}"${Math.round(q.home) === k ? " selected" : ""}>${esc(c)}</option>`).join("")}</select><span class="val"></span><span></span></div>`;
@@ -516,7 +533,6 @@
     else if (which === "lo") q.lo = Math.min(v, q.home);
     else q.hi = Math.max(v, q.home);
     layoutRange(el); scheduleSave(); pushSound();
-    if (["srcFrame"].includes(p.id)) renderList();
   }
   $("#groups").addEventListener("keydown", (e) => {
     const el = e.target.closest(".range"); if (!el || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
@@ -530,7 +546,7 @@
     const sel2 = e.target.closest("select[data-i]"); if (!sel2) return;
     const p = PARAMS[+sel2.dataset.i], q = cur().params[p.id];
     q.home = q.lo = q.hi = +sel2.value;
-    if (p.id === "srcType") renderEditor();
+    if (p.id === "voiceMode") renderEditor();
     renderList(); scheduleSave(); pushSound();
   });
   $("#groups").addEventListener("click", (e) => {
@@ -561,7 +577,7 @@
     resetArmed = false; $("#resetBtn").textContent = "Back to starters";
     bible = normalise(await (await fetch("starter-bible.json")).json()); sel = 0; renderAll(); scheduleSave(); pushSound();
   });
-  function exportJson() { return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), sounds: bible.sounds }, null, 1); }
+  function exportJson() { return JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), sounds: bible.sounds }, null, 1); }
   $("#exportBtn").addEventListener("click", async () => {
     const data = exportJson(), filename = "atmospheric-bible.json";
     const dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null;

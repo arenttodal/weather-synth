@@ -40,13 +40,6 @@ EXPORT (atmos_schema) const char* atmos_schema()
                        i ? "," : "", p.id, p.name, p.group, p.min, p.max, p.def, sc, p.choices ? p.choices : "");
         scratch += buf;
     }
-    scratch += "],\"frames\":[";
-    for (int f = 0; f < atmos::kFrames; ++f)
-    {
-        scratch += f ? ",\"" : "\"";
-        scratch += atmos::frameName (f / (double) (atmos::kFrames - 1));
-        scratch += "\"";
-    }
     scratch += "]}";
     return scratch.c_str();
 }

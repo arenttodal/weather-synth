@@ -493,6 +493,17 @@ static void testProcessorState()
         CHECK (found, "kept Day is in the almanac");
     }
 
+    // A weather reply that lands after a project was restored must not replace the project's Day
+    {
+        Storage::setRelayUrl ("http://127.0.0.1:9"); // refused at once: the deal falls back to an estimate
+        AtmosProcessor late;
+        late.dealToday();
+        late.setStateInformation (state.getData(), (int) state.getSize());
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (1500);
+        CHECK (late.currentDay().placeName == "Sydney" && late.status() == AtmosProcessor::Status::restored,
+               "late weather reply overwrote the restored project (now %s)", late.currentDay().placeName.toRawUTF8());
+    }
+
     // Garbage state is ignored, not fatal
     const char junk[] = "not a plugin state";
     b.setStateInformation (junk, (int) sizeof junk);

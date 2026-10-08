@@ -43,26 +43,33 @@ static Stats render (Patch p, double sr = 48000)
 
 int main()
 {
-    const char* src[] = { "Wavetable", "FM", "Supersaw", "Pluck" };
+    const char* flt[] = { "Moog", "Prophet", "SEM-LP", "SEM-BP" };
+    const char* vm[] = { "Poly", "Stack2", "Stack4" };
     const char* mov[] = { "Off", "Tape", "Chorus", "Pulse", "Shaper" };
-    const char* spc[] = { "Room", "Hall", "Plate", "Spring" };
-    int fails = 0; double lo = 0, hi = -200;
-    for (int s = 0; s < 4; ++s)
-        for (int m = 0; m < 5; ++m)
-            for (int sp = 0; sp < 4; ++sp)
+    int fails = 0, count = 0; double lo = 0, hi = -200;
+    for (int f = 0; f < 4; ++f)
+        for (int v = 0; v < 3; ++v)
+            for (int m = 0; m < 5; ++m)
             {
                 Patch p;
-                p[srcType] = s; p[movMode] = m; p[movAmount] = 0.7; p[spaceType] = sp; p[spaceSend] = 0.6;
-                p[echoSend] = 0.5; p[echoType] = (s + m) % 2; p[kalAmount] = (sp % 2) ? 0.8 : 0.2;
-                p[filtType] = (s + sp) % 5; p[drive] = s == 2 ? 0.6 : 0.1; p[crushBits] = s == 1 ? 8 : 16;
-                p[bedLevel] = 0.4; p[srcSub] = 0.3; p[srcShimmer] = 0.2; p[srcBreath] = 0.2;
+                p[filtType] = f; p[voiceMode] = v; p[movMode] = m; p[movAmount] = 0.7;
+                p[spaceType] = (f + m) % 4; p[spaceSend] = 0.6; p[echoSend] = 0.5; p[echoType] = (v + m) % 2;
+                p[kalAmount] = (m % 2) ? 0.8 : 0.2; p[resonance] = (m % 3) * 0.48; p[filtDrive] = v * 0.45;
+                p[oscSync] = m == 3; p[pmEnvA] = m == 3 ? 0.5 : 0; p[pmOscB] = f == 1 ? 0.6 : 0;
+                p[oscAWave] = (m % 2) ? 0.7 : 0; p[oscBWave] = (f + v) % 3; p[mixNoise] = m == 4 ? 0.8 : 0.1; p[mixSub] = 0.6;
+                p[drive] = v == 2 ? 0.8 : 0.15; p[crushBits] = v == 2 ? 8 : 16; p[bedLevel] = 0.4; p[slop] = 1;
+                p[portamento] = v == 1 ? 0.5 : 0; p[lfoPwm] = 0.6; p[lfoFilter] = m * 0.2; p[lfoShape] = m % 4;
                 const auto st = render (p);
+                ++count;
                 const bool ok = st.finite && st.peak <= 0.9 && st.rms > -50 && st.rms < -8;
-                if (! ok) { ++fails; std::printf ("FAIL %s/%s/%s rms %.1f peak %.3f tail %.1f finite %d\n", src[s], mov[m], spc[sp], st.rms, st.peak, st.tail, st.finite); }
+                if (! ok) { ++fails; std::printf ("FAIL %s/%s/%s rms %.1f peak %.3f tail %.1f finite %d\n", flt[f], vm[v], mov[m], st.rms, st.peak, st.tail, st.finite); }
                 lo = lo == 0 ? st.rms : std::min (lo, st.rms); hi = std::max (hi, st.rms);
             }
-    // Defaults per source, for level calibration
-    for (int s = 0; s < 4; ++s) { Patch p; p[srcType] = s; auto st = render (p); std::printf ("default %-9s rms %.1f dB peak %.2f\n", src[s], st.rms, st.peak); }
-    std::printf ("80 combinations, rms %.1f .. %.1f dB, %d failed\n", lo, hi, fails);
+    // Self-oscillation must stay bounded
+    for (int f = 0; f < 4; ++f) { Patch p; p[filtType] = f; p[resonance] = 1; p[filtDrive] = 1; p[cutoff] = 300; auto st = render (p); ++count;
+        if (! st.finite || st.peak > 0.9) { ++fails; std::printf ("FAIL self-oscillating %s peak %.3f\n", flt[f], st.peak); } }
+    // Defaults per filter, for level calibration
+    for (int f = 0; f < 4; ++f) { Patch p; p[filtType] = f; auto st = render (p); std::printf ("default %-8s rms %.1f dB peak %.2f\n", flt[f], st.rms, st.peak); }
+    std::printf ("%d combinations, rms %.1f .. %.1f dB, %d failed\n", count, lo, hi, fails);
     return fails ? 1 : 0;
 }

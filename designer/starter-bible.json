@@ -1,119 +1,209 @@
 {
- "version": 1,
+ "version": 2,
  "sounds": [
   {
-   "id": "frost-glass",
-   "name": "Frost Glass",
+   "id": "frost-strings",
+   "name": "Frost Strings",
    "anchor": {
-    "temp": -12,
+    "temp": 0,
     "wet": 0.3,
-    "light": 0.6
+    "light": 0.7
    },
    "params": {
-    "srcType": {
+    "oscAWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "oscAPw": {
+     "home": 0.4,
+     "lo": 0.31,
+     "hi": 0.49
+    },
+    "oscBWave": {
+     "home": 1,
+     "lo": 0.6,
+     "hi": 1.4
+    },
+    "oscBInterval": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "oscBDetune": {
+     "home": 9,
+     "lo": 1,
+     "hi": 17
+    },
+    "oscSync": {
      "home": 0,
      "lo": 0,
      "hi": 0
     },
-    "srcFrame": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
-    },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "pluckBright": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "srcSpread": {
-     "home": 6,
-     "lo": 0,
-     "hi": 14
-    },
-    "srcSub": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "srcShimmer": {
-     "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.55
-    },
-    "srcBreath": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "attack": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "decay": {
-     "home": 0.8,
-     "lo": 0.3636,
-     "hi": 1.76
-    },
-    "sustain": {
+    "mixA": {
      "home": 0.8,
      "lo": 0.6,
      "hi": 1
     },
+    "mixB": {
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
+    },
+    "mixSub": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "mixNoise": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "stackDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
+    },
+    "portamento": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "filtType": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "cutoff": {
+     "home": 2600,
+     "lo": 1181.8182,
+     "hi": 5720
+    },
+    "resonance": {
+     "home": 0.1,
+     "lo": 0,
+     "hi": 0.3
+    },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "filtEnv": {
+     "home": 0.25,
+     "lo": -0.15,
+     "hi": 0.65
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 0.5,
+     "lo": 0.2273,
+     "hi": 1.1
+    },
+    "fDecay": {
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
+    },
+    "fSustain": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "fRelease": {
+     "home": 2.5,
+     "lo": 1.1364,
+     "hi": 5.5
+    },
+    "attack": {
+     "home": 0.45,
+     "lo": 0.2045,
+     "hi": 0.99
+    },
+    "decay": {
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
+    },
+    "sustain": {
+     "home": 0.9,
+     "lo": 0.7,
+     "hi": 1
+    },
     "release": {
-     "home": 3,
-     "lo": 1.3636,
-     "hi": 6.6
+     "home": 2.2,
+     "lo": 1,
+     "hi": 4.84
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 5,
+     "lo": 2.2727,
+     "hi": 11
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
     "vibDepth": {
-     "home": 0.02,
+     "home": 0.04,
      "lo": 0,
-     "hi": 0.22
+     "hi": 0.24
     },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
     },
-    "glide": {
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
     },
-    "drive": {
+    "tilt": {
      "home": 0,
-     "lo": 0,
-     "hi": 0.2
+     "lo": -3.6,
+     "hi": 3.6
     },
     "crushBits": {
      "home": 16,
@@ -125,50 +215,15 @@
      "lo": 0,
      "hi": 0.2
     },
-    "filtType": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
-    },
-    "cutoff": {
-     "home": 3500,
-     "lo": 1590.9091,
-     "hi": 7700
-    },
-    "resonance": {
-     "home": 0.12,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.15,
-     "lo": -0.25,
-     "hi": 0.55
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": 0,
-     "lo": -3.6,
-     "hi": 3.6
-    },
     "kalAmount": {
-     "home": 0.25,
-     "lo": 0.05,
-     "hi": 0.45
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
     },
     "kalFocus": {
-     "home": 0.7,
-     "lo": 0.5,
-     "hi": 0.9
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
     },
     "kalSpread": {
      "home": 0.5,
@@ -181,19 +236,19 @@
      "hi": 2
     },
     "movAmount": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 0.65
     },
     "movA": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
     },
     "movB": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
     },
     "movC": {
      "home": 0.6,
@@ -206,9 +261,9 @@
      "hi": 0
     },
     "echoSend": {
-     "home": 0.15,
+     "home": 0.1,
      "lo": 0,
-     "hi": 0.35
+     "hi": 0.3
     },
     "echoTime": {
      "home": 375,
@@ -246,9 +301,9 @@
      "hi": 0.65
     },
     "spaceDecay": {
-     "home": 6,
-     "lo": 2.7273,
-     "hi": 12
+     "home": 5,
+     "lo": 2.2727,
+     "hi": 11
     },
     "spaceSize": {
      "home": 0.5,
@@ -288,118 +343,208 @@
    }
   },
   {
-   "id": "polar-night",
-   "name": "Polar Night",
+   "id": "polar-drone",
+   "name": "Polar Drone",
    "anchor": {
     "temp": -22,
-    "wet": 0.2,
+    "wet": 0.19,
     "light": 0
    },
    "params": {
-    "srcType": {
+    "oscAWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "oscAPw": {
+     "home": 0.4,
+     "lo": 0.31,
+     "hi": 0.49
+    },
+    "oscBWave": {
+     "home": 1.6,
+     "lo": 1.2,
+     "hi": 2
+    },
+    "oscBInterval": {
      "home": 0,
      "lo": 0,
      "hi": 0
     },
-    "srcFrame": {
-     "home": 0.14,
+    "oscBDetune": {
+     "home": 4,
      "lo": 0,
-     "hi": 0.34
+     "hi": 12
     },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
+    "oscSync": {
      "home": 0,
      "lo": 0,
-     "hi": 0.2
+     "hi": 0
     },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
+    "mixA": {
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
     },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "pluckBright": {
+    "mixB": {
      "home": 0.6,
      "lo": 0.4,
      "hi": 0.8
     },
-    "srcSpread": {
-     "home": 6,
-     "lo": 0,
-     "hi": 14
-    },
-    "srcSub": {
+    "mixSub": {
      "home": 0.5,
      "lo": 0.3,
      "hi": 0.7
     },
-    "srcShimmer": {
-     "home": 0.15,
-     "lo": 0,
-     "hi": 0.35
-    },
-    "srcBreath": {
+    "mixNoise": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
     },
-    "attack": {
-     "home": 1.2,
-     "lo": 0.5455,
-     "hi": 2.64
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
     },
-    "decay": {
-     "home": 0.8,
-     "lo": 0.3636,
-     "hi": 1.76
+    "voiceMode": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
-    "sustain": {
-     "home": 0.75,
-     "lo": 0.55,
-     "hi": 0.95
+    "stackDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
     },
-    "release": {
+    "portamento": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "filtType": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "cutoff": {
+     "home": 380,
+     "lo": 172.7273,
+     "hi": 836
+    },
+    "resonance": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "filtEnv": {
+     "home": 0.15,
+     "lo": -0.25,
+     "hi": 0.55
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
+    },
+    "fDecay": {
      "home": 4,
      "lo": 1.8182,
      "hi": 8.8
     },
-    "vibDepth": {
-     "home": 0.05,
+    "fSustain": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "fRelease": {
+     "home": 4,
+     "lo": 1.8182,
+     "hi": 8.8
+    },
+    "attack": {
+     "home": 1.5,
+     "lo": 0.6818,
+     "hi": 3.3
+    },
+    "decay": {
+     "home": 3,
+     "lo": 1.3636,
+     "hi": 6.6
+    },
+    "sustain": {
+     "home": 0.9,
+     "lo": 0.7,
+     "hi": 1
+    },
+    "release": {
+     "home": 5,
+     "lo": 2.2727,
+     "hi": 11
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 0.12,
+     "lo": 0.0545,
+     "hi": 0.264
+    },
+    "lfoShape": {
+     "home": 0,
      "lo": 0,
-     "hi": 0.25
+     "hi": 0
     },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
+    "vibDepth": {
+     "home": 0.03,
+     "lo": 0,
+     "hi": 0.23
     },
-    "glide": {
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "lfoFilter": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
     },
-    "drive": {
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
+    },
+    "drive": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
+    },
+    "tilt": {
+     "home": -3,
+     "lo": -6.6,
+     "hi": 0.6
     },
     "crushBits": {
      "home": 16,
@@ -411,45 +556,10 @@
      "lo": 0,
      "hi": 0.2
     },
-    "filtType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "cutoff": {
-     "home": 700,
-     "lo": 318.1818,
-     "hi": 1540
-    },
-    "resonance": {
-     "home": 0.12,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.05,
-     "lo": -0.35,
-     "hi": 0.45
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": -4,
-     "lo": -7.6,
-     "hi": -0.4
-    },
     "kalAmount": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
     },
     "kalFocus": {
      "home": 0.5,
@@ -467,9 +577,9 @@
      "hi": 1
     },
     "movAmount": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
     },
     "movA": {
      "home": 0.45,
@@ -574,118 +684,208 @@
    }
   },
   {
-   "id": "fog-choir",
-   "name": "Fog Choir",
+   "id": "fog-pad",
+   "name": "Fog Pad",
    "anchor": {
-    "temp": 8,
+    "temp": 7,
     "wet": 0.75,
     "light": 0.3
    },
    "params": {
-    "srcType": {
+    "oscAWave": {
+     "home": 1,
+     "lo": 0.8,
+     "hi": 1
+    },
+    "oscAPw": {
+     "home": 0.3,
+     "lo": 0.21,
+     "hi": 0.39
+    },
+    "oscBWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "oscBInterval": {
+     "home": 3,
+     "lo": 3,
+     "hi": 3
+    },
+    "oscBDetune": {
+     "home": 7,
+     "lo": 0,
+     "hi": 15
+    },
+    "oscSync": {
      "home": 0,
      "lo": 0,
      "hi": 0
     },
-    "srcFrame": {
-     "home": 0.86,
-     "lo": 0.66,
-     "hi": 1
-    },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
-    },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "pluckBright": {
+    "mixA": {
      "home": 0.6,
      "lo": 0.4,
      "hi": 0.8
     },
-    "srcSpread": {
-     "home": 12,
-     "lo": 4,
-     "hi": 20
+    "mixB": {
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 0.65
     },
-    "srcSub": {
-     "home": 0.2,
+    "mixSub": {
+     "home": 0.15,
      "lo": 0,
-     "hi": 0.4
+     "hi": 0.35
     },
-    "srcShimmer": {
+    "mixNoise": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.8
+    },
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "stackDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
+    },
+    "portamento": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
     },
-    "srcBreath": {
+    "filtType": {
+     "home": 2,
+     "lo": 2,
+     "hi": 2
+    },
+    "cutoff": {
+     "home": 1100,
+     "lo": 500,
+     "hi": 2420
+    },
+    "resonance": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
+    },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "filtEnv": {
+     "home": 0.15,
+     "lo": -0.25,
+     "hi": 0.55
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 1.2,
+     "lo": 0.5455,
+     "hi": 2.64
+    },
+    "fDecay": {
+     "home": 3,
+     "lo": 1.3636,
+     "hi": 6.6
+    },
+    "fSustain": {
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
+    },
+    "fRelease": {
+     "home": 3,
+     "lo": 1.3636,
+     "hi": 6.6
     },
     "attack": {
-     "home": 0.4,
-     "lo": 0.1818,
-     "hi": 0.88
+     "home": 0.9,
+     "lo": 0.4091,
+     "hi": 1.98
     },
     "decay": {
-     "home": 0.8,
-     "lo": 0.3636,
-     "hi": 1.76
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
     },
     "sustain": {
-     "home": 0.75,
-     "lo": 0.55,
-     "hi": 0.95
+     "home": 0.85,
+     "lo": 0.65,
+     "hi": 1
     },
     "release": {
-     "home": 2.5,
-     "lo": 1.1364,
-     "hi": 5.5
+     "home": 3.5,
+     "lo": 1.5909,
+     "hi": 7.7
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 0.6,
+     "lo": 0.2727,
+     "hi": 1.32
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
     "vibDepth": {
-     "home": 0.05,
+     "home": 0.03,
      "lo": 0,
-     "hi": 0.25
+     "hi": 0.23
     },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
+    "lfoPwm": {
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 0.65
     },
-    "glide": {
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
     },
-    "drive": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
+    "tilt": {
+     "home": -3,
+     "lo": -6.6,
+     "hi": 0.6
     },
     "crushBits": {
      "home": 16,
@@ -697,45 +897,10 @@
      "lo": 0,
      "hi": 0.2
     },
-    "filtType": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
-    },
-    "cutoff": {
-     "home": 900,
-     "lo": 409.0909,
-     "hi": 1980
-    },
-    "resonance": {
-     "home": 0.12,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.15,
-     "lo": -0.25,
-     "hi": 0.55
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": -4,
-     "lo": -7.6,
-     "hi": -0.4
-    },
     "kalAmount": {
-     "home": 0.55,
-     "lo": 0.35,
-     "hi": 0.75
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
     },
     "kalFocus": {
      "home": 0.5,
@@ -753,9 +918,9 @@
      "hi": 2
     },
     "movAmount": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
     },
     "movA": {
      "home": 0.45,
@@ -778,9 +943,9 @@
      "hi": 1
     },
     "echoSend": {
-     "home": 0.25,
-     "lo": 0.05,
-     "hi": 0.45
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
     },
     "echoTime": {
      "home": 375,
@@ -860,118 +1025,208 @@
    }
   },
   {
-   "id": "drizzle-reed",
-   "name": "Drizzle Reed",
+   "id": "drizzle-keys",
+   "name": "Drizzle Keys",
    "anchor": {
-    "temp": 10,
-    "wet": 0.6,
+    "temp": 11,
+    "wet": 0.55,
     "light": 0.5
    },
    "params": {
-    "srcType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "srcFrame": {
-     "home": 0.43,
-     "lo": 0.23,
-     "hi": 0.63
-    },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
-    },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "pluckBright": {
+    "oscAWave": {
      "home": 0.6,
      "lo": 0.4,
      "hi": 0.8
     },
-    "srcSpread": {
+    "oscAPw": {
+     "home": 0.35,
+     "lo": 0.26,
+     "hi": 0.44
+    },
+    "oscBWave": {
+     "home": 1,
+     "lo": 0.6,
+     "hi": 1.4
+    },
+    "oscBInterval": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "oscBDetune": {
      "home": 6,
      "lo": 0,
      "hi": 14
     },
-    "srcSub": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
-    },
-    "srcShimmer": {
+    "oscSync": {
      "home": 0,
      "lo": 0,
-     "hi": 0.2
+     "hi": 0
     },
-    "srcBreath": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
+    "mixA": {
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
     },
-    "attack": {
-     "home": 0.03,
-     "lo": 0.0136,
-     "hi": 0.066
+    "mixB": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
     },
-    "decay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "sustain": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "release": {
-     "home": 0.9,
-     "lo": 0.4091,
-     "hi": 1.98
-    },
-    "vibDepth": {
-     "home": 0.05,
-     "lo": 0,
-     "hi": 0.25
-    },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
-    },
-    "glide": {
+    "mixSub": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
     },
-    "drive": {
+    "mixNoise": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
+    },
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "stackDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
+    },
+    "portamento": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "filtType": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "cutoff": {
+     "home": 900,
+     "lo": 409.0909,
+     "hi": 1980
+    },
+    "resonance": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "filtEnv": {
+     "home": 0.45,
+     "lo": 0.05,
+     "hi": 0.85
+    },
+    "filtVel": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "fAttack": {
+     "home": 0.002,
+     "lo": 0.001,
+     "hi": 0.0044
+    },
+    "fDecay": {
+     "home": 0.9,
+     "lo": 0.4091,
+     "hi": 1.98
+    },
+    "fSustain": {
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "fRelease": {
+     "home": 0.6,
+     "lo": 0.2727,
+     "hi": 1.32
+    },
+    "attack": {
+     "home": 0.004,
+     "lo": 0.0018,
+     "hi": 0.0088
+    },
+    "decay": {
+     "home": 1.6,
+     "lo": 0.7273,
+     "hi": 3.52
+    },
+    "sustain": {
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 0.65
+    },
+    "release": {
+     "home": 0.8,
+     "lo": 0.3636,
+     "hi": 1.76
+    },
+    "ampVel": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "lfoRate": {
+     "home": 1.2,
+     "lo": 0.5455,
+     "hi": 2.64
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "vibDepth": {
+     "home": 0.03,
+     "lo": 0,
+     "hi": 0.23
+    },
+    "lfoPwm": {
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
+    },
+    "tilt": {
+     "home": 0,
+     "lo": -3.6,
+     "hi": 3.6
     },
     "crushBits": {
      "home": 16,
@@ -982,41 +1237,6 @@
      "home": 0,
      "lo": 0,
      "hi": 0.2
-    },
-    "filtType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "cutoff": {
-     "home": 1800,
-     "lo": 818.1818,
-     "hi": 3960
-    },
-    "resonance": {
-     "home": 0.2,
-     "lo": 0.02,
-     "hi": 0.38
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.3,
-     "lo": -0.1,
-     "hi": 0.7
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": 0,
-     "lo": -3.6,
-     "hi": 3.6
     },
     "kalAmount": {
      "home": 0,
@@ -1064,9 +1284,9 @@
      "hi": 0
     },
     "echoSend": {
-     "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.55
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
     },
     "echoTime": {
      "home": 375,
@@ -1074,9 +1294,9 @@
      "hi": 825
     },
     "echoFeedback": {
-     "home": 0.45,
-     "lo": 0.25,
-     "hi": 0.65
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
     },
     "echoTone": {
      "home": 0.5,
@@ -1129,9 +1349,9 @@
      "hi": 60
     },
     "bedLevel": {
-     "home": 0.2,
+     "home": 0.15,
      "lo": 0,
-     "hi": 0.4
+     "hi": 0.35
     },
     "bedColour": {
      "home": 1800,
@@ -1146,83 +1366,143 @@
    }
   },
   {
-   "id": "mild-breath",
-   "name": "Mild Breath",
+   "id": "velvet-brass",
+   "name": "Velvet Brass",
    "anchor": {
-    "temp": 16,
-    "wet": 0.35,
+    "temp": 26,
+    "wet": 0.42,
     "light": 0.7
    },
    "params": {
-    "srcType": {
+    "oscAWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "oscAPw": {
+     "home": 0.4,
+     "lo": 0.31,
+     "hi": 0.49
+    },
+    "oscBWave": {
+     "home": 1,
+     "lo": 0.6,
+     "hi": 1.4
+    },
+    "oscBInterval": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "oscBDetune": {
+     "home": 8,
+     "lo": 0,
+     "hi": 16
+    },
+    "oscSync": {
      "home": 0,
      "lo": 0,
      "hi": 0
     },
-    "srcFrame": {
-     "home": 0.2,
+    "mixA": {
+     "home": 0.85,
+     "lo": 0.65,
+     "hi": 1
+    },
+    "mixB": {
+     "home": 0.75,
+     "lo": 0.55,
+     "hi": 0.95
+    },
+    "mixSub": {
+     "home": 0.15,
      "lo": 0,
-     "hi": 0.4
+     "hi": 0.35
     },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
+    "mixNoise": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
     },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
     },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "pluckBright": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "srcSpread": {
-     "home": 6,
+    "voiceMode": {
+     "home": 0,
      "lo": 0,
-     "hi": 14
+     "hi": 0
     },
-    "srcSub": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
+    "stackDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
     },
-    "srcShimmer": {
+    "portamento": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
     },
-    "srcBreath": {
+    "filtType": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "cutoff": {
+     "home": 700,
+     "lo": 318.1818,
+     "hi": 1540
+    },
+    "resonance": {
      "home": 0.1,
      "lo": 0,
      "hi": 0.3
     },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "filtEnv": {
+     "home": 0.55,
+     "lo": 0.15,
+     "hi": 0.95
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 0.09,
+     "lo": 0.0409,
+     "hi": 0.198
+    },
+    "fDecay": {
+     "home": 0.7,
+     "lo": 0.3182,
+     "hi": 1.54
+    },
+    "fSustain": {
+     "home": 0.55,
+     "lo": 0.35,
+     "hi": 0.75
+    },
+    "fRelease": {
+     "home": 0.4,
+     "lo": 0.1818,
+     "hi": 0.88
+    },
     "attack": {
-     "home": 0.05,
-     "lo": 0.0227,
-     "hi": 0.11
+     "home": 0.06,
+     "lo": 0.0273,
+     "hi": 0.132
     },
     "decay": {
      "home": 0.8,
@@ -1230,34 +1510,64 @@
      "hi": 1.76
     },
     "sustain": {
-     "home": 0.75,
-     "lo": 0.55,
-     "hi": 0.95
+     "home": 0.85,
+     "lo": 0.65,
+     "hi": 1
     },
     "release": {
-     "home": 1,
-     "lo": 0.4545,
-     "hi": 2.2
+     "home": 0.45,
+     "lo": 0.2045,
+     "hi": 0.99
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 5.5,
+     "lo": 2.5,
+     "hi": 12.1
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
     "vibDepth": {
-     "home": 0.05,
+     "home": 0.03,
      "lo": 0,
-     "hi": 0.25
+     "hi": 0.23
     },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
-    },
-    "glide": {
-     "home": 0.15,
-     "lo": 0,
-     "hi": 0.35
-    },
-    "drive": {
+    "lfoPwm": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
+    },
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0.03,
+     "lo": -0.37,
+     "hi": 0.43
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "tilt": {
+     "home": 0,
+     "lo": -3.6,
+     "hi": 3.6
     },
     "crushBits": {
      "home": 16,
@@ -1268,41 +1578,6 @@
      "home": 0,
      "lo": 0,
      "hi": 0.2
-    },
-    "filtType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "cutoff": {
-     "home": 2600,
-     "lo": 1181.8182,
-     "hi": 5720
-    },
-    "resonance": {
-     "home": 0.12,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.15,
-     "lo": -0.25,
-     "hi": 0.55
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": 0,
-     "lo": -3.6,
-     "hi": 3.6
     },
     "kalAmount": {
      "home": 0,
@@ -1350,9 +1625,9 @@
      "hi": 0
     },
     "echoSend": {
-     "home": 0.1,
+     "home": 0.08,
      "lo": 0,
-     "hi": 0.3
+     "hi": 0.28
     },
     "echoTime": {
      "home": 375,
@@ -1440,80 +1715,140 @@
     "light": 0.85
    },
    "params": {
-    "srcType": {
+    "oscAWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "oscAPw": {
+     "home": 0.4,
+     "lo": 0.31,
+     "hi": 0.49
+    },
+    "oscBWave": {
+     "home": 2,
+     "lo": 1.6,
+     "hi": 2
+    },
+    "oscBInterval": {
      "home": 3,
      "lo": 3,
      "hi": 3
     },
-    "srcFrame": {
+    "oscBDetune": {
+     "home": 7,
+     "lo": 0,
+     "hi": 15
+    },
+    "oscSync": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "mixA": {
+     "home": 0.85,
+     "lo": 0.65,
+     "hi": 1
+    },
+    "mixB": {
      "home": 0.35,
      "lo": 0.15,
      "hi": 0.55
     },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
+    "mixSub": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
     },
-    "fmIndex": {
-     "home": 2.5,
+    "mixNoise": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "stackDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
+    },
+    "portamento": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "filtType": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "cutoff": {
+     "home": 500,
+     "lo": 227.2727,
+     "hi": 1100
+    },
+    "resonance": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
+    },
+    "filtEnv": {
+     "home": 0.7,
+     "lo": 0.3,
+     "hi": 1
+    },
+    "filtVel": {
+     "home": 0.7,
      "lo": 0.5,
-     "hi": 4.5
+     "hi": 0.9
     },
-    "fmFeedback": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
+    "fAttack": {
+     "home": 0.001,
+     "lo": 0.001,
+     "hi": 0.0022
     },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
-    },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
+    "fDecay": {
      "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.55
+     "lo": 0.1591,
+     "hi": 0.77
     },
-    "pluckBright": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "srcSpread": {
-     "home": 6,
-     "lo": 0,
-     "hi": 14
-    },
-    "srcSub": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "srcShimmer": {
+    "fSustain": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
     },
-    "srcBreath": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
+    "fRelease": {
+     "home": 0.3,
+     "lo": 0.1364,
+     "hi": 0.66
     },
     "attack": {
-     "home": 0.002,
-     "lo": 0.002,
-     "hi": 0.0044
+     "home": 0.001,
+     "lo": 0.001,
+     "hi": 0.0022
     },
     "decay": {
-     "home": 1.5,
-     "lo": 0.6818,
-     "hi": 3.3
+     "home": 1.2,
+     "lo": 0.5455,
+     "hi": 2.64
     },
     "sustain": {
      "home": 0,
@@ -1521,29 +1856,59 @@
      "hi": 0.2
     },
     "release": {
-     "home": 1.2,
-     "lo": 0.5455,
-     "hi": 2.64
+     "home": 0.6,
+     "lo": 0.2727,
+     "hi": 1.32
     },
-    "vibDepth": {
-     "home": 0.05,
-     "lo": 0,
-     "hi": 0.25
+    "ampVel": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
     },
-    "vibRate": {
+    "lfoRate": {
      "home": 4.5,
      "lo": 2.0455,
      "hi": 9.9
     },
-    "glide": {
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "vibDepth": {
+     "home": 0.03,
+     "lo": 0,
+     "hi": 0.23
+    },
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
     },
-    "drive": {
+    "tilt": {
      "home": 0,
-     "lo": 0,
-     "hi": 0.2
+     "lo": -3.6,
+     "hi": 3.6
     },
     "crushBits": {
      "home": 16,
@@ -1554,41 +1919,6 @@
      "home": 0,
      "lo": 0,
      "hi": 0.2
-    },
-    "filtType": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
-    },
-    "cutoff": {
-     "home": 6000,
-     "lo": 2727.2727,
-     "hi": 13200
-    },
-    "resonance": {
-     "home": 0.12,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.15,
-     "lo": -0.25,
-     "hi": 0.55
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": 0,
-     "lo": -3.6,
-     "hi": 3.6
     },
     "kalAmount": {
      "home": 0,
@@ -1636,9 +1966,9 @@
      "hi": 0
     },
     "echoSend": {
-     "home": 0.3,
-     "lo": 0.1,
-     "hi": 0.5
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
     },
     "echoTime": {
      "home": 330,
@@ -1718,118 +2048,549 @@
    }
   },
   {
-   "id": "monsoon-kaleidoscope",
-   "name": "Monsoon Kaleidoscope",
+   "id": "heat-brass",
+   "name": "Heat Brass",
    "anchor": {
-    "temp": 28,
-    "wet": 0.9,
-    "light": 0.4
+    "temp": 36,
+    "wet": 0.1,
+    "light": 1
    },
    "params": {
-    "srcType": {
-     "home": 2,
-     "lo": 2,
-     "hi": 2
-    },
-    "srcFrame": {
-     "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.55
-    },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
+    "oscAWave": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
     },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
-    },
-    "sawDetune": {
-     "home": 14,
-     "lo": 2,
-     "hi": 26
-    },
-    "pluckDamp": {
+    "oscAPw": {
      "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
+     "lo": 0.31,
+     "hi": 0.49
     },
-    "pluckBright": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
+    "oscBWave": {
+     "home": 1,
+     "lo": 0.6,
+     "hi": 1.4
     },
-    "srcSpread": {
-     "home": 6,
+    "oscBInterval": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "oscBDetune": {
+     "home": 10,
+     "lo": 2,
+     "hi": 18
+    },
+    "oscSync": {
+     "home": 0,
      "lo": 0,
-     "hi": 14
+     "hi": 0
     },
-    "srcSub": {
+    "mixA": {
+     "home": 0.9,
+     "lo": 0.7,
+     "hi": 1
+    },
+    "mixB": {
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
+    },
+    "mixSub": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "mixNoise": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "slop": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 1
+    },
+    "voiceMode": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "stackDetune": {
+     "home": 12,
+     "lo": 4,
+     "hi": 20
+    },
+    "portamento": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "filtType": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "cutoff": {
+     "home": 900,
+     "lo": 409.0909,
+     "hi": 1980
+    },
+    "resonance": {
      "home": 0.2,
      "lo": 0,
      "hi": 0.4
     },
-    "srcShimmer": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
+    "filtDrive": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 1
     },
-    "srcBreath": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "filtEnv": {
+     "home": 0.7,
+     "lo": 0.3,
+     "hi": 1
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 0.03,
+     "lo": 0.0136,
+     "hi": 0.066
+    },
+    "fDecay": {
+     "home": 0.5,
+     "lo": 0.2273,
+     "hi": 1.1
+    },
+    "fSustain": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "fRelease": {
+     "home": 0.35,
+     "lo": 0.1591,
+     "hi": 0.77
     },
     "attack": {
-     "home": 0.25,
-     "lo": 0.1136,
-     "hi": 0.55
+     "home": 0.008,
+     "lo": 0.0036,
+     "hi": 0.0176
     },
     "decay": {
-     "home": 0.8,
-     "lo": 0.3636,
-     "hi": 1.76
+     "home": 0.5,
+     "lo": 0.2273,
+     "hi": 1.1
     },
     "sustain": {
-     "home": 0.75,
-     "lo": 0.55,
-     "hi": 0.95
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
     },
     "release": {
-     "home": 3,
-     "lo": 1.3636,
-     "hi": 6.6
+     "home": 0.35,
+     "lo": 0.1591,
+     "hi": 0.77
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 4.5,
+     "lo": 2.0455,
+     "hi": 9.9
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
     "vibDepth": {
      "home": 0.05,
      "lo": 0,
      "hi": 0.25
     },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
     },
-    "glide": {
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0.05,
+     "lo": -0.35,
+     "hi": 0.45
+    },
+    "pmOscB": {
+     "home": 0.1,
+     "lo": 0,
+     "hi": 0.6
+    },
+    "drive": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.95
+    },
+    "tilt": {
+     "home": 0,
+     "lo": -3.6,
+     "hi": 3.6
+    },
+    "crushBits": {
+     "home": 16,
+     "lo": 6,
+     "hi": 16
+    },
+    "crushRate": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.6
+    },
+    "kalAmount": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "kalFocus": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "kalSpread": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "movMode": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "movAmount": {
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "movA": {
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 0.65
+    },
+    "movB": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "movC": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "echoType": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "echoSend": {
      "home": 0.15,
      "lo": 0,
      "hi": 0.35
     },
-    "drive": {
+    "echoTime": {
+     "home": 375,
+     "lo": 170.4545,
+     "hi": 825
+    },
+    "echoFeedback": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "echoTone": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "echoAge": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "echoStereo": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "spaceType": {
+     "home": 3,
+     "lo": 3,
+     "hi": 3
+    },
+    "spaceSend": {
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "spaceDecay": {
+     "home": 2.5,
+     "lo": 1.1364,
+     "hi": 5.5
+    },
+    "spaceSize": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "spaceDamping": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "spaceMod": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "spacePreDelay": {
+     "home": 10,
+     "lo": 0,
+     "hi": 60
+    },
+    "bedLevel": {
      "home": 0,
      "lo": 0,
      "hi": 0.2
+    },
+    "bedColour": {
+     "home": 1800,
+     "lo": 818.1818,
+     "hi": 3960
+    },
+    "outGain": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    }
+   }
+  },
+  {
+   "id": "thunder-bass",
+   "name": "Thunder Bass",
+   "anchor": {
+    "temp": 16,
+    "wet": 0.95,
+    "light": 0.15
+   },
+   "params": {
+    "oscAWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "oscAPw": {
+     "home": 0.4,
+     "lo": 0.31,
+     "hi": 0.49
+    },
+    "oscBWave": {
+     "home": 2,
+     "lo": 1.6,
+     "hi": 2
+    },
+    "oscBInterval": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "oscBDetune": {
+     "home": 3,
+     "lo": 0,
+     "hi": 11
+    },
+    "oscSync": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "mixA": {
+     "home": 0.85,
+     "lo": 0.65,
+     "hi": 1
+    },
+    "mixB": {
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
+    },
+    "mixSub": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "mixNoise": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 2,
+     "lo": 2,
+     "hi": 2
+    },
+    "stackDetune": {
+     "home": 8,
+     "lo": 0,
+     "hi": 16
+    },
+    "portamento": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
+    },
+    "filtType": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "cutoff": {
+     "home": 220,
+     "lo": 100,
+     "hi": 484
+    },
+    "resonance": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.7
+    },
+    "filtDrive": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "keyTrack": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "filtEnv": {
+     "home": 0.5,
+     "lo": 0.1,
+     "hi": 0.9
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 0.001,
+     "lo": 0.001,
+     "hi": 0.0022
+    },
+    "fDecay": {
+     "home": 0.45,
+     "lo": 0.2045,
+     "hi": 0.99
+    },
+    "fSustain": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "fRelease": {
+     "home": 0.3,
+     "lo": 0.1364,
+     "hi": 0.66
+    },
+    "attack": {
+     "home": 0.002,
+     "lo": 0.001,
+     "hi": 0.0044
+    },
+    "decay": {
+     "home": 1.5,
+     "lo": 0.6818,
+     "hi": 3.3
+    },
+    "sustain": {
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
+    },
+    "release": {
+     "home": 0.35,
+     "lo": 0.1591,
+     "hi": 0.77
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 4.5,
+     "lo": 2.0455,
+     "hi": 9.9
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "vibDepth": {
+     "home": 0.03,
+     "lo": 0,
+     "hi": 0.23
+    },
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "tilt": {
+     "home": 0,
+     "lo": -3.6,
+     "hi": 3.6
     },
     "crushBits": {
      "home": 16,
@@ -1841,44 +2602,350 @@
      "lo": 0,
      "hi": 0.2
     },
-    "filtType": {
+    "kalAmount": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "kalFocus": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "kalSpread": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "movMode": {
      "home": 0,
      "lo": 0,
      "hi": 0
     },
-    "cutoff": {
-     "home": 1400,
-     "lo": 636.3636,
-     "hi": 3080
+    "movAmount": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
     },
-    "resonance": {
-     "home": 0.12,
+    "movA": {
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 0.65
+    },
+    "movB": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "movC": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "echoType": {
+     "home": 0,
      "lo": 0,
-     "hi": 0.3
+     "hi": 0
     },
-    "filtDrive": {
+    "echoSend": {
      "home": 0.1,
      "lo": 0,
      "hi": 0.3
     },
-    "filtEnv": {
-     "home": 0.15,
-     "lo": -0.25,
+    "echoTime": {
+     "home": 375,
+     "lo": 170.4545,
+     "hi": 825
+    },
+    "echoFeedback": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "echoTone": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "echoAge": {
+     "home": 0.35,
+     "lo": 0.15,
      "hi": 0.55
     },
-    "filtEnvDecay": {
+    "echoStereo": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "spaceType": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "spaceSend": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "spaceDecay": {
+     "home": 2.5,
+     "lo": 1.1364,
+     "hi": 5.5
+    },
+    "spaceSize": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "spaceDamping": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "spaceMod": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "spacePreDelay": {
+     "home": 10,
+     "lo": 0,
+     "hi": 60
+    },
+    "bedLevel": {
+     "home": 0.45,
+     "lo": 0.25,
+     "hi": 1
+    },
+    "bedColour": {
+     "home": 1800,
+     "lo": 818.1818,
+     "hi": 3960
+    },
+    "outGain": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    }
+   }
+  },
+  {
+   "id": "monsoon-kaleidoscope",
+   "name": "Monsoon Kaleidoscope",
+   "anchor": {
+    "temp": 28,
+    "wet": 0.9,
+    "light": 0.4
+   },
+   "params": {
+    "oscAWave": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "oscAPw": {
+     "home": 0.4,
+     "lo": 0.31,
+     "hi": 0.49
+    },
+    "oscBWave": {
+     "home": 1,
+     "lo": 0.6,
+     "hi": 1.4
+    },
+    "oscBInterval": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "oscBDetune": {
+     "home": 12,
+     "lo": 4,
+     "hi": 20
+    },
+    "oscSync": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "mixA": {
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
+    },
+    "mixB": {
+     "home": 0.7,
+     "lo": 0.5,
+     "hi": 0.9
+    },
+    "mixSub": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
+    },
+    "mixNoise": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 1,
+     "lo": 1,
+     "hi": 1
+    },
+    "stackDetune": {
+     "home": 14,
+     "lo": 6,
+     "hi": 22
+    },
+    "portamento": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "filtType": {
+     "home": 2,
+     "lo": 2,
+     "hi": 2
+    },
+    "cutoff": {
+     "home": 1500,
+     "lo": 681.8182,
+     "hi": 3300
+    },
+    "resonance": {
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
+    },
+    "filtDrive": {
+     "home": 0.25,
+     "lo": 0.05,
+     "hi": 0.45
+    },
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "filtEnv": {
+     "home": 0.2,
+     "lo": -0.2,
+     "hi": 0.6
+    },
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
      "home": 0.6,
      "lo": 0.2727,
      "hi": 1.32
+    },
+    "fDecay": {
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
+    },
+    "fSustain": {
+     "home": 0.6,
+     "lo": 0.4,
+     "hi": 0.8
+    },
+    "fRelease": {
+     "home": 3,
+     "lo": 1.3636,
+     "hi": 6.6
+    },
+    "attack": {
+     "home": 0.35,
+     "lo": 0.1591,
+     "hi": 0.77
+    },
+    "decay": {
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
+    },
+    "sustain": {
+     "home": 0.9,
+     "lo": 0.7,
+     "hi": 1
+    },
+    "release": {
+     "home": 3.5,
+     "lo": 1.5909,
+     "hi": 7.7
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 4.5,
+     "lo": 2.0455,
+     "hi": 9.9
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "vibDepth": {
+     "home": 0.03,
+     "lo": 0,
+     "hi": 0.23
+    },
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
     },
     "tilt": {
      "home": 0,
      "lo": -3.6,
      "hi": 3.6
     },
+    "crushBits": {
+     "home": 16,
+     "lo": 13.6,
+     "hi": 16
+    },
+    "crushRate": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
     "kalAmount": {
-     "home": 0.7,
-     "lo": 0.45,
+     "home": 0.6,
+     "lo": 0.4,
      "hi": 1
     },
     "kalFocus": {
@@ -1957,7 +3024,7 @@
      "hi": 1
     },
     "spaceSend": {
-     "home": 0.7,
+     "home": 0.65,
      "lo": 0.45,
      "hi": 1
     },
@@ -2004,128 +3071,83 @@
    }
   },
   {
-   "id": "heat-brass",
-   "name": "Heat Brass",
+   "id": "night-bass",
+   "name": "Night Bass",
    "anchor": {
-    "temp": 38,
-    "wet": 0.1,
-    "light": 1
+    "temp": 10,
+    "wet": 0.3,
+    "light": 0.05
    },
    "params": {
-    "srcType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "srcFrame": {
+    "oscAWave": {
      "home": 1,
      "lo": 0.8,
      "hi": 1
     },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
+    "oscAPw": {
+     "home": 0.5,
+     "lo": 0.41,
+     "hi": 0.5
     },
-    "fmIndex": {
-     "home": 2.5,
-     "lo": 0.5,
-     "hi": 4.5
-    },
-    "fmFeedback": {
+    "oscBWave": {
      "home": 0,
      "lo": 0,
-     "hi": 0.2
+     "hi": 0.4
     },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
+    "oscBInterval": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
+    "oscBDetune": {
+     "home": 7,
+     "lo": 0,
+     "hi": 15
     },
-    "pluckDamp": {
+    "oscSync": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "mixA": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
+    },
+    "mixB": {
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
+    },
+    "mixSub": {
      "home": 0.4,
      "lo": 0.2,
      "hi": 0.6
     },
-    "pluckBright": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
+    "mixNoise": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
     },
-    "srcSpread": {
+    "slop": {
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "voiceMode": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "stackDetune": {
      "home": 10,
      "lo": 2,
      "hi": 18
     },
-    "srcSub": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
-    },
-    "srcShimmer": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "srcBreath": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "attack": {
-     "home": 0.01,
-     "lo": 0.0045,
-     "hi": 0.022
-    },
-    "decay": {
-     "home": 0.4,
-     "lo": 0.1818,
-     "hi": 0.88
-    },
-    "sustain": {
-     "home": 0.65,
-     "lo": 0.45,
-     "hi": 0.85
-    },
-    "release": {
-     "home": 0.5,
-     "lo": 0.2273,
-     "hi": 1.1
-    },
-    "vibDepth": {
+    "portamento": {
      "home": 0.1,
      "lo": 0,
      "hi": 0.3
-    },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
-    },
-    "glide": {
-     "home": 0.15,
-     "lo": 0,
-     "hi": 0.35
-    },
-    "drive": {
-     "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.9
-    },
-    "crushBits": {
-     "home": 16,
-     "lo": 6,
-     "hi": 16
-    },
-    "crushRate": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.6
     },
     "filtType": {
      "home": 0,
@@ -2133,275 +3155,124 @@
      "hi": 0
     },
     "cutoff": {
-     "home": 5000,
-     "lo": 2272.7273,
-     "hi": 11000
+     "home": 260,
+     "lo": 118.1818,
+     "hi": 572
     },
     "resonance": {
-     "home": 0.12,
+     "home": 0.15,
      "lo": 0,
-     "hi": 0.3
+     "hi": 0.35
     },
     "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
+     "home": 0.35,
+     "lo": 0.15,
+     "hi": 0.55
+    },
+    "keyTrack": {
+     "home": 0.5,
+     "lo": 0.3,
+     "hi": 0.7
     },
     "filtEnv": {
-     "home": 0.35,
-     "lo": -0.05,
-     "hi": 0.75
+     "home": 0.25,
+     "lo": -0.15,
+     "hi": 0.65
     },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
+    "filtVel": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fAttack": {
+     "home": 0.002,
+     "lo": 0.001,
+     "hi": 0.0044
+    },
+    "fDecay": {
+     "home": 0.8,
+     "lo": 0.3636,
+     "hi": 1.76
+    },
+    "fSustain": {
+     "home": 0.3,
+     "lo": 0.1,
+     "hi": 0.5
+    },
+    "fRelease": {
+     "home": 0.4,
+     "lo": 0.1818,
+     "hi": 0.88
+    },
+    "attack": {
+     "home": 0.005,
+     "lo": 0.0023,
+     "hi": 0.011
+    },
+    "decay": {
+     "home": 2,
+     "lo": 0.9091,
+     "hi": 4.4
+    },
+    "sustain": {
+     "home": 0.8,
+     "lo": 0.6,
+     "hi": 1
+    },
+    "release": {
+     "home": 0.4,
+     "lo": 0.1818,
+     "hi": 0.88
+    },
+    "ampVel": {
+     "home": 0.4,
+     "lo": 0.2,
+     "hi": 0.6
+    },
+    "lfoRate": {
+     "home": 4.5,
+     "lo": 2.0455,
+     "hi": 9.9
+    },
+    "lfoShape": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0
+    },
+    "vibDepth": {
+     "home": 0.03,
+     "lo": 0,
+     "hi": 0.23
+    },
+    "lfoPwm": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "lfoFilter": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "pmEnvA": {
+     "home": 0,
+     "lo": -0.4,
+     "hi": 0.4
+    },
+    "pmOscB": {
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
+    },
+    "drive": {
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
     },
     "tilt": {
      "home": 0,
      "lo": -3.6,
      "hi": 3.6
-    },
-    "kalAmount": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "kalFocus": {
-     "home": 0.5,
-     "lo": 0.3,
-     "hi": 0.7
-    },
-    "kalSpread": {
-     "home": 0.5,
-     "lo": 0.3,
-     "hi": 0.7
-    },
-    "movMode": {
-     "home": 3,
-     "lo": 3,
-     "hi": 3
-    },
-    "movAmount": {
-     "home": 0.3,
-     "lo": 0.15,
-     "hi": 0.9
-    },
-    "movA": {
-     "home": 0.45,
-     "lo": 0.4,
-     "hi": 1
-    },
-    "movB": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "movC": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "echoType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "echoSend": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
-    },
-    "echoTime": {
-     "home": 375,
-     "lo": 170.4545,
-     "hi": 825
-    },
-    "echoFeedback": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "echoTone": {
-     "home": 0.5,
-     "lo": 0.3,
-     "hi": 0.7
-    },
-    "echoAge": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "echoStereo": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
-    },
-    "spaceType": {
-     "home": 3,
-     "lo": 3,
-     "hi": 3
-    },
-    "spaceSend": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
-    },
-    "spaceDecay": {
-     "home": 2.5,
-     "lo": 1.1364,
-     "hi": 5.5
-    },
-    "spaceSize": {
-     "home": 0.5,
-     "lo": 0.3,
-     "hi": 0.7
-    },
-    "spaceDamping": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "spaceMod": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "spacePreDelay": {
-     "home": 10,
-     "lo": 0,
-     "hi": 60
-    },
-    "bedLevel": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "bedColour": {
-     "home": 1800,
-     "lo": 818.1818,
-     "hi": 3960
-    },
-    "outGain": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    }
-   }
-  },
-  {
-   "id": "storm-fm",
-   "name": "Storm FM",
-   "anchor": {
-    "temp": 15,
-    "wet": 0.95,
-    "light": 0.2
-   },
-   "params": {
-    "srcType": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
-    },
-    "srcFrame": {
-     "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.55
-    },
-    "fmRatio": {
-     "home": 2,
-     "lo": 0.9091,
-     "hi": 4.4
-    },
-    "fmIndex": {
-     "home": 4,
-     "lo": 2,
-     "hi": 6
-    },
-    "fmFeedback": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
-    },
-    "sawVoices": {
-     "home": 5,
-     "lo": 3.8,
-     "hi": 6.2
-    },
-    "sawDetune": {
-     "home": 18,
-     "lo": 6,
-     "hi": 30
-    },
-    "pluckDamp": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
-    },
-    "pluckBright": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
-    },
-    "srcSpread": {
-     "home": 6,
-     "lo": 0,
-     "hi": 14
-    },
-    "srcSub": {
-     "home": 0.2,
-     "lo": 0,
-     "hi": 0.4
-    },
-    "srcShimmer": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "srcBreath": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
-    },
-    "attack": {
-     "home": 0.02,
-     "lo": 0.0091,
-     "hi": 0.044
-    },
-    "decay": {
-     "home": 0.8,
-     "lo": 0.3636,
-     "hi": 1.76
-    },
-    "sustain": {
-     "home": 0.75,
-     "lo": 0.55,
-     "hi": 0.95
-    },
-    "release": {
-     "home": 1.5,
-     "lo": 0.6818,
-     "hi": 3.3
-    },
-    "vibDepth": {
-     "home": 0.05,
-     "lo": 0,
-     "hi": 0.25
-    },
-    "vibRate": {
-     "home": 4.5,
-     "lo": 2.0455,
-     "hi": 9.9
-    },
-    "glide": {
-     "home": 0.15,
-     "lo": 0,
-     "hi": 0.35
-    },
-    "drive": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0.2
     },
     "crushBits": {
      "home": 16,
@@ -2413,41 +3284,6 @@
      "lo": 0,
      "hi": 0.2
     },
-    "filtType": {
-     "home": 0,
-     "lo": 0,
-     "hi": 0
-    },
-    "cutoff": {
-     "home": 1600,
-     "lo": 727.2727,
-     "hi": 3520
-    },
-    "resonance": {
-     "home": 0.35,
-     "lo": 0.15,
-     "hi": 0.7
-    },
-    "filtDrive": {
-     "home": 0.1,
-     "lo": 0,
-     "hi": 0.3
-    },
-    "filtEnv": {
-     "home": 0.15,
-     "lo": -0.25,
-     "hi": 0.55
-    },
-    "filtEnvDecay": {
-     "home": 0.6,
-     "lo": 0.2727,
-     "hi": 1.32
-    },
-    "tilt": {
-     "home": 0,
-     "lo": -3.6,
-     "hi": 3.6
-    },
     "kalAmount": {
      "home": 0,
      "lo": 0,
@@ -2469,9 +3305,9 @@
      "hi": 1
     },
     "movAmount": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.9
+     "home": 0.2,
+     "lo": 0,
+     "hi": 0.4
     },
     "movA": {
      "home": 0.45,
@@ -2489,14 +3325,14 @@
      "hi": 0.8
     },
     "echoType": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
     "echoSend": {
-     "home": 0.4,
-     "lo": 0.2,
-     "hi": 0.6
+     "home": 0.05,
+     "lo": 0,
+     "hi": 0.25
     },
     "echoTime": {
      "home": 375,
@@ -2524,14 +3360,14 @@
      "hi": 1
     },
     "spaceType": {
-     "home": 1,
-     "lo": 1,
-     "hi": 1
+     "home": 0,
+     "lo": 0,
+     "hi": 0
     },
     "spaceSend": {
-     "home": 0.6,
-     "lo": 0.4,
-     "hi": 0.8
+     "home": 0.15,
+     "lo": 0,
+     "hi": 0.35
     },
     "spaceDecay": {
      "home": 2.5,
@@ -2559,9 +3395,9 @@
      "hi": 60
     },
     "bedLevel": {
-     "home": 0.5,
-     "lo": 0.25,
-     "hi": 1
+     "home": 0,
+     "lo": 0,
+     "hi": 0.2
     },
     "bedColour": {
      "home": 1800,

@@ -110,7 +110,7 @@ if(ATMOS_BUILD_TESTS)
     target_include_directories(AtmosTests PRIVATE ${ATMOS_INCLUDES})
     target_compile_definitions(AtmosTests PRIVATE ${ATMOS_DEFINES}
         JucePlugin_Name="Atmospheric" JucePlugin_IsSynth=1 JucePlugin_WantsMidiInput=1 JucePlugin_ProducesMidiOutput=0
-        JucePlugin_IsMidiEffect=0 JucePlugin_EditorRequiresKeyboardFocus=1
+        JucePlugin_IsMidiEffect=0 JucePlugin_EditorRequiresKeyboardFocus=1 JUCE_MODAL_LOOPS_PERMITTED=1
         ATMOS_TEST_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/tests/vectors.json")
     target_link_libraries(AtmosTests PRIVATE AtmosData ${ATMOS_MODULES}
         juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)

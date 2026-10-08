@@ -43,7 +43,7 @@ The rule of thumb behind every mapping: **temperature is energy, water is space,
 - **Heat:** warmer means more saturation, faster modulation and a drier, shorter tail (hot and dry). Hot *and* humid (a rainforest) keeps the drive but gets the wet space, because humidity is a separate axis.
 - **Day vs night:** brightness/darkness through the shelf, as above, plus the moon glow at night.
 - **ADSR:** no four-slider envelope. One **Bloom** macro morphs pluck ↔ swell (attack, release and sustain together). Climate sets where Bloom rests: cold means slow swell, heat means instant pluck.
-- **Waveform/wavetable:** locked to nature. It is the strongest identity of the day's sound and the "ticket" you were dealt. Model C lets you reach other waveforms indirectly by asking "what if it were warmer?".
+- **Core sound:** locked to nature. The day's weather picks one of the bible's core sounds (a string machine, a Moog drone, a brass, a bass…), which is the strongest identity of the day and the "ticket" you were dealt. Its oscillator, filter and voice types never move; everything else leans within the boundaries set in the designer.
 
 ## 3. Three control models
 
@@ -102,7 +102,7 @@ Plugin ──HTTPS──▶ your relay (e.g. Cloudflare Worker) ──▶ OpenWe
 ## 6. JUCE build plan
 
 1. **Port the mapping first.** `natureParams()` and `resolve()` in `lab.html` are pure functions with no audio or UI. Port them 1:1 to a C++ `ClimateMapper` and keep a shared JSON test vector (climate in, parameters out) that both implementations must pass.
-2. **DSP voice.** A wavetable oscillator morphing between the five harmonic frames (or a real wavetable later) with two detuned layers, a sub-octave and an octave shimmer. Then waveshaper drive, bit reducer, 24 dB ladder or SVF low-pass, low and high shelves, chorus, vibrato, tremolo, feedback delay, algorithmic reverb (use an FDN, not convolution, so decay can move smoothly) and a limiter.
+2. **DSP voice (as built).** An analogue polysynth voice in the Prophet-5 / Memorymoog line: two band-limited oscillators (saw/pulse with PWM; triangle/saw/pulse) with hard sync, a sub-octave and noise, per-voice analogue drift, unison stacks and glide; a Moog or Prophet transistor ladder or an SEM state-variable filter with its own ADSR; exponential envelopes; Prophet-style poly-mod. The bus adds tube/tape saturation, the heat's bit and sample-rate breakup, tilt EQ, and OSP's Kaleidoscope, Movement (tape, chorus, pulse, shaper), Echo (tape, BBD) and Space (room, hall, plate, spring), then a limiter. The same C++ runs in the plugin and, as WebAssembly, in the sound designer.
 3. **Loudness.** The lab's static compensation keeps the 24 deck scenarios within about 6 dB (measured). The plugin should add a slow RMS-follower auto-gain (±6 dB, seconds-long) so extremes don't jump in level.
 4. **Network.** A `juce::URL` fetch on a background thread at instance creation, never on the audio thread. Parameter changes from new weather are smoothed over 2–5 s.
 5. **State.** `getStateInformation` writes the snapshot, seed, macro values and mapping version.

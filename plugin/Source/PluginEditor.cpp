@@ -554,8 +554,8 @@ void AtmosEditor::refresh()
     const auto& d = proc.currentDay();
     const auto P = proc.currentPatch();
     const auto& snd = proc.currentSound();
-    const juce::String voice = juce::String (snd.name) + ATMOS_U8 (" · ") + choiceName (srcType, P[srcType])
-                               + (P[srcType] < 0.5 ? ATMOS_U8 (" · ") + juce::String (frameName (P[srcFrame])) : juce::String());
+    const juce::String voice = juce::String (snd.name) + ATMOS_U8 (" · ") + choiceName (filtType, P[filtType])
+                               + (P[voiceMode] > 0.5 ? ATMOS_U8 (" · ") + choiceName (voiceMode, P[voiceMode]) : juce::String());
     card.setDay (d, voice);
     status.setText (proc.statusMessage(), juce::dontSendNotification);
 
@@ -567,11 +567,11 @@ void AtmosEditor::refresh()
     knobs[4]->setReadout (juce::String::fromUTF8 ("\xc3\x97 ") + juce::String (iv >= 0 ? 1 + 0.6 * iv : 1 + iv, 2) + "\nextremes");
 
     juce::StringArray lines;
-    lines.add ("Drive " + pct (P[drive]) + (P[crushBits] < 15.5 ? ATMOS_U8 ("  ·  ") + juce::String (juce::roundToInt (P[crushBits])) + "-bit" : juce::String())
-               + ATMOS_U8 ("  ·  ") + choiceName (filtType, P[filtType]) + " filter, resonance " + pct (P[resonance] / 0.9));
+    lines.add ("Saturation " + pct (P[drive]) + (P[crushBits] < 15.5 ? ATMOS_U8 ("  ·  ") + juce::String (juce::roundToInt (P[crushBits])) + "-bit" : juce::String())
+               + ATMOS_U8 ("  ·  resonance ") + pct (P[resonance]) + ATMOS_U8 ("  ·  drift ") + pct (P[slop]));
     lines.add ("Kaleidoscope " + pct (P[kalAmount]) + ATMOS_U8 ("  ·  ") + choiceName (echoType, P[echoType]) + " echo " + pct (P[echoSend]) + " at "
                + fmtS (P[echoTime] / 1000) + ", feedback " + pct (P[echoFeedback]));
-    lines.add ("Sub " + pct (P[srcSub]) + ATMOS_U8 ("  ·  moon glow ") + pct (P[srcShimmer]) + ATMOS_U8 ("  ·  rain/wind bed ") + pct (P[bedLevel]));
+    lines.add ("Sub " + pct (P[mixSub]) + ATMOS_U8 ("  ·  noise ") + pct (P[mixNoise]) + ATMOS_U8 ("  ·  rain/wind bed ") + pct (P[bedLevel]));
     natureLine.setText (lines.joinIntoString ("\n"), juce::dontSendNotification);
 
     const bool liveToday = d.source == "live" && proc.dayIsCurrent() && ! proc.isPreviewing();

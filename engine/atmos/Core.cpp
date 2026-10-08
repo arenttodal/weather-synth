@@ -8,107 +8,94 @@ namespace atmos
 namespace
 {
     constexpr double kTwoPi = 6.283185307179586;
-
-    struct FrameDef
-    {
-        const char* name;
-        float p[16];
-    };
-    const FrameDef kFrameDefs[kFrames] = {
-        { "Glass", { 1, 0, 0.5f, 0, 0, 0, 0.35f, 0, 0, 0, 0.25f, 0, 0, 0.15f, 0, 0 } },
-        { "Breath", { 1, 0.25f, 0.08f, 0.03f, 0.01f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
-        { "Hollow", { 1, 0, 0.6f, 0, 0.12f, 0, 0.3f, 0, 0.05f, 0, 0.12f, 0, 0, 0, 0.05f, 0 } },
-        { "Reed", { 1, 0, 0.33f, 0, 0.2f, 0, 0.14f, 0, 0.11f, 0, 0.09f, 0, 0.07f, 0, 0.06f, 0 } },
-        { "Organ", { 1, 0.7f, 0, 0.5f, 0, 0, 0, 0.3f, 0, 0, 0, 0, 0, 0, 0, 0.15f } },
-        { "String", { 1, 1 / 2.f, 1 / 3.f, 1 / 4.f, 1 / 5.f, 1 / 6.f, 1 / 7.f, 1 / 8.f, 1 / 9.f, 1 / 10.f, 1 / 11.f, 1 / 12.f, 1 / 13.f, 1 / 14.f, 1 / 15.f, 1 / 16.f } },
-        { "Choir", { 0.5f, 0.6f, 1, 0.8f, 0.35f, 0.15f, 0.25f, 0.4f, 0.3f, 0.12f, 0.05f, 0.03f, 0.02f, 0.01f, 0, 0 } },
-        { "Brass", { 0.6f, 0.8f, 1, 0.9f, 0.7f, 0.5f, 0.35f, 0.25f, 0.18f, 0.12f, 0.08f, 0.05f, 0.03f, 0.02f, 0.01f, 0.01f } },
-    };
+    constexpr double kPi = 3.141592653589793;
 
     inline float rnd (uint32_t& s)
     {
         s = s * 1664525u + 1013904223u;
         return (float) ((s >> 8) & 0xffffff) / 8388608.0f - 1.0f;
     }
-    // Tone.js Distortion curve, as in the lab
-    inline float distort (float x, float k)
+    // Polynomial band-limited step: removes most aliasing from saw, pulse and sub edges
+    inline double blep (double t, double dt) noexcept
     {
-        x = std::clamp (x, -1.0f, 1.0f);
-        constexpr float deg = 3.14159265f / 180.0f;
-        return (3.0f + k) * x * 20.0f * deg / (3.14159265f + k * std::abs (x));
+        if (t < dt)
+        {
+            t /= dt;
+            return t + t - t * t - 1.0;
+        }
+        if (t > 1.0 - dt)
+        {
+            t = (t - 1.0) / dt;
+            return t * t + t + t + 1.0;
+        }
+        return 0.0;
     }
+    inline double saw (double ph, double dt) noexcept { return 2.0 * ph - 1.0 - blep (ph, dt); }
+    inline double pulse (double ph, double dt, double pw) noexcept
+    {
+        double y = ph < pw ? 1.0 : -1.0;
+        y += blep (ph, dt);
+        double t2 = ph + 1.0 - pw;
+        t2 -= std::floor (t2);
+        y -= blep (t2, dt);
+        return y - (2.0 * pw - 1.0); // remove DC so width changes don't thump
+    }
+    inline double tri (double ph) noexcept { return 1.0 - 4.0 * std::abs (ph - 0.5); }
+    inline double softClip (double x) noexcept { return x / std::sqrt (1.0 + x * x); }
+    constexpr double kIntervals[5] = { -12, 0, 7, 12, 24 };
 } // namespace
 
-const char* frameName (double pos)
+void Core::Env::set (double sr, double A, double D, double S, double R, double scale)
 {
-    const int i = (int) std::lround (std::clamp (pos, 0.0, 1.0) * (kFrames - 1));
-    return kFrameDefs[i].name;
+    // Attack charges towards 1.3 and stops at 1 (the curve of an analogue envelope);
+    // decay and release fall exponentially, reaching about -26 dB at the set time.
+    aC = 1.0 - std::exp (-1.466 / std::max (1.0, A * scale * sr));
+    dC = 1.0 - std::exp (-3.0 / std::max (1.0, D * scale * sr));
+    rC = 1.0 - std::exp (-3.0 / std::max (1.0, R * scale * sr));
+    s = S;
 }
 
-float Core::Adsr::next() noexcept
+double Core::Env::next() noexcept
 {
     switch (stage)
     {
         case att:
-            level += 1.0 / std::max (1.0, a * sr);
-            if (level >= 1.0) { level = 1.0; stage = dec; }
+            level += (1.3 - level) * aC;
+            if (level >= 1.0)
+            {
+                level = 1.0;
+                stage = dec;
+            }
             break;
-        case dec:
-            level -= (1.0 - s) / std::max (1.0, d * sr);
-            if (level <= s) { level = s; stage = sus; }
-            break;
-        case sus: level = s; break;
+        case dec: level += (s - level) * dC; break;
         case rel:
-            level -= std::max (level, 0.001) / std::max (1.0, r * sr) * 1.0;
-            level -= 1.0 / std::max (1.0, r * sr) * 0.05; // finish cleanly
-            if (level <= 0) { level = 0; stage = idle; }
+            level -= level * rC;
+            if (level < 1.0e-4)
+            {
+                level = 0;
+                stage = idle;
+            }
             break;
         case idle: level = 0; break;
     }
-    return (float) level;
+    return level;
 }
 
-Core::Core()
-{
-    // Build band-limited tables once: frame x octave
-    tables.assign ((size_t) kFrames * kOctaves * (kTable + 1), 0.0f);
-}
+Core::Core() = default;
 
 void Core::prepare (double sampleRate, int)
 {
     sr = sampleRate;
-    for (int f = 0; f < kFrames; ++f)
-    {
-        float scale = 1.0f;
-        for (int o = 0; o < kOctaves; ++o)
-        {
-            float* tb = &tables[((size_t) f * kOctaves + o) * (kTable + 1)];
-            const double maxF = 27.5 * std::pow (2.0, o + 1);
-            const int maxH = std::clamp ((int) (0.45 * sr / maxF), 1, 16);
-            for (int n = 0; n < kTable; ++n)
-            {
-                double s = 0;
-                for (int h = 1; h <= maxH; ++h)
-                    if (kFrameDefs[f].p[h - 1] != 0.0f) s += kFrameDefs[f].p[h - 1] * std::sin (kTwoPi * h * n / kTable);
-                tb[n] = (float) s;
-            }
-            if (o == 0)
-            {
-                float peak = 0;
-                for (int n = 0; n < kTable; ++n)
-                    peak = std::max (peak, std::abs (tb[n]));
-                scale = peak > 0 ? 1.0f / peak : 1.0f;
-            }
-            for (int n = 0; n < kTable; ++n)
-                tb[n] *= scale;
-            tb[kTable] = tb[0];
-        }
-    }
+    // Each voice card is slightly different, as in a real polysynth
+    uint32_t card = 0x50524f50u;
     for (auto& v : voices)
     {
-        v.amp.sr = sr;
-        v.filter.prepare (sr);
-        v.ks.assign ((size_t) (sr / 15.0) + 4, 0.0f);
+        v.cardCents = rnd (card);
+        v.cardCutoff = rnd (card);
+        v.cardEnv = rnd (card);
+        v.rng = card ^ 0x9e3779b9u;
+        v.phA = (rnd (card) + 1.0f) * 0.5f;
+        v.phB = (rnd (card) + 1.0f) * 0.5f;
     }
     kaleido.prepare (sr, 0x41544d4fu);
     movement.prepare (sr, 0x5eedu);
@@ -125,16 +112,18 @@ void Core::reset()
 {
     for (auto& v : voices)
     {
-        v.amp.stage = Adsr::idle;
-        v.amp.level = 0;
+        v.amp.stage = v.fenv.stage = Env::idle;
+        v.amp.level = v.fenv.level = 0;
         v.note = -1;
         v.keyDown = v.held = false;
-        v.filter.reset();
+        v.s1 = v.s2 = v.s3 = v.s4 = 0;
+        v.noiseLp = 0;
     }
     for (int c = 0; c < 2; ++c)
     {
         loShelf[c].reset();
         hiShelf[c].reset();
+        dcX[c] = dcY[c] = 0;
     }
     kaleido.reset();
     movement.reset();
@@ -144,12 +133,13 @@ void Core::reset()
     echoLevel = spaceLevel = 0;
     echoIdle = spaceIdle = true;
     reverbFade = 0;
-    lastMovMode = -1;
     lastTilt = 1000.f;
     first = true;
     countdown = 0;
     limGain = 1.0f;
     bedGate = 0;
+    lastNote = -1;
+    lfoPh = lfoValue = lfoHeld = 0;
 }
 
 void Core::setPatch (const Patch& p)
@@ -172,48 +162,43 @@ int Core::activeVoices() const noexcept
     return n;
 }
 
-void Core::startPluck (Voice& v, double hz) noexcept
+void Core::startVoice (Voice& v, int note, float vel, double stackCents, double pan) noexcept
 {
-    v.ksLen = std::clamp ((int) std::lround (sr / std::max (hz, 16.0)), 2, (int) v.ks.size() - 1);
-    v.ksPos = 0;
-    v.ksLp = 0;
-    const float bright = (float) cur[pluckBright];
-    float lp = 0;
-    for (int i = 0; i < v.ksLen; ++i)
-    {
-        const float w = rnd (v.rng);
-        lp += (w - lp) * (0.1f + 0.9f * bright); // darker excitation when not bright
-        v.ks[(size_t) i] = lp;
-    }
-}
-
-void Core::noteOn (int note, float vel)
-{
-    Voice* pick = nullptr;
-    for (auto& v : voices)
-        if (! v.amp.active() && (pick == nullptr || v.age < pick->age)) pick = &v;
-    if (pick == nullptr)
-        for (auto& v : voices)
-            if (! v.held && (pick == nullptr || v.age < pick->age)) pick = &v;
-    if (pick == nullptr)
-        for (auto& v : voices)
-            if (pick == nullptr || v.age < pick->age) pick = &v;
-    auto& v = *pick;
+    const bool glide = target[portamento] > 0.001 && lastNote >= 0;
+    if (! glide || ! v.amp.active()) v.pitch = glide ? lastNote : note;
+    if (! glide) v.pitch = note;
     v.note = note;
     v.vel = vel;
     v.keyDown = v.held = true;
     v.age = ++ageCounter;
-    v.rng = 0x9e3779b9u ^ (uint32_t) (note * 7919 + ageCounter * 104729);
-    for (auto& p : v.ph)
-        p = (rnd (v.rng) + 1.0f) * 0.5f; // free-running phases avoid a flanged attack on unison
-    v.phSub = v.phShim = 0;
-    v.phMod[0] = v.phMod[1] = 0;
-    v.fbPrev[0] = v.fbPrev[1] = 0;
-    v.fenv = 1.0;
-    v.amp.level = 0;
+    v.stackCents = stackCents;
+    v.pan = pan;
+    // Oscillators run free and the envelopes restart from where they are, as on the hardware
     v.amp.on();
-    v.filter.reset();
-    if ((int) std::lround (target[srcType]) == 3) startPluck (v, 440.0 * std::pow (2.0, (note - 69) / 12.0));
+    v.fenv.on();
+}
+
+void Core::noteOn (int note, float vel)
+{
+    const int mode = (int) std::lround (target[voiceMode]);
+    const int stack = mode == 2 ? 4 : mode == 1 ? 2 : 1;
+    for (int k = 0; k < stack; ++k)
+    {
+        Voice* pick = nullptr;
+        for (auto& v : voices)
+            if (! v.amp.active() && (pick == nullptr || v.age < pick->age)) pick = &v;
+        if (pick == nullptr)
+            for (auto& v : voices)
+                if (! v.held && (pick == nullptr || v.age < pick->age)) pick = &v;
+        if (pick == nullptr)
+            for (auto& v : voices)
+                if (pick == nullptr || v.age < pick->age) pick = &v;
+        const double off = stack == 1 ? 0.0 : (k / (double) (stack - 1) - 0.5) * 2.0;
+        const int idx = (int) (pick - voices.data());
+        const double pan = stack == 1 ? ((idx % 2) ? 0.18 : -0.18) * (0.5 + 0.5 * target[slop]) : off * 0.75;
+        startVoice (*pick, note, vel, off * target[stackDetune], pan);
+    }
+    lastNote = note;
     resonancesDirty = true;
     movement.noteStarted();
 }
@@ -228,6 +213,7 @@ void Core::noteOff (int note)
             {
                 v.held = false;
                 v.amp.off();
+                v.fenv.off();
             }
         }
     resonancesDirty = true;
@@ -242,6 +228,7 @@ void Core::setSustain (bool down)
             {
                 v.held = false;
                 v.amp.off();
+                v.fenv.off();
             }
 }
 
@@ -251,6 +238,7 @@ void Core::allNotesOff()
     {
         v.keyDown = v.held = false;
         v.amp.off();
+        v.fenv.off();
     }
     sustainDown = false;
 }
@@ -264,29 +252,16 @@ void Core::updateResonances() noexcept
     for (auto& v : voices)
         if (v.held && v.note >= 0 && n < osp::ReimaginedStage::resonators)
         {
+            bool dup = false;
+            for (int i = 0; i < n; ++i)
+                dup |= std::abs (hz[i] - 440.0 * std::pow (2.0, (v.note - 69) / 12.0)) < 0.01;
+            if (dup) continue;
             hz[n++] = 440.0 * std::pow (2.0, (v.note - 69) / 12.0);
             lowest = std::min (lowest, v.note);
         }
     if (n > 0 && n < osp::ReimaginedStage::resonators) hz[n++] = 440.0 * std::pow (2.0, (lowest - 81) / 12.0);
     if (n > 0) kaleido.setResonances (hz, n); // keep the last chord ringing after release
     resonancesDirty = false;
-}
-
-int Core::octaveFor (double hz) const noexcept { return std::clamp ((int) std::floor (std::log2 (std::max (hz, 1.0) / 27.5)), 0, kOctaves - 1); }
-
-float Core::frameSample (int o, double frame, double phase) const noexcept
-{
-    const double x = std::clamp (frame, 0.0, 1.0) * (kFrames - 1);
-    const int f = std::min (kFrames - 2, (int) x);
-    const float t = (float) (x - f);
-    const double idx = phase * kTable;
-    const int i = (int) idx;
-    const float fr = (float) (idx - i);
-    const float* a = &tables[((size_t) f * kOctaves + o) * (kTable + 1)];
-    const float* b = &tables[((size_t) (f + 1) * kOctaves + o) * (kTable + 1)];
-    const float va = a[i] + fr * (a[i + 1] - a[i]);
-    const float vb = b[i] + fr * (b[i + 1] - b[i]);
-    return va + t * (vb - va);
 }
 
 void Core::controlTick() noexcept
@@ -300,9 +275,35 @@ void Core::controlTick() noexcept
     }
     first = false;
 
-    const double rel = cur[release];
+    const double sl = cur[slop];
     for (auto& v : voices)
-        v.amp.set (cur[attack], cur[decay], cur[sustain], rel);
+    {
+        const double scale = 1.0 + 0.15 * sl * v.cardEnv;
+        v.amp.set (sr, cur[attack], cur[decay], cur[sustain], cur[release], scale);
+        v.fenv.set (sr, cur[fAttack], cur[fDecay], cur[fSustain], cur[fRelease], scale);
+        // Slow wandering pitch (a new target every ~0.5 s)
+        if (--v.driftCount <= 0)
+        {
+            v.driftCount = (int) ((0.3 + 0.4 * (rnd (v.rng) + 1.0f)) * sr / kControl);
+            v.driftTarget = rnd (v.rng) * 6.0 * sl;
+        }
+        v.drift += (v.driftTarget - v.drift) * 0.01;
+    }
+
+    // Global LFO
+    lfoPh += cur[lfoRate] * kControl / sr;
+    if (lfoPh >= 1.0)
+    {
+        lfoPh -= std::floor (lfoPh);
+        lfoHeld = rnd (lfoRng);
+    }
+    switch ((int) std::lround (cur[lfoShape]))
+    {
+        case 1: lfoValue = 2.0 * lfoPh - 1.0; break;
+        case 2: lfoValue = lfoPh < 0.5 ? 1.0 : -1.0; break;
+        case 3: lfoValue += (lfoHeld - lfoValue) * 0.3; break;
+        default: lfoValue = 1.0 - 4.0 * std::abs (lfoPh - 0.5); break;
+    }
 
     // Tilt
     if (std::abs ((float) cur[tilt] - lastTilt) > 0.05f)
@@ -382,125 +383,123 @@ void Core::controlTick() noexcept
         reverbs[activeReverb].tune (ss);
     }
 
-    // Per-voice filter: CHARACTER with its envelope
-    const auto ft = (osp::FilterType) std::clamp ((int) std::lround (cur[filtType]), 0, 4);
-    const double envDecayCoef = std::exp (-kControl / (std::max (0.01, cur[filtEnvDecay]) * sr));
-    for (auto& v : voices)
-    {
-        if (! v.amp.active()) continue;
-        const double keyTrack = std::pow (2.0, (v.note - 60) / 24.0); // half key tracking
-        const double hz = std::clamp (cur[cutoff] * keyTrack * std::pow (2.0, 5.0 * cur[filtEnv] * v.fenv * (0.5 + 0.5 * v.vel)), 20.0, 0.45 * sr);
-        v.filter.setParameters (ft, hz, cur[resonance], cur[filtDrive], ft == osp::FilterType::tilt ? cur[tilt] : 0.0);
-        v.fenv *= envDecayCoef;
-    }
 }
 
 void Core::renderVoices (float* L, float* R, int n) noexcept
 {
-    const int type = (int) std::lround (cur[srcType]);
-    const double spreadUp = std::pow (2.0, cur[srcSpread] / 2400.0);
-    const double subG = cur[srcSub] * 0.45, shimG = cur[srcShimmer] * 0.22, breathG = cur[srcBreath] * 0.35;
-    const double frame = cur[srcFrame];
-    const int sawN = std::clamp ((int) std::lround (cur[sawVoices]), 1, 7);
-    const double vibD = cur[vibDepth] * 0.5; // semitones peak
-    const double vibInc = cur[vibRate] / sr;
-    const double driftCents = cur[glide] * 18.0;
-    const double ratio = cur[fmRatio], index = cur[fmIndex], fb = cur[fmFeedback];
-    const float ksDamp = (float) (0.996 - 0.03 * cur[pluckDamp]);
+    const double sl = cur[slop];
+    const double aw = cur[oscAWave], bw = cur[oscBWave];
+    const double pw = std::clamp (cur[oscAPw] + cur[lfoPwm] * 0.42 * lfoValue, 0.04, 0.96);
+    const double interval = kIntervals[std::clamp ((int) std::lround (cur[oscBInterval]), 0, 4)] + cur[oscBDetune] / 100.0;
+    const bool sync = cur[oscSync] > 0.5;
+    const double gA = cur[mixA], gB = cur[mixB], gSub = cur[mixSub] * 0.9, gNoise = cur[mixNoise] * 1.3;
+    const double vib = cur[vibDepth] * lfoValue; // semitones
+    const double pmA = cur[pmEnvA] * 24.0, pmB = cur[pmOscB] * 3.0;
+    const double glideT = 0.004 + 0.9 * cur[portamento] * cur[portamento];
+    const double glideC = cur[portamento] > 0.001 ? 1.0 - std::exp (-1.0 / (glideT * sr)) : 1.0;
+    const int ft = std::clamp ((int) std::lround (cur[filtType]), 0, 3);
+    const double res = cur[resonance];
+    const double kLad = 4.1 * res;
+    const double kSvf = 2.0 - 1.97 * res;
+    const double inGain = 0.6 + 3.2 * cur[filtDrive] * cur[filtDrive] + 0.6 * cur[filtDrive];
+    const double lfoOct = cur[lfoFilter] * 2.0 * lfoValue;
+    const double envAmt = cur[filtEnv] * 7.0;
+    const double nyq = 0.45 * sr;
+    const int mode = (int) std::lround (cur[voiceMode]);
+    const double stackGain = mode == 2 ? 0.5 : mode == 1 ? 0.72 : 1.0;
+    const double outTrim = 0.42 / (1.0 + 0.9 * cur[filtDrive]); // a driven filter is denser, not louder
 
     for (auto& v : voices)
     {
         if (! v.amp.active()) continue;
-        // Slow random pitch drift (a new target every ~0.4 s)
-        if (--v.driftCount <= 0)
-        {
-            v.driftCount = (int) (0.4 * sr / kControl);
-            v.driftTarget = rnd (v.rng) * driftCents;
-        }
-        v.driftPos += (v.driftTarget - v.driftPos) * 0.02;
-        const double baseSemis = v.note - 69 + bendSemis + v.driftPos / 100.0;
+        const double velF = 1.0 - cur[filtVel] + cur[filtVel] * v.vel;
+        const double velA = (1.0 - cur[ampVel] + cur[ampVel] * v.vel) * stackGain;
+        const double cents = (v.cardCents * 7.0 * sl + v.drift + v.stackCents) / 100.0;
+        const double cutOff = cur[cutoff] * std::pow (2.0, v.cardCutoff * 0.35 * sl + lfoOct);
+        const double gl = std::sqrt (1.0 - v.pan), gr = std::sqrt (1.0 + v.pan);
         for (int i = 0; i < n; ++i)
         {
-            const double vib = vibD * std::sin (kTwoPi * v.vibPh);
-            v.vibPh += vibInc;
-            v.vibPh -= std::floor (v.vibPh);
-            const double hz = 440.0 * std::pow (2.0, (baseSemis + vib) / 12.0);
-            const float env = v.amp.next() * v.vel;
-            float l = 0, r = 0;
-            switch (type)
+            v.pitch += (v.note - v.pitch) * glideC;
+            const double fe = v.fenv.next();
+            const double base = v.pitch - 69.0 + bendSemis + cents + vib;
+            const double hzB = 440.0 * std::exp2 ((base + interval) / 12.0);
+            const double hzA = 440.0 * std::exp2 ((base + pmA * fe) / 12.0);
+            const double dtA = std::min (hzA / sr, 0.45), dtB = std::min (hzB / sr, 0.45);
+
+            // Oscillator B (also the sync master)
+            double b;
+            if (bw < 1.0) b = (1.0 - bw) * tri (v.phB) + bw * saw (v.phB, dtB);
+            else b = (2.0 - bw) * saw (v.phB, dtB) + (bw - 1.0) * pulse (v.phB, dtB, 0.5);
+            v.phB += dtB;
+            bool wrapped = false;
+            if (v.phB >= 1.0)
             {
-                case 0: // wavetable, two detuned layers panned apart
-                {
-                    const double fa = hz * spreadUp, fb2 = hz / spreadUp;
-                    const float a = frameSample (octaveFor (fa), frame, v.ph[0]);
-                    const float b = frameSample (octaveFor (fb2), frame, v.ph[1]);
-                    v.ph[0] += fa / sr; v.ph[0] -= std::floor (v.ph[0]);
-                    v.ph[1] += fb2 / sr; v.ph[1] -= std::floor (v.ph[1]);
-                    l = 0.7f * a + 0.3f * b;
-                    r = 0.3f * a + 0.7f * b;
-                    break;
-                }
-                case 1: // FM: modulator (with feedback) into carrier, two layers
-                {
-                    for (int k = 0; k < 2; ++k)
-                    {
-                        const double f = k == 0 ? hz * spreadUp : hz / spreadUp;
-                        const double m = std::sin (kTwoPi * v.phMod[k] + fb * 2.5 * v.fbPrev[k]);
-                        v.fbPrev[k] = m;
-                        const float c = (float) std::sin (kTwoPi * v.ph[k] + index * m * (0.4 + 0.6 * v.fenv));
-                        v.phMod[k] += f * ratio / sr; v.phMod[k] -= std::floor (v.phMod[k]);
-                        v.ph[k] += f / sr; v.ph[k] -= std::floor (v.ph[k]);
-                        (k == 0 ? l : r) += c * 0.85f;
-                        (k == 0 ? r : l) += c * 0.15f;
-                    }
-                    break;
-                }
-                case 2: // supersaw from the band-limited String frame
-                {
-                    const double det = cur[sawDetune];
-                    for (int k = 0; k < sawN; ++k)
-                    {
-                        const double off = sawN == 1 ? 0.0 : (k / (double) (sawN - 1) - 0.5) * 2.0;
-                        const double f = hz * std::pow (2.0, off * det / 1200.0);
-                        const float s = frameSample (octaveFor (f), 5.0 / (kFrames - 1), v.ph[k]);
-                        v.ph[k] += f / sr; v.ph[k] -= std::floor (v.ph[k]);
-                        const float pan = (float) (0.5 + 0.45 * off);
-                        l += s * (1.0f - pan);
-                        r += s * pan;
-                    }
-                    const float g = 1.4f / std::sqrt ((float) sawN);
-                    l *= g;
-                    r *= g;
-                    break;
-                }
-                default: // pluck (Karplus-Strong with a one-pole damper)
-                {
-                    if (v.ksLen > 1)
-                    {
-                        const int p = v.ksPos;
-                        const int q = (p + 1) % v.ksLen;
-                        const float y = v.ks[(size_t) p];
-                        v.ksLp += ((y + v.ks[(size_t) q]) * 0.5f - v.ksLp) * (0.35f + 0.6f * (float) cur[pluckBright]);
-                        v.ks[(size_t) p] = v.ksLp * ksDamp;
-                        v.ksPos = q;
-                        l = r = y * 5.0f;
-                    }
-                    break;
-                }
+                v.phB -= 1.0;
+                wrapped = true;
             }
-            // Sub octave, octave shimmer and breath
-            const float sub = (float) (std::sin (kTwoPi * v.phSub) * subG);
-            v.phSub += 0.5 * hz / sr; v.phSub -= std::floor (v.phSub);
-            const float shim = frameSample (octaveFor (hz * 2), 0.0, v.phShim) * (float) shimG;
-            v.phShim += 2.0 * hz / sr; v.phShim -= std::floor (v.phShim);
-            const float br = rnd (v.rng) * (float) breathG * (0.4f + 0.6f * (float) v.fenv);
-            l = (l + sub + shim + br) * env * 0.32f;
-            r = (r + sub + shim + br) * env * 0.32f;
-            v.filter.process (l, r);
-            L[i] += l;
-            R[i] += r;
+
+            // Oscillator A, saw blended into pulse
+            const double a = (1.0 - aw) * saw (v.phA, dtA) + aw * pulse (v.phA, dtA, pw);
+            const double sub = pulse (v.phSub, dtA * 0.5, 0.5);
+            v.phA += dtA;
+            v.phSub += dtA * 0.5;
+            if (sync && wrapped) v.phA = v.phB / dtB * dtA; // hard sync: restart A where B wrapped
+            if (v.phA >= 1.0) v.phA -= std::floor (v.phA);
+            if (v.phSub >= 1.0) v.phSub -= 1.0;
+
+            const float w = rnd (v.rng);
+            v.noiseLp += (w - v.noiseLp) * 0.35f;
+            double x = (gA * a + gB * b + gSub * sub + gNoise * v.noiseLp) * 0.5 * inGain;
+
+            // Filter: cutoff from key, envelope, LFO and audio-rate osc B (poly-mod)
+            const double oct = cur[keyTrack] * (v.pitch - 60.0) / 12.0 + envAmt * fe * velF + pmB * b;
+            const double fc = std::clamp (cutOff * std::exp2 (oct), 16.0, nyq);
+            const double g = std::tan (kPi * fc / sr);
+            double y;
+            if (ft <= 1)
+            {
+                // Transistor ladder (zero-delay feedback), saturating at its input
+                const double G = g / (1.0 + g), inv = 1.0 / (1.0 + g);
+                const double sig = G * G * G * v.s1 * inv + G * G * v.s2 * inv + G * v.s3 * inv + v.s4 * inv;
+                const double G4 = G * G * G * G;
+                double u;
+                if (ft == 0) u = std::tanh ((x - kLad * sig) / (1.0 + kLad * G4)); // Moog: thick, loses bass as it resonates
+                else u = softClip ((x * (1.0 + 0.6 * kLad) - kLad * sig) / (1.0 + kLad * G4)); // Prophet: cleaner, bass kept
+                double t = (u - v.s1) * G;
+                double y1 = t + v.s1;
+                v.s1 = y1 + t;
+                t = (y1 - v.s2) * G;
+                double y2 = t + v.s2;
+                v.s2 = y2 + t;
+                t = (y2 - v.s3) * G;
+                double y3 = t + v.s3;
+                v.s3 = y3 + t;
+                t = (y3 - v.s4) * G;
+                y = t + v.s4;
+                v.s4 = y + t;
+                if (ft == 0) y *= 1.0 + 0.45 * kLad;
+            }
+            else
+            {
+                // State-variable 2-pole (Oberheim SEM), gentler and more open
+                const double xi = std::tanh (x);
+                const double a1 = 1.0 / (1.0 + g * (g + kSvf)), a2 = g * a1, a3 = g * a2;
+                const double v3 = xi - v.s2;
+                const double v1 = a1 * v.s1 + a2 * v3;
+                const double v2 = v.s2 + a2 * v.s1 + a3 * v3;
+                v.s1 = 2.0 * v1 - v.s1;
+                v.s2 = 2.0 * v2 - v.s2;
+                y = ft == 2 ? v2 : v1 * (2.8 - 1.4 * res);
+            }
+            const double out = y * v.amp.next() * velA * outTrim;
+            L[i] += (float) (out * gl);
+            R[i] += (float) (out * gr);
         }
-        if (! v.amp.active()) v.note = -1;
+        if (! v.amp.active())
+        {
+            v.note = -1;
+            v.s1 = v.s2 = v.s3 = v.s4 = 0;
+        }
     }
 }
 
@@ -521,9 +520,12 @@ void Core::process (float* L, float* R, int n) noexcept
         float* r = R + pos;
         renderVoices (l, r, len);
 
-        const float k = (float) (cur[drive] * 90.0);
-        const double dw = std::clamp (cur[drive] * 1.3, 0.0, 1.0);
-        const float dDry = (float) std::cos (dw * 1.5707963), dWet = (float) std::sin (dw * 1.5707963);
+        // Saturation: an asymmetric tube/tape curve (even harmonics), normalised so moderate levels stay put
+        const double dv = cur[drive];
+        const float k = (float) (1.0 + dv * dv * 22.0 + dv * 3.0);
+        const float bias = (float) (0.2 * dv);
+        const float tb = std::tanh (k * bias);
+        const float norm = (float) (0.5 / std::tanh (k * 0.5) / (1.0 + 1.1 * dv * dv)); // louder edge, not louder overall
         const int bits = (int) std::lround (cur[crushBits]);
         const float steps = (float) std::pow (2.0, bits - 1);
         const double cw = bits < 16 ? std::clamp ((16.0 - bits) / 8.0, 0.0, 1.0) : 0.0;
@@ -549,7 +551,15 @@ void Core::process (float* L, float* R, int n) noexcept
             for (int c = 0; c < 2; ++c)
             {
                 float s = x[c];
-                if (dw > 0.0005) s = s * dDry + distort (s, k) * dWet;
+                if (dv > 0.0005)
+                {
+                    s = (std::tanh (k * (s + bias)) - tb) * norm;
+                    // DC blocker for the asymmetry
+                    const float yv = s - dcX[c] + 0.9995f * dcY[c];
+                    dcX[c] = s;
+                    dcY[c] = yv;
+                    s = yv;
+                }
                 if (holdInc < 0.999)
                 {
                     if (take) crushHold[c] = s;

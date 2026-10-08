@@ -19,15 +19,17 @@ struct ParamInfo
 
 enum P : int
 {
-    // SOURCE
-    srcType, srcFrame, fmRatio, fmIndex, fmFeedback, sawVoices, sawDetune, pluckDamp, pluckBright,
-    srcSpread, srcSub, srcShimmer, srcBreath,
-    // VOICE
-    attack, decay, sustain, release, vibDepth, vibRate, glide,
-    // DRIVE
-    drive, crushBits, crushRate,
-    // CHARACTER (OSP CharacterFilter)
-    filtType, cutoff, resonance, filtDrive, filtEnv, filtEnvDecay, tilt,
+    // OSCILLATORS (two analogue-style oscillators, sub, noise; Prophet-5 / Memorymoog lineage)
+    oscAWave, oscAPw, oscBWave, oscBInterval, oscBDetune, oscSync, mixA, mixB, mixSub, mixNoise,
+    slop, voiceMode, stackDetune, portamento,
+    // FILTER (transistor ladder or state-variable, with its own ADSR)
+    filtType, cutoff, resonance, filtDrive, keyTrack, filtEnv, filtVel, fAttack, fDecay, fSustain, fRelease,
+    // AMP
+    attack, decay, sustain, release, ampVel,
+    // MODULATION (LFO and Prophet-style poly-mod)
+    lfoRate, lfoShape, vibDepth, lfoPwm, lfoFilter, pmEnvA, pmOscB,
+    // COLOUR (bus saturation, tilt, and the heat's breakup)
+    drive, tilt, crushBits, crushRate,
     // KALEIDOSCOPE (OSP ReimaginedStage)
     kalAmount, kalFocus, kalSpread,
     // MOVEMENT (OSP MovementBus)
@@ -46,39 +48,51 @@ enum P : int
 inline const ParamInfo& paramInfo (int i)
 {
     static const ParamInfo table[kNumParams] = {
-        { "srcType", "Source", "Source", 0, 3, 0, Scale::choice, "Wavetable|FM|Supersaw|Pluck" },
-        { "srcFrame", "Wavetable", "Source", 0, 1, 0.35, Scale::linear, nullptr },
-        { "fmRatio", "FM ratio", "Source", 0.5, 8, 2, Scale::log, nullptr },
-        { "fmIndex", "FM index", "Source", 0, 10, 2.5, Scale::linear, nullptr },
-        { "fmFeedback", "FM feedback", "Source", 0, 1, 0, Scale::linear, nullptr },
-        { "sawVoices", "Saw voices", "Source", 1, 7, 5, Scale::linear, nullptr },
-        { "sawDetune", "Saw detune", "Source", 0, 60, 18, Scale::linear, nullptr },
-        { "pluckDamp", "Pluck damping", "Source", 0, 1, 0.4, Scale::linear, nullptr },
-        { "pluckBright", "Pluck brightness", "Source", 0, 1, 0.6, Scale::linear, nullptr },
-        { "srcSpread", "Layer spread", "Source", 0, 40, 6, Scale::linear, nullptr },
-        { "srcSub", "Sub octave", "Source", 0, 1, 0.2, Scale::linear, nullptr },
-        { "srcShimmer", "Octave shimmer", "Source", 0, 1, 0, Scale::linear, nullptr },
-        { "srcBreath", "Breath noise", "Source", 0, 1, 0, Scale::linear, nullptr },
+        { "oscAWave", "Osc A wave", "Oscillators", 0, 1, 0, Scale::linear, nullptr },
+        { "oscAPw", "Osc A pulse width", "Oscillators", 0.05, 0.5, 0.4, Scale::linear, nullptr },
+        { "oscBWave", "Osc B wave", "Oscillators", 0, 2, 1, Scale::linear, nullptr },
+        { "oscBInterval", "Osc B interval", "Oscillators", 0, 4, 1, Scale::choice, "-1 oct|Unison|+5th|+1 oct|+2 oct" },
+        { "oscBDetune", "Osc B detune", "Oscillators", 0, 40, 7, Scale::linear, nullptr },
+        { "oscSync", "Sync A to B", "Oscillators", 0, 1, 0, Scale::choice, "Off|On" },
+        { "mixA", "Osc A level", "Oscillators", 0, 1, 0.8, Scale::linear, nullptr },
+        { "mixB", "Osc B level", "Oscillators", 0, 1, 0.6, Scale::linear, nullptr },
+        { "mixSub", "Sub level", "Oscillators", 0, 1, 0.15, Scale::linear, nullptr },
+        { "mixNoise", "Noise level", "Oscillators", 0, 1, 0, Scale::linear, nullptr },
+        { "slop", "Analogue drift", "Oscillators", 0, 1, 0.3, Scale::linear, nullptr },
+        { "voiceMode", "Voices", "Oscillators", 0, 2, 0, Scale::choice, "Poly|Stack 2|Stack 4" },
+        { "stackDetune", "Stack detune", "Oscillators", 0, 40, 10, Scale::linear, nullptr },
+        { "portamento", "Glide", "Oscillators", 0, 1, 0, Scale::linear, nullptr },
 
-        { "attack", "Attack", "Voice", 0.002, 4, 0.08, Scale::log, nullptr },
-        { "decay", "Decay", "Voice", 0.05, 6, 0.8, Scale::log, nullptr },
-        { "sustain", "Sustain", "Voice", 0, 1, 0.75, Scale::linear, nullptr },
-        { "release", "Release", "Voice", 0.05, 12, 1.2, Scale::log, nullptr },
-        { "vibDepth", "Vibrato", "Voice", 0, 1, 0.05, Scale::linear, nullptr },
-        { "vibRate", "Vibrato rate", "Voice", 0.1, 10, 4.5, Scale::log, nullptr },
-        { "glide", "Drift", "Voice", 0, 1, 0.15, Scale::linear, nullptr },
+        { "filtType", "Filter", "Filter", 0, 3, 0, Scale::choice, "Moog ladder|Prophet ladder|SEM lowpass|SEM bandpass" },
+        { "cutoff", "Cutoff", "Filter", 30, 16000, 1800, Scale::log, nullptr },
+        { "resonance", "Resonance", "Filter", 0, 1, 0.2, Scale::linear, nullptr },
+        { "filtDrive", "Filter drive", "Filter", 0, 1, 0.25, Scale::linear, nullptr },
+        { "keyTrack", "Key tracking", "Filter", 0, 1, 0.5, Scale::linear, nullptr },
+        { "filtEnv", "Envelope amount", "Filter", -1, 1, 0.4, Scale::linear, nullptr },
+        { "filtVel", "Velocity to filter", "Filter", 0, 1, 0.3, Scale::linear, nullptr },
+        { "fAttack", "Filter attack", "Filter", 0.001, 8, 0.01, Scale::log, nullptr },
+        { "fDecay", "Filter decay", "Filter", 0.02, 10, 0.6, Scale::log, nullptr },
+        { "fSustain", "Filter sustain", "Filter", 0, 1, 0.3, Scale::linear, nullptr },
+        { "fRelease", "Filter release", "Filter", 0.02, 12, 0.8, Scale::log, nullptr },
 
-        { "drive", "Drive", "Drive", 0, 1, 0, Scale::linear, nullptr },
-        { "crushBits", "Bits", "Drive", 4, 16, 16, Scale::linear, nullptr },
-        { "crushRate", "Sample-rate crush", "Drive", 0, 1, 0, Scale::linear, nullptr },
+        { "attack", "Attack", "Amp", 0.001, 8, 0.01, Scale::log, nullptr },
+        { "decay", "Decay", "Amp", 0.02, 10, 1, Scale::log, nullptr },
+        { "sustain", "Sustain", "Amp", 0, 1, 0.8, Scale::linear, nullptr },
+        { "release", "Release", "Amp", 0.02, 12, 0.6, Scale::log, nullptr },
+        { "ampVel", "Velocity to level", "Amp", 0, 1, 0.4, Scale::linear, nullptr },
 
-        { "filtType", "Filter", "Character", 0, 4, 0, Scale::choice, "LP24|LP12|HP12|BP12|Tilt" },
-        { "cutoff", "Cutoff", "Character", 40, 18000, 2400, Scale::log, nullptr },
-        { "resonance", "Resonance", "Character", 0, 0.9, 0.12, Scale::linear, nullptr },
-        { "filtDrive", "Filter drive", "Character", 0, 1, 0.1, Scale::linear, nullptr },
-        { "filtEnv", "Filter envelope", "Character", -1, 1, 0.15, Scale::linear, nullptr },
-        { "filtEnvDecay", "Filter env decay", "Character", 0.02, 4, 0.6, Scale::log, nullptr },
-        { "tilt", "Brightness", "Character", -12, 6, 0, Scale::linear, nullptr },
+        { "lfoRate", "LFO rate", "Modulation", 0.05, 20, 4.5, Scale::log, nullptr },
+        { "lfoShape", "LFO shape", "Modulation", 0, 3, 0, Scale::choice, "Triangle|Saw|Square|Random" },
+        { "vibDepth", "LFO to pitch", "Modulation", 0, 1, 0.03, Scale::linear, nullptr },
+        { "lfoPwm", "LFO to pulse width", "Modulation", 0, 1, 0, Scale::linear, nullptr },
+        { "lfoFilter", "LFO to filter", "Modulation", 0, 1, 0, Scale::linear, nullptr },
+        { "pmEnvA", "Poly-mod env > A pitch", "Modulation", -1, 1, 0, Scale::linear, nullptr },
+        { "pmOscB", "Poly-mod B > cutoff", "Modulation", 0, 1, 0, Scale::linear, nullptr },
+
+        { "drive", "Saturation", "Colour", 0, 1, 0.15, Scale::linear, nullptr },
+        { "tilt", "Brightness", "Colour", -12, 6, 0, Scale::linear, nullptr },
+        { "crushBits", "Bits", "Colour", 4, 16, 16, Scale::linear, nullptr },
+        { "crushRate", "Sample-rate crush", "Colour", 0, 1, 0, Scale::linear, nullptr },
 
         { "kalAmount", "Kaleidoscope", "Kaleidoscope", 0, 1, 0, Scale::linear, nullptr },
         { "kalFocus", "Focus", "Kaleidoscope", 0, 1, 0.5, Scale::linear, nullptr },

@@ -2,7 +2,6 @@
 // Atmospheric's sound engine: plain C++20, no JUCE, so the plugin and the browser
 // (WebAssembly) run identical code. Effects come from OSP (engine/osp).
 #include "Params.h"
-#include "engine/CharacterFilter.h"
 #include "engine/EchoDelay.h"
 #include "engine/MovementBus.h"
 #include "engine/ReimaginedStage.h"
@@ -14,10 +13,9 @@
 
 namespace atmos
 {
-// Eight harmonic frames, 16 partials each, ordered dark/sparse -> bright/dense
-constexpr int kFrames = 8;
-const char* frameName (double position);
-
+// An analogue-style polysynth voice (two band-limited oscillators, sub, noise, transistor
+// ladder or state-variable filter with its own envelope, Prophet-style poly-mod), followed
+// by OSP's studio: Kaleidoscope, Movement, Echo and Space.
 class Core
 {
 public:
@@ -46,15 +44,16 @@ public:
     double sampleRate() const noexcept { return sr; }
 
 private:
-    struct Adsr
+    // Exponential (RC-style) ADSR, as analogue envelope generators curve
+    struct Env
     {
-        enum Stage { idle, att, dec, sus, rel } stage = idle;
-        double level = 0, a = 0.01, d = 0.1, s = 1, r = 0.1, sr = 48000;
-        void set (double A, double D, double S, double R) { a = A; d = D; s = S; r = R; }
+        enum Stage { idle, att, dec, rel } stage = idle;
+        double level = 0, aC = 0.01, dC = 0.001, s = 1, rC = 0.001;
+        void set (double sr, double A, double D, double S, double R, double scale);
         void on() { stage = att; }
         void off() { if (stage != idle) stage = rel; }
         bool active() const { return stage != idle; }
-        float next() noexcept;
+        double next() noexcept;
     };
 
     struct Voice
@@ -63,25 +62,24 @@ private:
         float vel = 0;
         bool keyDown = false, held = false;
         uint64_t age = 0;
-        double ph[8] {}; // oscillator phases (layers / saw voices)
-        double phSub = 0, phShim = 0, phMod[2] {}, fbPrev[2] {};
-        double vibPh = 0, driftPos = 0, driftTarget = 0;
+        double phA = 0, phB = 0, phSub = 0;
+        double pitch = 60; // gliding note number
+        double stackCents = 0, pan = 0;
+        // Analogue character: fixed per voice card, scaled by 'slop'
+        double cardCents = 0, cardCutoff = 0, cardEnv = 1;
+        double drift = 0, driftTarget = 0;
         int driftCount = 0;
-        Adsr amp;
-        double fenv = 0; // filter envelope 1 -> 0
-        osp::CharacterFilter filter;
-        std::vector<float> ks; // Karplus-Strong line
-        int ksLen = 0, ksPos = 0;
-        float ksLp = 0;
+        Env amp, fenv;
+        // Filter state (ladder stages or SVF)
+        double s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+        float noiseLp = 0;
         uint32_t rng = 1;
     };
 
     void controlTick() noexcept;
     void updateResonances() noexcept;
-    float frameSample (int octave, double frame, double phase) const noexcept;
-    int octaveFor (double hz) const noexcept;
     void renderVoices (float* L, float* R, int n) noexcept;
-    void startPluck (Voice& v, double hz) noexcept;
+    void startVoice (Voice& v, int note, float vel, double stackCents, double pan) noexcept;
 
     double sr = 48000;
     Patch target, cur; // cur = smoothed copy of target for continuous parameters
@@ -92,19 +90,18 @@ private:
     bool sustainDown = false;
     double bendSemis = 0;
     int countdown = 0;
-
-    // Wavetables: [frame][octave][2048 + 1]
-    static constexpr int kTable = 2048, kOctaves = 11;
-    std::vector<float> tables;
+    double lastNote = -1;
+    double lfoPh = 0, lfoValue = 0, lfoHeld = 0;
+    uint32_t lfoRng = 0x2545f491u;
 
     // Bus
     osp::ShelfFilter loShelf[2], hiShelf[2];
     float lastTilt = 1000.f;
     float crushHold[2] {};
     double crushPhase = 0;
+    float dcX[2] {}, dcY[2] {};
     osp::ReimaginedStage kaleido;
     osp::MovementBus movement;
-    int lastMovMode = -1;
     osp::EchoDelay echo;
     bool echoIdle = true;
     double echoLevel = 0;

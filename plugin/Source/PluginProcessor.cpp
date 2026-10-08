@@ -82,7 +82,23 @@ Macros AtmosProcessor::readMacros() const
     return m;
 }
 
-Patch AtmosProcessor::currentPatch() const { return resolvePatch (sound, day.climate(), day.precip, readMacros()); }
+Day AtmosProcessor::currentDay() const
+{
+    const juce::ScopedLock sl (dayLock);
+    return day;
+}
+
+CoreSound AtmosProcessor::currentSound() const
+{
+    const juce::ScopedLock sl (dayLock);
+    return sound;
+}
+
+Patch AtmosProcessor::currentPatch() const
+{
+    const juce::ScopedLock sl (dayLock);
+    return resolvePatch (sound, day.climate(), day.precip, readMacros());
+}
 
 void AtmosProcessor::handleMidi (const juce::MidiMessage& msg)
 {
@@ -169,13 +185,15 @@ void AtmosProcessor::applyDay (const Day& in)
     Day d = in;
     CoreSound s;
     bool ok = false;
-    if (d.sound.isObject()) s = soundFromVar (d.sound, ok);
+    // Sounds made for an older engine don't carry over; such a Day draws a fresh one
+    if (d.sound.isObject() && d.mappingVersion >= kMappingVersion) s = soundFromVar (d.sound, ok);
     if (! ok)
     {
         // A new Day: today's lottery draws a core sound from the bible, and the Day keeps it
         const int i = chooseCoreSound (bible, d.climate(), d.precip);
         s = bible[(size_t) juce::jmax (0, i)];
         d.sound = soundToVar (s);
+        d.mappingVersion = kMappingVersion;
     }
     {
         // Hosts may save the project from another thread at any moment
@@ -204,9 +222,10 @@ void AtmosProcessor::setStatus (Status s, const juce::String& msg)
 void AtmosProcessor::dealToday()
 {
     previewing = false;
+    const int gen = ++dayGeneration;
     setStatus (Status::dealing, ATMOS_U8 ("Reading today's sky…"));
-    auto onResult = [this] (WeatherClient::Result r) {
-        if (previewing) return; // the globe took over meanwhile
+    auto onResult = [this, gen] (WeatherClient::Result r) {
+        if (previewing || gen != dayGeneration) return; // the globe, a kept Day or a project took over meanwhile
         const auto home = Storage::home();
         if (r.ok)
         {
@@ -220,7 +239,7 @@ void AtmosProcessor::dealToday()
         auto last = Storage::lastSky();
         Day est = home.set ? estimateDay (home.lat, home.lon, home.name, nowUnix())
                   : last.isValid() ? estimateDay (last.lat, last.lon, last.placeName, nowUnix())
-                                   : estimateDay (day.lat, day.lon, day.placeName, nowUnix());
+                                   : estimateDay (currentDay().lat, currentDay().lon, currentDay().placeName, nowUnix());
         if (! home.set && last.isValid()) est.country = last.country;
         applyDay (est);
         setStatus (Status::estimate, r.error + ". Playing an estimated sky.");
@@ -235,11 +254,12 @@ void AtmosProcessor::dealToday()
 
 void AtmosProcessor::previewAt (double lat, double lon)
 {
-    if (! previewing) homeDay = day;
+    if (! previewing) homeDay = currentDay();
     previewing = true;
+    const int gen = ++dayGeneration;
     setStatus (Status::previewLoading, "Listening to " + juce::String (lat, 2) + ", " + juce::String (lon, 2) + ATMOS_U8 ("…"));
-    weather.fetchAt (lat, lon, [this, lat, lon] (WeatherClient::Result r) {
-        if (! previewing) return;
+    weather.fetchAt (lat, lon, [this, lat, lon, gen] (WeatherClient::Result r) {
+        if (! previewing || gen != dayGeneration) return;
         Day d = r.ok ? r.day : estimateDay (lat, lon, {}, nowUnix());
         d.source = r.ok ? "globe" : "globe estimate";
         applyDay (d);
@@ -251,13 +271,14 @@ void AtmosProcessor::endPreview()
 {
     if (! previewing) return;
     previewing = false;
+    ++dayGeneration;
     applyDay (homeDay);
     setStatus (homeDay.source == "live" ? Status::live : Status::restored, homeDay.source == "live" ? "Back to your sky" : "Back to your Day");
 }
 
 bool AtmosProcessor::keepDay (const juce::String& name)
 {
-    Day d = day; // carries its core sound
+    Day d = currentDay(); // carries its core sound
     d.id = juce::Uuid().toDashedString();
     d.name = name.trim();
     return Storage::saveDay (d);
@@ -266,13 +287,15 @@ bool AtmosProcessor::keepDay (const juce::String& name)
 void AtmosProcessor::loadDay (const Day& d)
 {
     previewing = false;
+    ++dayGeneration;
     applyDay (d);
     setStatus (Status::restored, ATMOS_U8 ("Kept Day · ") + (d.name.isNotEmpty() ? d.name : d.autoTitle()));
 }
 
 bool AtmosProcessor::dayIsCurrent() const
 {
-    return day.localDate() == juce::String (localDate (nowUnix(), day.lon, day.utcOffset, day.utcOffsetKnown));
+    const Day d = currentDay();
+    return d.localDate() == juce::String (localDate (nowUnix(), d.lon, d.utcOffset, d.utcOffsetKnown));
 }
 
 void AtmosProcessor::timerCallback()
@@ -321,20 +344,24 @@ void AtmosProcessor::setStateInformation (const void* data, int size)
         const Day d = Day::fromVar (juce::JSON::parse (dx->getAllSubText()));
         if (d.isValid())
         {
+            // Hosts may restore from any thread and save again straight away, so the Day itself
+            // is applied now (it is lock-protected); only the status line waits for the message thread.
             stateRestored = true;
+            ++dayGeneration;
+            applyDay (d);
             juce::WeakReference<AtmosProcessor> weak (this);
-            auto apply = [weak, d] {
+            const auto title = d.autoTitle();
+            auto status = [weak, title] {
                 if (auto* self = weak.get())
                 {
                     self->previewing = false;
-                    self->applyDay (d);
-                    self->setStatus (Status::restored, ATMOS_U8 ("Project Day · ") + d.autoTitle());
+                    self->setStatus (Status::restored, ATMOS_U8 ("Project Day · ") + title);
                 }
             };
             if (juce::MessageManager::getInstance()->isThisTheMessageThread())
-                apply();
+                status();
             else
-                juce::MessageManager::callAsync (apply);
+                juce::MessageManager::callAsync (status);
         }
     }
 }

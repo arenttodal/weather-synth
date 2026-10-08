@@ -29,32 +29,43 @@ void natureLean (const Climate& c, double precip, double intensity, double u[kNu
     for (int i = 0; i < kNumParams; ++i)
         u[i] = 0.0;
 
-    u[srcFrame] = 1.6 * E;
-    u[srcSpread] = 1.2 * Hu + 1.0 * H;
-    u[srcSub] = 1.5 * Lo + 0.8 * (1 - Fu) * Dk - 0.3;
-    u[srcShimmer] = 1.2 * Fu * Dk + 1.0 * K - 0.3;
-    u[srcBreath] = 1.0 * M + 0.8 * W;
-    u[fmIndex] = 1.4 * E + 1.0 * H;
-    u[fmFeedback] = 1.0 * H + 0.5 * G;
-    u[sawDetune] = 1.2 * Hu + 1.0 * H;
-    u[pluckDamp] = 1.2 * W;
-    u[pluckBright] = 1.2 * Li;
+    // Oscillators: heat and humidity loosen the tuning; rain and wind add noise; low pressure adds weight
+    u[oscAPw] = -0.8 * H + 0.5 * M;
+    u[oscBDetune] = 1.2 * Hu + 1.0 * H;
+    u[mixSub] = 1.5 * Lo + 0.6 * (1 - Fu) * Dk - 0.3;
+    u[mixNoise] = 1.4 * (Pr - 0.2) + 0.8 * G + 0.4 * W;
+    u[slop] = 1.6 * H + 0.8 * Hu - 0.6 * K;
+    u[stackDetune] = 1.0 * H + 0.8 * Hu;
+    u[portamento] = 0.8 * Hu + 0.4 * M;
 
+    // Filter: light opens it, energy snaps the envelope, heat drives it, wind makes it ring
+    u[cutoff] = 1.2 * Li + 0.8 * E - 0.6 * W;
+    u[resonance] = 1.0 * G + 0.6 * K;
+    u[filtDrive] = 1.8 * H + 0.6 * E;
+    u[filtEnv] = 0.8 * E + 0.6 * H;
+    u[fAttack] = -1.2 * E + 0.8 * K;
+    u[fDecay] = 1.0 * W - 0.8 * H;
+    u[fSustain] = 0.4 * W;
+    u[fRelease] = 1.0 * W + 0.6 * K;
+
+    // Amp: heat is fast and short, cold and wet are slow and long
     u[attack] = -1.6 * E + 0.8 * K - 1.0 * H;
     u[decay] = 1.0 * W;
     u[sustain] = -0.8 * H - 0.6 * G + 0.4 * W;
     u[release] = 1.4 * W + 0.8 * K - 0.8 * H;
-    u[vibDepth] = 1.4 * M + 0.8 * G;
-    u[vibRate] = 1.2 * E + 0.8 * M;
-    u[glide] = 1.0 * M + 0.6 * H;
 
+    // Modulation: wind and motion wobble; heat makes the poly-mod growl
+    u[lfoRate] = 1.2 * E + 0.8 * M + 0.8 * H;
+    u[vibDepth] = 1.4 * M + 0.8 * G;
+    u[lfoPwm] = 1.0 * M + 0.6 * Hu;
+    u[lfoFilter] = 1.0 * G + 0.6 * M;
+    u[pmEnvA] = 1.0 * H;
+    u[pmOscB] = 1.4 * H + 0.6 * G;
+
+    // Colour: 40 °C saturates and breaks apart
     u[drive] = 2.0 * H + 0.6 * E;
     u[crushBits] = -2.0 * H;
     u[crushRate] = 2.0 * H;
-
-    u[cutoff] = 1.2 * Li + 0.8 * E - 0.6 * W;
-    u[resonance] = 1.0 * G + 0.6 * K;
-    u[filtEnv] = 0.8 * E;
     u[tilt] = 1.6 * Li;
 
     u[kalAmount] = 1.2 * Hu + 0.8 * D + 0.6 * Fu * Dk;
@@ -92,14 +103,19 @@ void macroLean (const Macros& m, double u[kNumParams])
         u[i] = 0.0;
     u[cutoff] = 1.5 * m.tone;
     u[tilt] = 0.8 * m.tone;
+    u[filtEnv] = 0.5 * m.tone;
     u[attack] = 1.5 * m.bloom;
     u[release] = 1.5 * m.bloom;
     u[sustain] = 0.8 * m.bloom;
+    u[fAttack] = 1.2 * m.bloom;
+    u[fRelease] = 1.0 * m.bloom;
     u[spaceSend] = 1.5 * m.space;
     u[echoSend] = 1.0 * m.space;
     u[spaceDecay] = 1.0 * m.space;
     u[movAmount] = 1.5 * m.motion;
     u[vibDepth] = 1.2 * m.motion;
+    u[lfoPwm] = 1.0 * m.motion;
+    u[lfoFilter] = 0.8 * m.motion;
     u[kalSpread] = 0.8 * m.motion;
 }
 
