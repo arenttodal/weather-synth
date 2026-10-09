@@ -82,6 +82,18 @@ def mat(key, emission=None, strength=0.0):
     return m
 
 
+def faces_of(verts):
+    """Faces touching these vertices, in a stable order (a set would order them by memory
+    address, which makes any random choice per face differ between runs)."""
+    out, seen = [], set()
+    for v in verts:
+        for f in v.link_faces:
+            if id(f) not in seen:
+                seen.add(id(f))
+                out.append(f)
+    return out
+
+
 def mesh_object(name, bm, coll, materials, flat=True):
     me = bpy.data.meshes.new("WS_" + name)
     for f in bm.faces:
@@ -101,7 +113,7 @@ def box(bm, cx, cy, cz, sx, sy, sz, mat_index=0):
     verts = r["verts"]
     bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=verts)
     bmesh.ops.translate(bm, vec=(cx, cy, cz + sz / 2), verts=verts)
-    for f in {f for v in verts for f in v.link_faces}:
+    for f in faces_of(verts):
         f.material_index = mat_index
     return verts
 
@@ -114,7 +126,7 @@ def cylinder(bm, cx, cy, cz, r, depth, segs=8, axis="Z", mat_index=0, r2=None):
     elif axis == "X":
         bmesh.ops.rotate(bm, verts=verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(90), 3, "Y"))
     bmesh.ops.translate(bm, vec=(cx, cy, cz), verts=verts)
-    for f in {f for v in verts for f in v.link_faces}:
+    for f in faces_of(verts):
         f.material_index = mat_index
     return verts
 
@@ -169,16 +181,19 @@ def build_island(coll, rng):
     for k in range(nb):
         a = 2 * math.pi * (k + 0.5 * rng.random()) / nb
         rad = (top * 1.02 + sea) / 2 * (0.95 + 0.12 * rng.random())
-        s = 0.42 + 0.3 * rng.random()
-        res = bmesh.ops.create_icosphere(bb, subdivisions=1, radius=1.0)
+        s = 0.5 + 0.35 * rng.random()
+        res = bmesh.ops.create_icosphere(bb, subdivisions=0, radius=1.0)  # 20 faces: chunky slabs
         vs = res["verts"]
         for v in vs:
-            v.co.x *= s * (1.3 + 0.6 * rng.random())  # wide slabs, not gems
-            v.co.y *= s * 1.0
-            v.co.z = max(v.co.z, -0.4) * s * (0.75 + 0.35 * rng.random())
-        bmesh.ops.rotate(bb, verts=vs, cent=(0, 0, 0), matrix=Matrix.Rotation(a + rng.random(), 3, "Z"))
-        bmesh.ops.translate(bb, vec=(math.cos(a) * rad, math.sin(a) * rad * sq, I["topZ"] * (0.15 + 0.3 * rng.random())), verts=vs)
-        for f in {f for v in vs for f in v.link_faces}:
+            v.co.x *= s * (1.35 + 0.5 * rng.random())
+            v.co.y *= s * (0.95 + 0.3 * rng.random())
+            z = max(v.co.z, -0.45)
+            v.co.z = (0.55 + 0.25 * (z - 0.55) if z > 0.55 else z) * s * (0.8 + 0.3 * rng.random())  # flattened tops
+            v.co.x += (rng.random() - 0.5) * 0.12
+            v.co.y += (rng.random() - 0.5) * 0.12
+        bmesh.ops.rotate(bb, verts=vs, cent=(0, 0, 0), matrix=Matrix.Rotation(a + rng.random(), 3, "Z") @ Matrix.Rotation((rng.random() - 0.5) * 0.5, 3, "X"))
+        bmesh.ops.translate(bb, vec=(math.cos(a) * rad, math.sin(a) * rad * sq, I["topZ"] * (0.1 + 0.3 * rng.random())), verts=vs)
+        for f in faces_of(vs):
             f.material_index = 0 if rng.random() < 0.55 else 1
     mesh_object("Boulders", bb, coll, [mat("rock"), mat("rockDark")])
     return island
@@ -187,11 +202,12 @@ def build_island(coll, rng):
 def build_rocks(coll, rng):
     for k, r in enumerate(CFG["rocks"]):
         bm = bmesh.new()
-        bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1.0)
+        bmesh.ops.create_icosphere(bm, subdivisions=0, radius=1.0)
         for v in bm.verts:
-            v.co.x *= r["s"] * (0.85 + 0.3 * rng.random())
-            v.co.y *= r["s"] * 0.8
-            v.co.z = max(v.co.z, -0.2) * r["h"]
+            v.co.x *= r["s"] * (1.0 + 0.35 * rng.random())
+            v.co.y *= r["s"] * 0.85
+            z = max(v.co.z, -0.2)
+            v.co.z = (0.6 + 0.3 * (z - 0.6) if z > 0.6 else z) * r["h"] * 1.3
         bmesh.ops.translate(bm, vec=(r["x"], r["y"] * CFG["island"]["squashY"], 0.0), verts=bm.verts)
         for f in bm.faces:
             f.material_index = 0 if rng.random() < 0.6 else 1
@@ -324,9 +340,12 @@ def build_cabinet(coll, mech, markers):
     empty("MarkerAntennaTip", markers, (ax, y0 + 0.25, roof_z + R["antennaHeight"]))
 
     dish = bmesh.new()
-    res = bmesh.ops.create_cone(dish, cap_ends=False, segments=10, radius1=R["dishRadius"], radius2=0.04, depth=0.16)
-    bmesh.ops.rotate(dish, verts=res["verts"], cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(-60), 3, "X") @ Matrix.Rotation(math.radians(-35), 3, "Z"))
-    bmesh.ops.translate(dish, vec=(dxp, y0, roof_z + 0.38), verts=res["verts"])
+    res = bmesh.ops.create_cone(dish, cap_ends=True, segments=10, radius1=R["dishRadius"], radius2=R["dishRadius"] * 0.35, depth=0.1)
+    horn = bmesh.ops.create_cone(dish, cap_ends=True, segments=4, radius1=0.02, radius2=0.02, depth=0.22)
+    bmesh.ops.translate(dish, vec=(0, 0, 0.14), verts=horn["verts"])
+    allv = res["verts"] + horn["verts"]
+    bmesh.ops.rotate(dish, verts=allv, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(-25), 3, "Z") @ Matrix.Rotation(math.radians(-55), 3, "X"))
+    bmesh.ops.translate(dish, vec=(dxp, y0, roof_z + 0.36), verts=allv)
     mesh_object("Dish", dish, coll, [mat("dish")])
 
     # Mast (static) + separately pivoted vane and anemometer (rendered as sprites)
@@ -395,6 +414,30 @@ def build_camera(root):
     return cam
 
 
+def add_patch_attribute(rng):
+    """Per-face 'ws_patch' (0..1) for the accent mask: snow and frost settle on some facets
+    and not others, so accents read as faceted patches instead of a flat white sheet.
+    Roofs and cheek tops always take it; rocks often; grass only here and there."""
+    for ob in bpy.data.collections["WS_STATIC"].all_objects:
+        if ob.type != "MESH":
+            continue
+        me = ob.data
+        attr = me.attributes.get("ws_patch") or me.attributes.new("ws_patch", "FLOAT", "FACE")
+        names = [m.name if m else "" for m in me.materials]
+        vals = []
+        for poly in me.polygons:
+            mname = names[poly.material_index] if poly.material_index < len(names) else ""
+            r = rng.random()
+            if ob.name in ("WS_CabinetBody", "WS_Roof", "WS_Mast", "WS_Door"):
+                v = 1.0
+            elif "grass" in mname:
+                v = 0.9 if r < 0.3 else 0.15 * r
+            else:
+                v = 1.0 if r < 0.55 else 0.35 * r
+            vals.append(v)
+        attr.data.foreach_set("value", vals)
+
+
 def build():
     rng = random.Random(CFG["seed"])
     MATS.clear()
@@ -405,6 +448,7 @@ def build():
     build_island(static, rng)
     build_rocks(static, rng)
     build_cabinet(static, mech, markers)
+    add_patch_attribute(random.Random(CFG["seed"] + 11))
     build_camera(root)
     return root
 

@@ -164,11 +164,11 @@ const Fixture* findFixture (const juce::String& name)
 const std::vector<TimeOfDay>& timesOfDay()
 {
     static const std::vector<TimeOfDay> t = {
-        { "dawn", -3, false, -20, 0, 0.1 },          { "morning", 16, false, -30, 0, 0.1 },
-        { "noon", 45, false, -40, 0, 0.1 },          { "late_afternoon", 18, true, -25, 0, 0.1 },
-        { "sunset", 1, true, 8, 120, 0.3 },          { "dusk", -6, true, 18, 140, 0.32 },
-        { "night", -20, true, 30, 200, 0.38 },       { "polar_day", 5, true, -15, 0, 0.1 },
-        { "polar_night", -8, false, 22, 170, 0.6 },
+        { "dawn", "06:24", -3, false, -20, 0, 0.1 },          { "morning", "08:17", 16, false, -30, 0, 0.1 },
+        { "noon", "12:03", 45, false, -40, 0, 0.1 },          { "late_afternoon", "16:21", 18, true, -25, 0, 0.1 },
+        { "sunset", "20:38", 1, true, 8, 120, 0.3 },          { "dusk", "22:11", -6, true, 18, 140, 0.32 },
+        { "night", "01:46", -20, true, 30, 200, 0.38 },       { "polar_day", "00:12", 5, true, -15, 0, 0.1 },
+        { "polar_night", "15:09", -8, false, 22, 170, 0.6 },
     };
     return t;
 }

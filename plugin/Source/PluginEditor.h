@@ -82,6 +82,7 @@ private:
 
     juce::String sceneKey;
     bool fixtureMode = false;
+    juce::String fixtureClock;
     int devFixture = -1, devTime = -1;
 
     // Admin globe (Cmd/Ctrl+Shift+G, Cmd/Ctrl+W)

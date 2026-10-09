@@ -261,7 +261,7 @@ Environment computeEnvironment (const Snapshot& s)
     e.waves = clamp01 (0.08 + std::pow (e.windMps / 22.0, 0.8) + 0.25 * e.squall + 0.15 * e.thunder);
 
     // Surface accents follow reported conditions, never temperature alone
-    if (e.snow > 0 && s.tempC <= 2) e.accent = 0.35 + 0.4 * e.snow;
+    if (e.snow > 0 && s.tempC <= 2) e.accent = 0.25 + 0.3 * e.snow;
     if (e.sleet > 0 && s.tempC <= 2) e.accent = std::max (e.accent, 0.25);
     if (e.freezing > 0) { e.accent = std::max (e.accent, 0.45); e.accentIce = 1; }
     if (c.frost) { e.accent = std::max (e.accent, 0.4); e.accentIce = std::max (e.accentIce, 0.7); }
@@ -363,7 +363,7 @@ SkyColours skyColours (const Environment& e)
     mix (k[i].amb, k[i + 1].amb, s.ambient);
 
     // Overcast and storms: towards a grey that keeps the time of day's brightness
-    const double grey = clamp01 (e.overcast * 0.85 + e.thunder * 0.1);
+    double grey = clamp01 (e.overcast * 0.85 + e.thunder * 0.1);
     const double dark = clamp01 (0.35 * std::max ({ e.rain, e.freezing, e.hail, e.sleet * 0.8 }) + 0.25 * e.thunder);
     auto toGrey = [&] (float* c, double tone) {
         const double l = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
@@ -373,8 +373,12 @@ SkyColours skyColours (const Environment& e)
     };
     toGrey (s.zenith, 0.95);
     toGrey (s.horizon, 0.92);
+    // The sea keeps some of its colour under grey skies
+    const double keepGrey = grey;
+    grey = keepGrey * 0.6;
     toGrey (s.sea, 0.95);
     toGrey (s.seaDeep, 0.95);
+    grey = keepGrey;
     for (float& c : s.ambient)
         c = (float) (c * (1 - 0.35 * grey) * (1 - 0.5 * dark));
     return s;

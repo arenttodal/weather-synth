@@ -38,12 +38,12 @@ FAST = "--fast" in ARGV
 # strength), ambient world light, and how bright the cabinet's own lamps are.
 ANCHORS = {
     "dawn": {"sunAz": -55, "sunEl": 8, "sun": "#FFB592", "sunW": 2.2, "world": "#7A7AA6", "worldW": 0.75, "lamps": 3.0, "tint": "#D9B8C0"},
-    "morning": {"sunAz": -40, "sunEl": 30, "sun": "#FFF0D8", "sunW": 3.4, "world": "#9DC4E6", "worldW": 0.8, "lamps": 1.2, "tint": "#F2F2F0"},
-    "noon": {"sunAz": -15, "sunEl": 62, "sun": "#FFFFFF", "sunW": 3.6, "world": "#A9CFEF", "worldW": 0.85, "lamps": 1.0, "tint": "#FFFFFF"},
+    "morning": {"sunAz": -40, "sunEl": 30, "sun": "#FFF0D8", "sunW": 2.8, "world": "#B8CCDD", "worldW": 0.75, "lamps": 1.2, "tint": "#F2F2F0"},
+    "noon": {"sunAz": -15, "sunEl": 62, "sun": "#FFFFFF", "sunW": 2.7, "world": "#C3D3E0", "worldW": 0.75, "lamps": 1.0, "tint": "#FFFFFF"},
     "late_afternoon": {"sunAz": 40, "sunEl": 24, "sun": "#FFD7A0", "sunW": 3.2, "world": "#C4B39F", "worldW": 0.7, "lamps": 1.4, "tint": "#F6E2C8"},
     "sunset": {"sunAz": 55, "sunEl": 6, "sun": "#FF8C55", "sunW": 2.8, "world": "#9C6E86", "worldW": 0.6, "lamps": 2.5, "tint": "#E8B49A"},
-    "dusk": {"sunAz": 50, "sunEl": 20, "sun": "#A497D8", "sunW": 0.9, "world": "#4D4C86", "worldW": 0.6, "lamps": 4.0, "tint": "#9C98C8"},
-    "night": {"sunAz": -35, "sunEl": 40, "sun": "#8DA4D8", "sunW": 0.55, "world": "#1E2850", "worldW": 0.5, "lamps": 6.0, "tint": "#6F7FA8"},
+    "dusk": {"sunAz": 50, "sunEl": 20, "sun": "#A497D8", "sunW": 1.2, "world": "#57568F", "worldW": 0.85, "lamps": 4.0, "tint": "#9C98C8"},
+    "night": {"sunAz": -35, "sunEl": 40, "sun": "#8DA4D8", "sunW": 1.0, "world": "#2A3866", "worldW": 0.95, "lamps": 6.0, "tint": "#6F7FA8"},
     "overcast": {"sunAz": 0, "sunEl": 80, "sun": "#FFFFFF", "sunW": 0.0, "world": "#B9C2CB", "worldW": 1.25, "lamps": 1.6, "tint": "#D8DCE0"},
 }
 
@@ -65,9 +65,28 @@ def mechanism_objects():
     return [o for o in bpy.data.collections["WS_MECHANISMS"].all_objects if o.type == "MESH"]
 
 
+ENGINE = opt("--engine", "EEVEE")
+
+
 def setup_render():
     sc = bpy.context.scene
-    sc.render.engine = "BLENDER_EEVEE"
+    sc.render.engine = "CYCLES" if ENGINE == "CYCLES" else "BLENDER_EEVEE"
+    if ENGINE == "CYCLES":
+        # Optional: CPU path tracing with a fixed seed (slower; EEVEE is the default and is repeatable)
+        cy = sc.cycles
+        cy.device = "CPU"
+        cy.samples = 48 if FAST else 256
+        cy.seed = 2600
+        cy.use_animated_seed = False
+        cy.use_denoising = False  # this Blender build has no OpenImageDenoise; enough samples instead
+        cy.max_bounces = 3
+        cy.diffuse_bounces = 2
+        cy.glossy_bounces = 0
+        cy.transmission_bounces = 0
+        cy.transparent_max_bounces = 4
+        cy.film_exposure = 1.0
+        sc.render.threads_mode = "FIXED"
+        sc.render.threads = 4
     sc.render.film_transparent = True
     sc.render.image_settings.file_format = "PNG"
     sc.render.image_settings.color_mode = "RGBA"
@@ -219,22 +238,48 @@ def accent_material():
     geo = nt.nodes.new("ShaderNodeNewGeometry")
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     ramp = nt.nodes.new("ShaderNodeMapRange")
-    ramp.inputs["From Min"].default_value = 0.55
-    ramp.inputs["From Max"].default_value = 0.8
+    ramp.inputs["From Min"].default_value = 0.7
+    ramp.inputs["From Max"].default_value = 0.9
     emit = nt.nodes.new("ShaderNodeEmission")
     emit.inputs["Color"].default_value = (1, 1, 1, 1)
     transp = nt.nodes.new("ShaderNodeBsdfTransparent")
     mix = nt.nodes.new("ShaderNodeMixShader")
+    patch = nt.nodes.new("ShaderNodeAttribute")
+    patch.attribute_name = "ws_patch"
+    mul = nt.nodes.new("ShaderNodeMath")
+    mul.operation = "MULTIPLY"
     nt.links.new(geo.outputs["Normal"], sep.inputs[0])
     nt.links.new(sep.outputs["Z"], ramp.inputs["Value"])
-    nt.links.new(ramp.outputs["Result"], mix.inputs["Fac"])
+    nt.links.new(ramp.outputs["Result"], mul.inputs[0])
+    nt.links.new(patch.outputs["Fac"], mul.inputs[1])
+    nt.links.new(mul.outputs["Value"], mix.inputs["Fac"])
     nt.links.new(transp.outputs[0], mix.inputs[1])
     nt.links.new(emit.outputs[0], mix.inputs[2])
     nt.links.new(mix.outputs[0], out.inputs["Surface"])
     return m
 
 
+def orchestrate():
+    """Renders every layer in its own Blender process: EEVEE keeps state between renders in
+    one session, so this is what makes each file identical however it was produced."""
+    import subprocess
+    mpath = os.path.join(OUT, "manifest.json")
+    if os.path.exists(mpath):
+        os.remove(mpath)
+    exe = bpy.app.binary_path
+    for part in list(ANCHORS) + ["accent", "mechanisms"]:
+        cmd = [exe, "-b", "--factory-startup", "--python", os.path.abspath(__file__), "--", "--out", OUT, "--only", part] + (["--fast"] if FAST else [])
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0 or "WS_EXPORT_OK" not in r.stdout:
+            print(r.stdout[-2000:], r.stderr[-2000:])
+            raise SystemExit("export of %s failed" % part)
+        print("WS_EXPORT part", part)
+    print("WS_EXPORT_OK", mpath)
+
+
 def main():
+    if not ONLY:
+        return orchestrate()
     B.build()
     B.isolate()
     setup_render()
@@ -273,6 +318,13 @@ def main():
         manifest["lighting"][name] = {"file": "lighting/%s.png" % name, "tint": a["tint"], "sha256": sha(path)}
         print("WS_EXPORT lighting", name)
     S = vp["scale"]
+    mpath = os.path.join(OUT, "manifest.json")
+    if box is None and os.path.exists(mpath):  # accent/mechanism-only run: reuse the shared crop box
+        box = json.load(open(mpath)).get("pixelBox")
+    if box is None:  # first run without a lighting render: measure the box from a noon render
+        apply_anchor(ANCHORS["noon"])
+        render(tmp)
+        box = alpha_box(tmp)
     manifest["artBox"] = [box[0] / S, box[1] / S, (box[2] - box[0]) / S, (box[3] - box[1]) / S] if box else None
     manifest["pixelBox"] = box
 
@@ -338,7 +390,6 @@ def main():
     if os.path.exists(tmp):
         os.remove(tmp)
 
-    mpath = os.path.join(OUT, "manifest.json")
     if ONLY and os.path.exists(mpath):  # partial export: merge into the existing manifest
         old = json.load(open(mpath))
         for k in ("lighting", "masks", "mechanisms"):

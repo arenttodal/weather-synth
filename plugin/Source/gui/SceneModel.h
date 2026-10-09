@@ -32,6 +32,7 @@ const Fixture* findFixture (const juce::String& name);
 struct TimeOfDay
 {
     const char* name;
+    const char* clock; // what the header shows for this fixture time
     double sunAlt;
     bool evening;
     double moonAlt, moonAz, moonPhase;

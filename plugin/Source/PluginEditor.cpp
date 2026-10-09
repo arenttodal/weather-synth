@@ -313,7 +313,7 @@ void AtmosEditor::toast (const juce::String& text)
 
 void AtmosEditor::applySnapshot (const G::Snapshot& s, bool immediate)
 {
-    header.setStatus (G::placeLabel (s), tempLabel (s.tempC), G::timeLabel (s), G::conditionLabel (s), s.source, s.offline,
+    header.setStatus (G::placeLabel (s), tempLabel (s.tempC), fixtureClock.isNotEmpty() ? fixtureClock : G::timeLabel (s), G::conditionLabel (s), s.source, s.offline,
                       fixtureMode ? juce::String ("Developer fixture: not live data") : proc.statusMessage());
     scene.setSnapshot (s, immediate);
 }
@@ -373,7 +373,9 @@ void AtmosEditor::applyBenchOptions (const juce::String& fixture, const juce::St
     if (auto* f = G::findFixture (name))
     {
         fixtureMode = true;
-        scene.setTimeOverride (time.isNotEmpty() ? G::findTime (time) : G::findTime ("noon"));
+        const auto* t = G::findTime (time.isNotEmpty() ? time : juce::String ("noon"));
+        scene.setTimeOverride (t);
+        fixtureClock = t != nullptr ? juce::String (t->clock) : juce::String();
         auto s = f->snapshot;
         s.place = std::string ("Fixture: ") + f->title;
         applySnapshot (s, true);

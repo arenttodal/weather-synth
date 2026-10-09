@@ -11,6 +11,7 @@
 #include "../Source/PluginProcessor.h"
 #include "../Source/Storage.h"
 #include "../Source/WeatherClient.h"
+#include "../Source/gui/SceneModel.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <cmath>
 #include <cstdio>
@@ -577,9 +578,66 @@ static void snapshot (const juce::File& out)
     std::printf ("Editor snapshot written to %s\n", out.getFullPathName().toRawUTF8());
 }
 
+// Visual matrix: every fixture at every time of day, rendered through the real editor.
+//   AtmosTests --atlas out/ [fixtures=a,b] [times=noon,night] [width=1024]
+// Writes out/<fixture>@<time>.png and a contact sheet out/atlas.png (fixtures down, times across).
+static int atlas (const juce::File& dir, const juce::StringArray& args)
+{
+    juce::StringArray fx, tm;
+    int width = 1024;
+    for (auto& a : args)
+    {
+        if (a.startsWith ("fixtures=")) fx.addTokens (a.fromFirstOccurrenceOf ("=", false, false), ",", "");
+        if (a.startsWith ("times=")) tm.addTokens (a.fromFirstOccurrenceOf ("=", false, false), ",", "");
+        if (a.startsWith ("width=")) width = a.fromFirstOccurrenceOf ("=", false, false).getIntValue();
+    }
+    if (fx.isEmpty())
+        for (auto& f : atmos::gui::fixtures())
+            fx.add (f.name);
+    if (tm.isEmpty())
+        for (auto& t : atmos::gui::timesOfDay())
+            tm.add (t.name);
+    dir.createDirectory();
+    Storage::setFolderOverride (juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("atmos-atlas"));
+    AtmosProcessor p;
+    std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
+    auto* e = dynamic_cast<AtmosEditor*> (ed.get());
+    ed->setSize (width, width * 682 / 1024);
+    const int tw = 340, th = 227;
+    juce::Image sheet (juce::Image::RGB, tw * tm.size(), th * fx.size(), true);
+    juce::Graphics sg (sheet);
+    juce::PNGImageFormat png;
+    int n = 0;
+    for (int r = 0; r < fx.size(); ++r)
+        for (int c = 0; c < tm.size(); ++c)
+        {
+            e->applyBenchOptions (fx[r] + "@" + tm[c], "still");
+            auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            auto f = dir.getChildFile (fx[r] + "@" + tm[c] + ".png");
+            f.deleteFile();
+            juce::FileOutputStream os (f);
+            png.writeImageToStream (img, os);
+            sg.drawImage (img, juce::Rectangle<float> ((float) (c * tw), (float) (r * th), (float) tw, (float) th));
+            ++n;
+        }
+    auto f = dir.getChildFile ("atlas.png");
+    f.deleteFile();
+    juce::FileOutputStream os (f);
+    png.writeImageToStream (sheet, os);
+    std::printf ("Atlas: %d images (%d fixtures x %d times) in %s\n", n, fx.size(), tm.size(), dir.getFullPathName().toRawUTF8());
+    return 0;
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    if (argc > 2 && juce::String (argv[1]) == "--atlas")
+    {
+        juce::StringArray rest;
+        for (int i = 3; i < argc; ++i)
+            rest.add (argv[i]);
+        return atlas (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]), rest);
+    }
     testMapperParity();
     testAstro();
     testDayAndStorage();

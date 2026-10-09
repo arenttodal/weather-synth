@@ -39,6 +39,8 @@ SceneView::SceneView()
     setInterceptsMouseClicks (false, false); // decoration: nothing here pretends to be a control
     setAccessible (false);
     lastTick = nowSeconds();
+    for (auto& p : parts)
+        p.age = -1; // spawn anywhere on first use (still pictures show weather too)
 }
 
 SceneView::~SceneView() { stopTimer(); }
@@ -74,27 +76,45 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
         cloudShapes.clear();
         for (int k = 0; k < 5; ++k)
         {
+            // A bumpy top made from a few overlapping round lobes, a nearly flat base, and
+            // three rows of facets between them: light on top, mid in the middle, shade below.
             CloudShape c;
-            std::vector<juce::Point<float>> outline { { 0.0f, 1.0f } };
-            const int bumps = 6 + rng.nextInt (3);
-            for (int i = 0; i <= bumps; ++i)
+            struct Lobe
             {
-                const float x = 0.04f + 0.92f * i / bumps;
-                const float env = (float) std::sin (pi * (0.15 + 0.7 * i / (double) bumps));
-                outline.push_back ({ x, 1.0f - (0.25f + 0.75f * env * (0.55f + 0.45f * rng.nextFloat())) });
+                float x, y, r;
+            };
+            std::vector<Lobe> lobes;
+            const int nl = 3 + rng.nextInt (3);
+            for (int i = 0; i < nl; ++i)
+            {
+                const float x = 0.18f + 0.64f * (nl == 1 ? 0.5f : i / (float) (nl - 1)) + (rng.nextFloat() - 0.5f) * 0.08f;
+                const float r = 0.16f + 0.2f * rng.nextFloat() * (1.0f - std::abs (x - 0.5f));
+                lobes.push_back ({ x, 0.82f, r });
             }
-            outline.push_back ({ 1.0f, 1.0f });
-            const juce::Point<float> centre { 0.5f, 0.92f };
-            for (size_t i = 0; i + 1 < outline.size(); ++i)
+            const int cols = 11;
+            std::vector<juce::Point<float>> top, mid, bot;
+            for (int i = 0; i <= cols; ++i)
             {
-                const auto a = outline[i], b = outline[i + 1];
-                const float midY = (a.y + b.y + centre.y) / 3;
-                int tone = midY < 0.5f ? 0 : midY < 0.72f ? 1 : 2;
-                if (rng.nextFloat() < 0.25f) tone = juce::jmin (2, tone + 1);
-                c.tones[tone].addTriangle (centre, a, b);
-                // A second, inner facet ring gives the chunky low-poly look
-                const juce::Point<float> inner { (a.x + b.x) / 2, (a.y + b.y) / 2 + 0.18f };
-                c.tones[juce::jmin (2, tone + (rng.nextFloat() < 0.5f ? 0 : 1))].addTriangle (a, b, inner);
+                const float x = 0.02f + 0.96f * i / cols;
+                float y = 1.0f;
+                for (auto& l : lobes)
+                {
+                    const float dx = (x - l.x) / l.r;
+                    if (std::abs (dx) < 1) y = juce::jmin (y, l.y - l.r * 2.2f * std::sqrt (1 - dx * dx));
+                }
+                y = juce::jlimit (0.0f, 0.97f, y + (rng.nextFloat() - 0.5f) * 0.05f);
+                if (i == 0 || i == cols) y = 0.93f;
+                top.push_back ({ x, y });
+                mid.push_back ({ x + (rng.nextFloat() - 0.5f) * 0.03f, juce::jmin (0.95f, y + (1.0f - y) * (0.42f + 0.15f * rng.nextFloat())) });
+                bot.push_back ({ x, 0.97f + 0.03f * rng.nextFloat() });
+            }
+            for (int i = 0; i < cols; ++i)
+            {
+                const int t0 = rng.nextFloat() < 0.8f ? 0 : 1;
+                c.tones[t0].addTriangle (top[(size_t) i], top[(size_t) i + 1], mid[(size_t) i + 1]);
+                c.tones[rng.nextFloat() < 0.6f ? 0 : 1].addTriangle (top[(size_t) i], mid[(size_t) i + 1], mid[(size_t) i]);
+                c.tones[rng.nextFloat() < 0.7f ? 1 : 2].addTriangle (mid[(size_t) i], mid[(size_t) i + 1], bot[(size_t) i + 1]);
+                c.tones[2].addTriangle (mid[(size_t) i], bot[(size_t) i + 1], bot[(size_t) i]);
             }
             cloudShapes.push_back (std::move (c));
         }
@@ -105,9 +125,12 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
             const float t = std::pow (rng.nextFloat(), 0.8f);
             waves.push_back ({ rng.nextFloat() * W, hz + 5 + t * (H - hz - 8), 6 + 22 * t, rng.nextFloat() * 6.28f });
         }
-        for (auto& p : parts)
-            p.age = -1; // respawn lazily
     }
+    // New weather: re-pick every particle (kind and position) so nothing from the previous
+    // state lingers, and still pictures are recomputed
+    for (auto& p : parts)
+        p.age = -1;
+    activeCount = 0;
     // Cloud layout follows cover: a few broad shapes, more under an overcast sky
     const int count = juce::jlimit (0, 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
     if ((int) clouds.size() != count)
@@ -201,7 +224,7 @@ void SceneView::step (double dt)
     anemoPhase = std::fmod (anemoPhase + dt * juce::jmin (900.0, 40 + e.windMps * 55 + (e.gustMps - e.windMps) * 20 * (0.5 + 0.5 * std::sin (clock * 1.7))) * motion, 360.0);
 
     // Precipitation pool
-    const int cap = prefs_.quality == Quality::economy ? 140 : (prefs_.reduceMotion ? 120 : 260);
+    const int cap = prefs_.quality == Quality::economy ? 160 : (prefs_.reduceMotion ? 140 : 300);
     const double load = std::max ({ e.rain, e.drizzle * 0.7, e.snow * 0.8, e.sleet, e.freezing, e.hail * 0.7, e.dust * 0.25 });
     activeCount = juce::jlimit (0, maxParticles, (int) std::round (cap * std::pow (load, 0.8)));
     const double total = e.rain + e.drizzle + e.snow + e.sleet + e.freezing + e.hail + e.dust * 0.4 + 1e-9;
@@ -224,8 +247,8 @@ void SceneView::step (double dt)
         const float wx = (float) (across * e.windMps);
         switch (p.kind)
         {
-            case 0: p.vy = 460 + rng.nextFloat() * 120; p.vx = juce::jlimit (-320.0f, 320.0f, wx * 16); p.size = 9 + 8 * rng.nextFloat(); break;
-            case 1: p.vy = 260 + rng.nextFloat() * 60; p.vx = juce::jlimit (-200.0f, 200.0f, wx * 12); p.size = 4 + 3 * rng.nextFloat(); break;
+            case 0: p.vy = 460 + rng.nextFloat() * 120; p.vx = juce::jlimit (-320.0f, 320.0f, wx * 16); p.size = 14 + 12 * rng.nextFloat(); break;
+            case 1: p.vy = 260 + rng.nextFloat() * 60; p.vx = juce::jlimit (-200.0f, 200.0f, wx * 12); p.size = 6 + 4 * rng.nextFloat(); break;
             case 2: p.vy = 38 + rng.nextFloat() * 34; p.vx = wx * 5; p.size = 2.2f + 2.4f * rng.nextFloat(); break;
             case 3: p.vy = 240 + rng.nextFloat() * 60; p.vx = wx * 10; p.size = 1.8f + rng.nextFloat(); break;
             case 4: p.vy = 380 + rng.nextFloat() * 90; p.vx = wx * 8; p.size = 2.0f + 1.6f * rng.nextFloat(); break;
@@ -670,18 +693,19 @@ void SceneView::drawPrecipitation (juce::Graphics& g)
         const float inv = 1.0f / juce::jmax (1.0f, std::hypot (p.vx, p.vy));
         switch (p.kind)
         {
-            case 0: streaks.addLineSegment ({ p.x, p.y, p.x - p.vx * inv * p.size, p.y - p.vy * inv * p.size }, 1.2f); break;
-            case 1: drizzle.addLineSegment ({ p.x, p.y, p.x - p.vx * inv * p.size, p.y - p.vy * inv * p.size }, 0.8f); break;
+            case 0: streaks.addLineSegment ({ p.x, p.y, p.x - p.vx * inv * p.size, p.y - p.vy * inv * p.size }, 1.6f); break;
+            case 1: drizzle.addLineSegment ({ p.x, p.y, p.x - p.vx * inv * p.size, p.y - p.vy * inv * p.size }, 1.1f); break;
             case 2: flakes.add (p.x, p.y, p.size, p.size); break;
             case 3: case 4: case 6: pellets.add (p.x, p.y, p.size, p.size); break;
             case 5: pellets.add (p.x, p.y, p.size, p.size * 0.8f); break;
             default: break;
         }
     }
-    const auto rain = juce::Colour (0xffcfe0ee).interpolatedWith (juce::Colour (0xffd8f4ff), (float) juce::jmin (1.0, shown.freezing * 2));
-    g.setColour (rain.withMultipliedBrightness (l).withAlpha (0.55f));
+    const auto rain = juce::Colour (0xffe4eef6).interpolatedWith (juce::Colour (0xffd8f4ff), (float) juce::jmin (1.0, shown.freezing * 2));
+    const float lr = juce::jmax (0.62f, l);
+    g.setColour (rain.withMultipliedBrightness (lr).withAlpha (0.7f));
     g.fillPath (streaks);
-    g.setColour (rain.withMultipliedBrightness (l).withAlpha (0.4f));
+    g.setColour (rain.withMultipliedBrightness (lr).withAlpha (0.55f));
     g.fillPath (drizzle);
     g.setColour (juce::Colours::white.withMultipliedBrightness (juce::jmax (0.55f, l)).withAlpha (0.9f));
     g.fillRectList (flakes);

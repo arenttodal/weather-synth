@@ -6,3 +6,4 @@ node_modules/
 plugin/build-asan/
 plugin/build-tsan/
 plugin/tsan.log
+__pycache__/
