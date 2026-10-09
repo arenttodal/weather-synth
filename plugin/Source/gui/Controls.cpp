@@ -397,7 +397,7 @@ HeaderBar::HeaderBar()
 {
     for (auto* b : { &refresh, &place, &keep, &days, &settings })
         addAndMakeVisible (b);
-    setTitle ("Weather Synth header");
+    setTitle ("Atmospheric header");
 }
 
 void HeaderBar::setUiScale (float s)
@@ -441,7 +441,7 @@ void HeaderBar::paint (juce::Graphics& g)
     g.fillAll (Theme::ui);
     g.setColour (Theme::text);
     g.setFont (Theme::font (24 * s, true).withExtraKerningFactor (0.06f));
-    g.drawText ("WEATHER SYNTH", juce::Rectangle<float> (22 * s, 0, 220 * s, (float) getHeight()), juce::Justification::centredLeft);
+    g.drawText ("ATMOSPHERIC", juce::Rectangle<float> (22 * s, 0, 220 * s, (float) getHeight()), juce::Justification::centredLeft);
 
     // Right side: place · temperature · time · condition · [shape] SOURCE
     juce::String label = sourceLabel (source);

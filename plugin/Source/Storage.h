@@ -39,7 +39,7 @@ public:
     // Display preferences (global, never stored in projects): animation "full" / "economy" / "still"
     struct VisualPrefs
     {
-        juce::String animation = "full";
+        juce::String animation = "economy"; // new installs: 12 fps (full is 24)
         bool reduceFlashes = false, reduceMotion = false;
     };
     static VisualPrefs visualPrefs();

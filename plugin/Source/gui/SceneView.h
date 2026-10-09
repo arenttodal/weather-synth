@@ -25,7 +25,7 @@ public:
     enum class Quality { full, economy, still };
     struct Prefs
     {
-        Quality quality = Quality::full;
+        Quality quality = Quality::economy;
         bool reduceFlashes = false;
         bool reduceMotion = false;
     };

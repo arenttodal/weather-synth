@@ -107,7 +107,7 @@ AtmosEditor::AtmosEditor (AtmosProcessor& p) : AudioProcessorEditor (p), proc (p
 {
     setLookAndFeel (&lnf);
     setWantsKeyboardFocus (true);
-    setTitle ("Weather Synth");
+    setTitle ("Atmospheric");
 
     addAndMakeVisible (header);
     addAndMakeVisible (scene);

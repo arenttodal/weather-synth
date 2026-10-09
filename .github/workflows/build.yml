@@ -4,6 +4,11 @@ on:
   push:
     paths: ["plugin/**", "engine/**", "designer/**", "server/**", "installer/**", ".github/workflows/build.yml", "lab.html", "tools/**"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Replace the 'latest' pre-release with this build's macOS zip"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -86,6 +91,27 @@ jobs:
           unzip -q pluginval.zip
           ./pluginval.app/Contents/MacOS/pluginval --strictness-level 7 --timeout-ms 600000 --validate-in-process \
             --output-dir pluginval-logs build/Atmospheric_artefacts/Release/VST3/Atmospheric.vst3
+      - name: GUI evidence on Apple Silicon (informational)
+        continue-on-error: true
+        run: |
+          B=./build/AtmosGuiBench_artefacts/Release/AtmosGuiBench.app/Contents/MacOS/AtmosGuiBench
+          [ -x "$B" ] || B=$(find build/AtmosGuiBench_artefacts -type f -perm -u+x -name AtmosGuiBench | head -1)
+          sysctl -n machdep.cpu.brand_string > gui-mac.txt; sw_vers >> gui-mac.txt
+          for a in "--instances 0" "--editors 0" "--editors 1 --fixture clear@noon --quality full" "--editors 1 --fixture heavy_rain@noon --quality full" \
+                   "--editors 1 --fixture heavy_rain@noon --quality economy" "--editors 1 --fixture heavy_rain@noon --quality still" \
+                   "--instances 4 --editors 4 --fixture rain@noon --quality economy" "--editors 0 --cycles 50"; do
+            timeout 120 "$B" --seconds 10 $a | tail -1 >> gui-mac.jsonl || echo "{\"failed\":\"$a\"}" >> gui-mac.jsonl
+          done
+          cat gui-mac.txt gui-mac.jsonl
+          ./build/AtmosTests_artefacts/Release/AtmosTests --atlas mac-atlas fixtures=clear,heavy_rain,snow,fog,thunderstorm times=noon,night scale=2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gui-evidence-macOS
+          path: |
+            gui-mac.txt
+            gui-mac.jsonl
+            mac-atlas
       - name: Package
         run: |
           A=build/Atmospheric_artefacts/Release
@@ -110,6 +136,8 @@ jobs:
           if-no-files-found: ignore
 
   windows:
+    # Switched off: macOS is the only platform built for now
+    if: ${{ false }}
     name: Windows
     runs-on: windows-2022
     steps:
@@ -170,6 +198,8 @@ jobs:
         with: { name: pluginval-Windows, path: pluginval-logs, if-no-files-found: ignore }
 
   linux:
+    # Switched off: macOS is the only platform built for now
+    if: ${{ false }}
     name: Linux
     runs-on: ubuntu-24.04
     steps:
@@ -197,8 +227,10 @@ jobs:
 
   release:
     name: Publish download
-    # Windows is published only when it passes; it doesn't hold up the macOS download
-    needs: [relay, macos, linux]
+    # Publishing replaces the public download, so it only happens on request:
+    # Actions > Build Atmospheric > Run workflow, with "publish" ticked
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+    needs: [relay, macos]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
@@ -208,8 +240,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          files="artifacts/Atmospheric-macOS/dist/Atmospheric-macOS.zip artifacts/Atmospheric-Linux/Atmospheric-Linux.zip"
-          [ -f artifacts/Atmospheric-Windows/Atmospheric-Windows.zip ] && files="$files artifacts/Atmospheric-Windows/Atmospheric-Windows.zip"
+          files="artifacts/Atmospheric-macOS/dist/Atmospheric-macOS.zip"
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest --prerelease --target "$GITHUB_SHA" \
             --title "Atmospheric test build ($(date -u +%Y-%m-%d) · ${GITHUB_SHA::7})" \
