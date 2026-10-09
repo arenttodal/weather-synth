@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "seed": 2600,
+  "blender": "4.0.2",
+  "viewport": {
+    "logicalWidth": 1024,
+    "logicalHeight": 460,
+    "scale": 2,
+    "horizonY": 0.555
+  },
+  "camera": {
+    "yawDeg": 20,
+    "pitchDeg": 13,
+    "orthoScale": 15.2,
+    "target": [
+      0.25,
+      0,
+      1.55
+    ],
+    "shiftX": 0.0,
+    "shiftY": 0.0
+  },
+  "palette": {
+    "cabinetFace": "#242B31",
+    "cabinetFaceDeep": "#1A2025",
+    "cream": "#D6CAB0",
+    "creamShade": "#BDB096",
+    "trim": "#C76F35",
+    "cableCream": "#E3D7BD",
+    "fader": "#D9CDB3",
+    "socket": "#9EA3A2",
+    "speaker": "#151A1E",
+    "lamp": "#F0AE4C",
+    "doorDark": "#0F1316",
+    "grass": "#7C9553",
+    "grassDark": "#66804A",
+    "rock": "#737A7C",
+    "rockDark": "#5E6466",
+    "metal": "#3A3F44",
+    "dish": "#D9D6CE",
+    "vane": "#D86A33",
+    "accent": "#F4F7FA"
+  },
+  "cabinet": {
+    "width": 4.6,
+    "height": 2.75,
+    "depth": 1.15,
+    "cheek": 0.2,
+    "cheekRise": 0.12,
+    "faceInset": 0.06,
+    "trimWidth": 0.035,
+    "baseZ": 0.95,
+    "x": 0.2,
+    "y": 0.15
+  },
+  "island": {
+    "topRadius": 3.55,
+    "seaRadius": 4.15,
+    "topZ": 0.95,
+    "facets": 14,
+    "jitter": 0.3,
+    "cliffRings": 2,
+    "squashY": 0.72,
+    "boulders": 20
+  },
+  "rocks": [
+    {
+      "x": -5.6,
+      "y": -0.9,
+      "s": 0.6,
+      "h": 0.55
+    },
+    {
+      "x": 5.7,
+      "y": -0.6,
+      "s": 0.7,
+      "h": 0.8
+    },
+    {
+      "x": 4.4,
+      "y": 1.9,
+      "s": 0.45,
+      "h": 0.5
+    },
+    {
+      "x": -4.2,
+      "y": 2.0,
+      "s": 0.4,
+      "h": 0.4
+    }
+  ],
+  "door": {
+    "width": 0.32,
+    "height": 0.62,
+    "steps": 3,
+    "stepDepth": 0.17,
+    "stepRise": 0.11
+  },
+  "roof": {
+    "antennaHeight": 1.15,
+    "dishRadius": 0.3,
+    "mastHeight": 0.75
+  },
+  "cables": [
+    {
+      "color": "trim",
+      "points": [
+        [
+          -0.05,
+          2.35
+        ],
+        [
+          0.35,
+          1.95
+        ],
+        [
+          0.95,
+          1.85
+        ]
+      ]
+    },
+    {
+      "color": "cableCream",
+      "points": [
+        [
+          0.45,
+          1.85
+        ],
+        [
+          0.6,
+          1.45
+        ],
+        [
+          0.85,
+          1.25
+        ]
+      ]
+    },
+    {
+      "color": "trim",
+      "points": [
+        [
+          0.95,
+          1.25
+        ],
+        [
+          1.25,
+          1.5
+        ],
+        [
+          1.55,
+          1.85
+        ]
+      ]
+    }
+  ]
+}

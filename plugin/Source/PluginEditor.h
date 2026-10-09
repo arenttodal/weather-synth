@@ -1,61 +1,16 @@
 #pragma once
 #include "Globe.h"
 #include "PluginProcessor.h"
+#include "gui/Controls.h"
+#include "gui/SceneView.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
 namespace atmos
 {
 struct Palette
 {
-    static inline const juce::Colour bg { 0xff0e141b }, panel { 0xff151d27 }, line { 0xff2a3644 }, ink { 0xffdfe6ee }, ink2 { 0xff9fb0c2 },
-        ink3 { 0xff6c7c8d }, accent { 0xffd9a54a };
-};
-
-class LookAndFeel : public juce::LookAndFeel_V4
-{
-public:
-    LookAndFeel();
-    void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h, float pos, float start, float end, juce::Slider&) override;
-    void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&, bool over, bool down) override;
-    juce::Font getTextButtonFont (juce::TextButton&, int h) override;
-};
-
-// The sky card: today's conditions, drawn as weather
-class DayCard : public juce::Component, private juce::Timer
-{
-public:
-    DayCard();
-    void setDay (const Day&, const juce::String& waveform);
-    void paint (juce::Graphics&) override;
-    void mouseUp (const juce::MouseEvent&) override;
-    std::function<void()> onTripleClick;
-
-private:
-    void timerCallback() override;
-    Day day;
-    Climate climate;
-    juce::String wave;
-    struct Drop
-    {
-        float x, y, v;
-    };
-    std::vector<Drop> drops;
-    juce::Random rng;
-    int clickCount = 0;
-    juce::uint32 lastClick = 0;
-};
-
-class MacroKnob : public juce::Component
-{
-public:
-    MacroKnob (juce::AudioProcessorValueTreeState&, const juce::String& id, const juce::String& label);
-    void setReadout (const juce::String& s) { readout.setText (s, juce::dontSendNotification); }
-    void resized() override;
-    juce::Slider slider;
-
-private:
-    juce::Label name, readout;
-    juce::AudioProcessorValueTreeState::SliderAttachment attachment;
+    static inline const juce::Colour bg { 0xff172b40 }, panel { 0xff13233a }, line { 0xff2a3f5a }, ink { 0xffeee6d3 }, ink2 { 0xffa9b3bf },
+        ink3 { 0xff7a8794 }, accent { 0xfff0ae4c };
 };
 
 struct Backdrop : juce::Component
@@ -93,29 +48,43 @@ public:
     void toggleGlobe();
     bool globeVisible() const { return globeLayer.isVisible(); }
 
-    // Benchmark and fixture hooks (AtmosGuiBench, AtmosTests)
-    void applyBenchOptions (const juce::String& /*fixture*/, const juce::String& /*quality*/) {}
-    int benchFrames() const { return 0; }
-    double benchUpdateP95Ms() const { return 0; }
+    // Benchmark and fixture hooks (AtmosGuiBench, AtmosTests): "fixture" or "fixture@time"
+    void applyBenchOptions (const juce::String& fixture, const juce::String& quality);
+    int benchFrames() const { return scene.frames(); }
+    double benchUpdateP95Ms() const { return scene.updateP95Ms(); }
+    double benchPaintP95Ms() const { return scene.paintP95Ms(); }
+    const atmos::gui::SceneView& sceneView() const { return scene; }
+
+    static constexpr int logicalWidth = 1024, logicalHeight = 682, headerH = 44, sceneH = 460;
 
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void timerCallback() override;
     void refresh();
+    void applySnapshot (const atmos::gui::Snapshot&, bool immediate);
     void showDaysMenu();
     void showKeepPanel();
     void showPlacePanel();
+    void showSettingsMenu();
+    void applyVisualPrefs();
     void layoutGlobe();
+    void toast (const juce::String&);
 
     AtmosProcessor& proc;
-    atmos::LookAndFeel lnf;
-    atmos::DayCard card;
-    juce::OwnedArray<atmos::MacroKnob> knobs;
-    juce::Label title, status, natureLine;
-    juce::TextButton keepBtn { "Keep this Day" }, daysBtn { "Days" }, placeBtn { "Place" }, todayBtn { "Hear today" };
+    atmos::gui::LookAndFeel lnf;
+    atmos::gui::HeaderBar header;
+    atmos::gui::SceneView scene;
+    juce::OwnedArray<atmos::gui::MacroTrack> tracks;
+    juce::Label toastLabel;
+    juce::uint32 toastUntil = 0;
     atmos::InlinePanel panel;
+    std::unique_ptr<juce::TooltipWindow> tooltips;
 
-    // Admin globe (Cmd/Ctrl+Shift+G, Cmd/Ctrl+W, or triple-click the sky card)
+    juce::String sceneKey;
+    bool fixtureMode = false;
+    int devFixture = -1, devTime = -1;
+
+    // Admin globe (Cmd/Ctrl+Shift+G, Cmd/Ctrl+W)
     atmos::Backdrop globeLayer;
     atmos::Globe globe;
     juce::Label globeTitle, globeInfo;

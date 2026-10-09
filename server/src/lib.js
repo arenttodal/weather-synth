@@ -28,6 +28,10 @@ export function precipIntensity(w) {
 }
 
 // Normalise an OWM /data/2.5/weather response into the plugin's climate snapshot.
+function finiteOrNull(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 export function toSnapshot(w, cell) {
   return {
     temp: w.main?.temp ?? 10,
@@ -38,6 +42,13 @@ export function toSnapshot(w, cell) {
     precip: precipIntensity(w),
     condition: w.weather?.[0]?.main ?? "Clear",
     description: w.weather?.[0]?.description ?? "",
+    // Visual-only extras for the plugin's scene (null = the provider didn't say)
+    conditionIds: Array.isArray(w.weather) ? w.weather.map((c) => c?.id).filter((id) => Number.isInteger(id)) : [],
+    windDeg: finiteOrNull(w.wind?.deg),
+    gust: finiteOrNull(w.wind?.gust),
+    visibility: finiteOrNull(w.visibility),
+    rain1h: finiteOrNull(w.rain?.["1h"]),
+    snow1h: finiteOrNull(w.snow?.["1h"]),
     observedAt: w.dt ?? Math.floor(Date.now() / 1000),
     timezone: w.timezone ?? 0,
     sunrise: w.sys?.sunrise ?? null,

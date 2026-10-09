@@ -52,6 +52,14 @@ juce_add_plugin(Atmospheric
 juce_add_binary_data(AtmosData SOURCES Resources/land110m.bin Resources/bible.json)
 set_target_properties(AtmosData PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# The editor's scene art (rendered by design/blender/export_layers.py) and its font
+file(GLOB_RECURSE ATMOS_SCENE_ART CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/weather_scene/*.png"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/weather_scene/manifest.json"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/fonts/*.ttf")
+juce_add_binary_data(SceneArt HEADER_NAME SceneArt.h NAMESPACE SceneArt SOURCES ${ATMOS_SCENE_ART})
+set_target_properties(SceneArt PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # The sound engine is shared with the browser sound designer (engine/wasm): plain C++, no JUCE
 set(ATMOS_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../engine")
 set(ATMOS_ENGINE_SOURCES
@@ -59,6 +67,7 @@ set(ATMOS_ENGINE_SOURCES
     ${ATMOS_ENGINE_DIR}/atmos/Astro.cpp
     ${ATMOS_ENGINE_DIR}/atmos/Bible.cpp
     ${ATMOS_ENGINE_DIR}/atmos/Core.cpp
+    ${ATMOS_ENGINE_DIR}/atmos/Sky.cpp
     ${ATMOS_ENGINE_DIR}/osp/engine/CharacterFilter.cpp
     ${ATMOS_ENGINE_DIR}/osp/engine/EchoDelay.cpp
     ${ATMOS_ENGINE_DIR}/osp/engine/MovementBus.cpp
@@ -75,7 +84,12 @@ set(ATMOS_CORE_SOURCES
     Source/WeatherClient.cpp
     Source/Globe.cpp
     Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp)
+    Source/PluginEditor.cpp
+    Source/gui/Environment.cpp
+    Source/gui/SceneModel.cpp
+    Source/gui/SceneAssets.cpp
+    Source/gui/SceneView.cpp
+    Source/gui/Controls.cpp)
 
 target_sources(Atmospheric PRIVATE ${ATMOS_CORE_SOURCES})
 target_include_directories(Atmospheric PRIVATE ${ATMOS_INCLUDES})
@@ -99,7 +113,7 @@ set(ATMOS_MODULES
     juce::juce_gui_basics)
 
 target_link_libraries(Atmospheric
-    PRIVATE AtmosData ${ATMOS_MODULES}
+    PRIVATE AtmosData SceneArt ${ATMOS_MODULES}
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
 # ---- Tests: nature mapping, bible placement, astronomy, storage, state, offline renders
@@ -112,7 +126,7 @@ if(ATMOS_BUILD_TESTS)
         JucePlugin_Name="Atmospheric" JucePlugin_IsSynth=1 JucePlugin_WantsMidiInput=1 JucePlugin_ProducesMidiOutput=0
         JucePlugin_IsMidiEffect=0 JucePlugin_EditorRequiresKeyboardFocus=1 JUCE_MODAL_LOOPS_PERMITTED=1
         ATMOS_TEST_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/tests/vectors.json")
-    target_link_libraries(AtmosTests PRIVATE AtmosData ${ATMOS_MODULES}
+    target_link_libraries(AtmosTests PRIVATE AtmosData SceneArt ${ATMOS_MODULES}
         juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 endif()
 
@@ -124,7 +138,7 @@ if(ATMOS_BUILD_TESTS)
     target_compile_definitions(AtmosGuiBench PRIVATE ${ATMOS_DEFINES}
         JucePlugin_Name="Atmospheric" JucePlugin_IsSynth=1 JucePlugin_WantsMidiInput=1 JucePlugin_ProducesMidiOutput=0
         JucePlugin_IsMidiEffect=0 JucePlugin_EditorRequiresKeyboardFocus=1 JUCE_MODAL_LOOPS_PERMITTED=1)
-    target_link_libraries(AtmosGuiBench PRIVATE AtmosData ${ATMOS_MODULES}
+    target_link_libraries(AtmosGuiBench PRIVATE AtmosData SceneArt ${ATMOS_MODULES}
         juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 endif()
 

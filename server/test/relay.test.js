@@ -5,9 +5,10 @@ import { createApp } from "../src/app.js";
 import { precipIntensity, cellOf, clientIp, isPrivateIp, TtlCache, RateLimiter } from "../src/lib.js";
 
 const owmBody = {
-  weather: [{ id: 501, main: "Rain", description: "moderate rain" }],
+  weather: [{ id: 501, main: "Rain", description: "moderate rain" }, { id: 701, main: "Mist", description: "mist" }],
+  visibility: 4000,
   main: { temp: 6.2, humidity: 88, pressure: 1004 },
-  wind: { speed: 7.5 },
+  wind: { speed: 7.5, deg: 250, gust: 12.1 },
   clouds: { all: 90 },
   rain: { "1h": 2.5 },
   dt: 1791470000,
@@ -82,6 +83,12 @@ test("/v1/sky by coordinates returns a snapshot and caches per cell", async () =
     assert.equal(a.body.clouds, 0.9);
     assert.equal(a.body.place.name, "Trondheim");
     assert.equal(a.body.place.lat, 63.4);
+    assert.deepEqual(a.body.conditionIds, [501, 701]);
+    assert.equal(a.body.windDeg, 250);
+    assert.equal(a.body.gust, 12.1);
+    assert.equal(a.body.visibility, 4000);
+    assert.equal(a.body.rain1h, 2.5);
+    assert.equal(a.body.snow1h, null);
     const b = await get(base, "/v1/sky?lat=63.41&lon=10.42");
     assert.equal(b.body.cached, true);
     assert.equal(calls.filter((u) => u.includes("/data/2.5/weather")).length, 1);

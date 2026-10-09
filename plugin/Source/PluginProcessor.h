@@ -61,6 +61,10 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     atmos::WeatherClient weather;
 
+    // A tiny, lock-free summary of what's playing, for the editor's indicators (0..1).
+    // Written once per audio block, read by the GUI at frame rate; nothing else crosses over.
+    float getActivity() const noexcept { return activity.load (std::memory_order_relaxed); }
+
     // Tests and offline tools
     atmos::Core& getCore() { return core; }
     void applyDayForTest (const atmos::Day& d) { applyDay (d); }
@@ -100,6 +104,8 @@ private:
     int audioVersion = -1;
     atmos::Macros audioMacros;
     juce::AudioBuffer<float> scratch;
+    std::atomic<float> activity { 0.0f };
+    float activityEnv = 0;
 
     std::atomic<float>* pTone = nullptr;
     std::atomic<float>* pBloom = nullptr;

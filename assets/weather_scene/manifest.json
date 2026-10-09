@@ -1,0 +1,498 @@
+{
+ "version": 1,
+ "generator": "design/blender/export_layers.py",
+ "blender": "4.0.2",
+ "viewport": {
+  "width": 1024,
+  "height": 460,
+  "scale": 2,
+  "horizonY": 0.555
+ },
+ "alpha": "straight",
+ "colorSpace": "sRGB",
+ "lighting": {
+  "dawn": {
+   "file": "lighting/dawn.png",
+   "tint": "#D9B8C0",
+   "sha256": "0ee6f944e98f0430"
+  },
+  "morning": {
+   "file": "lighting/morning.png",
+   "tint": "#F2F2F0",
+   "sha256": "29206166f62e5383"
+  },
+  "noon": {
+   "file": "lighting/noon.png",
+   "tint": "#FFFFFF",
+   "sha256": "d48b36fab2ec64e0"
+  },
+  "late_afternoon": {
+   "file": "lighting/late_afternoon.png",
+   "tint": "#F6E2C8",
+   "sha256": "c94c3991738361c7"
+  },
+  "sunset": {
+   "file": "lighting/sunset.png",
+   "tint": "#E8B49A",
+   "sha256": "efbaf6802ae65712"
+  },
+  "dusk": {
+   "file": "lighting/dusk.png",
+   "tint": "#9C98C8",
+   "sha256": "43811d9da739dc02"
+  },
+  "night": {
+   "file": "lighting/night.png",
+   "tint": "#6F7FA8",
+   "sha256": "540f750b7dbd8036"
+  },
+  "overcast": {
+   "file": "lighting/overcast.png",
+   "tint": "#D8DCE0",
+   "sha256": "035ace98fe59da53"
+  }
+ },
+ "masks": {
+  "accent": {
+   "file": "masks/accent.png",
+   "role": "snow/frost/ice accent on upward faces",
+   "sha256": "571962e61fc6b350"
+  }
+ },
+ "mechanisms": {
+  "vane": {
+   "frames": [
+    {
+     "file": "mechanisms/vane_00.png",
+     "box": [
+      568.0,
+      16.0,
+      53.0,
+      24.0
+     ],
+     "sha256": "b624bb0e6b057e47"
+    },
+    {
+     "file": "mechanisms/vane_01.png",
+     "box": [
+      573.0,
+      15.0,
+      43.0,
+      27.0
+     ],
+     "sha256": "5d5f49de472c4eb4"
+    },
+    {
+     "file": "mechanisms/vane_02.png",
+     "box": [
+      582.0,
+      13.0,
+      27.0,
+      29.0
+     ],
+     "sha256": "df70d063f348898c"
+    },
+    {
+     "file": "mechanisms/vane_03.png",
+     "box": [
+      592.0,
+      13.0,
+      8.0,
+      29.0
+     ],
+     "sha256": "3bd988a482b93216"
+    },
+    {
+     "file": "mechanisms/vane_04.png",
+     "box": [
+      586.0,
+      14.0,
+      22.0,
+      28.0
+     ],
+     "sha256": "aa737ed8f10985bf"
+    },
+    {
+     "file": "mechanisms/vane_05.png",
+     "box": [
+      577.0,
+      14.0,
+      41.0,
+      28.0
+     ],
+     "sha256": "1a44c1df3a6c498f"
+    },
+    {
+     "file": "mechanisms/vane_06.png",
+     "box": [
+      572.0,
+      16.0,
+      52.0,
+      24.0
+     ],
+     "sha256": "8dd817d53e2cc4ec"
+    },
+    {
+     "file": "mechanisms/vane_07.png",
+     "box": [
+      570.0,
+      18.0,
+      57.0,
+      21.0
+     ],
+     "sha256": "5c6a335692ba860d"
+    },
+    {
+     "file": "mechanisms/vane_08.png",
+     "box": [
+      571.0,
+      16.0,
+      54.0,
+      24.0
+     ],
+     "sha256": "7fb50be09cea31b1"
+    },
+    {
+     "file": "mechanisms/vane_09.png",
+     "box": [
+      576.0,
+      15.0,
+      43.0,
+      27.0
+     ],
+     "sha256": "038b9e6f05a1cbfb"
+    },
+    {
+     "file": "mechanisms/vane_10.png",
+     "box": [
+      584.0,
+      14.0,
+      27.0,
+      29.0
+     ],
+     "sha256": "fb2688f8c9b3cab9"
+    },
+    {
+     "file": "mechanisms/vane_11.png",
+     "box": [
+      592.0,
+      15.0,
+      8.0,
+      28.0
+     ],
+     "sha256": "33e4719dda13e5e9"
+    },
+    {
+     "file": "mechanisms/vane_12.png",
+     "box": [
+      584.0,
+      14.0,
+      23.0,
+      29.0
+     ],
+     "sha256": "9832cfdd5f81bbf4"
+    },
+    {
+     "file": "mechanisms/vane_13.png",
+     "box": [
+      575.0,
+      14.0,
+      40.0,
+      28.0
+     ],
+     "sha256": "abcdb47a5c4c54d4"
+    },
+    {
+     "file": "mechanisms/vane_14.png",
+     "box": [
+      568.0,
+      16.0,
+      53.0,
+      24.0
+     ],
+     "sha256": "159d95ca06688f14"
+    },
+    {
+     "file": "mechanisms/vane_15.png",
+     "box": [
+      566.0,
+      17.0,
+      57.0,
+      22.0
+     ],
+     "sha256": "acd4454263bd21d1"
+    }
+   ],
+   "degreesPerFrame": 22.5,
+   "pivot": [
+    0.58205,
+    0.06135
+   ]
+  },
+  "anemometer": {
+   "frames": [
+    {
+     "file": "mechanisms/anemometer_00.png",
+     "box": [
+      573.0,
+      36.0,
+      47.0,
+      20.0
+     ],
+     "sha256": "9a94b77c0ba5b2e6"
+    },
+    {
+     "file": "mechanisms/anemometer_01.png",
+     "box": [
+      570.0,
+      35.0,
+      48.0,
+      21.0
+     ],
+     "sha256": "88b11b7d054f473e"
+    },
+    {
+     "file": "mechanisms/anemometer_02.png",
+     "box": [
+      570.0,
+      34.0,
+      44.0,
+      22.0
+     ],
+     "sha256": "69c27dcadc60ba83"
+    },
+    {
+     "file": "mechanisms/anemometer_03.png",
+     "box": [
+      572.0,
+      34.0,
+      47.0,
+      20.0
+     ],
+     "sha256": "764cd0541756dbd1"
+    },
+    {
+     "file": "mechanisms/anemometer_04.png",
+     "box": [
+      575.0,
+      34.0,
+      48.0,
+      21.0
+     ],
+     "sha256": "bb42fde72723f87b"
+    },
+    {
+     "file": "mechanisms/anemometer_05.png",
+     "box": [
+      579.0,
+      35.0,
+      44.0,
+      21.0
+     ],
+     "sha256": "7ca8dc06bd2d1f07"
+    }
+   ],
+   "degreesPerFrame": 20.0,
+   "pivot": [
+    0.58205,
+    0.09845
+   ]
+  }
+ },
+ "markers": {
+  "MarkerDoorLight": [
+   0.35385,
+   0.55685
+  ],
+  "MarkerBeacon": [
+   0.4216,
+   0.17149
+  ],
+  "MarkerAntennaTip": [
+   0.37972,
+   0.03128
+  ],
+  "MarkerVane": [
+   0.58205,
+   0.06135
+  ],
+  "MarkerAnemometer": [
+   0.58205,
+   0.09845
+  ],
+  "MarkerFaceLamp": [
+   0.39345,
+   0.27671
+  ],
+  "MarkerFaceFader": [
+   0.54492,
+   0.26908
+  ],
+  "MarkerCabinetCentre": [
+   0.50647,
+   0.40313
+  ]
+ },
+ "artBox": [
+  119.0,
+  11.0,
+  789.0,
+  381.0
+ ],
+ "pixelBox": [
+  238,
+  22,
+  1816,
+  784
+ ],
+ "shore": {
+  "island": [
+   [
+    0.17912,
+    0.71582
+   ],
+   [
+    0.23456,
+    0.66256
+   ],
+   [
+    0.37874,
+    0.61867
+   ],
+   [
+    0.52429,
+    0.59928
+   ],
+   [
+    0.65819,
+    0.61663
+   ],
+   [
+    0.69935,
+    0.62458
+   ],
+   [
+    0.76759,
+    0.66815
+   ],
+   [
+    0.78543,
+    0.68126
+   ],
+   [
+    0.77735,
+    0.74797
+   ],
+   [
+    0.66016,
+    0.81103
+   ],
+   [
+    0.52588,
+    0.84877
+   ],
+   [
+    0.3113,
+    0.83777
+   ],
+   [
+    0.21015,
+    0.76808
+   ],
+   [
+    0.19053,
+    0.75162
+   ]
+  ],
+  "rocks": [
+   [
+    [
+     0.12071,
+     0.81303
+    ],
+    [
+     0.13458,
+     0.79619
+    ],
+    [
+     0.17222,
+     0.7948
+    ],
+    [
+     0.18691,
+     0.80981
+    ],
+    [
+     0.15284,
+     0.82149
+    ]
+   ],
+   [
+    [
+     0.80486,
+     0.68077
+    ],
+    [
+     0.82451,
+     0.66048
+    ],
+    [
+     0.87409,
+     0.65783
+    ],
+    [
+     0.88161,
+     0.6771
+    ],
+    [
+     0.84472,
+     0.6902
+    ]
+   ],
+   [
+    [
+     0.70017,
+     0.63674
+    ],
+    [
+     0.71056,
+     0.62411
+    ],
+    [
+     0.74263,
+     0.62237
+    ],
+    [
+     0.74911,
+     0.63446
+    ],
+    [
+     0.72575,
+     0.64281
+    ]
+   ],
+   [
+    [
+     0.17362,
+     0.73019
+    ],
+    [
+     0.17999,
+     0.71948
+    ],
+    [
+     0.20413,
+     0.71873
+    ],
+    [
+     0.21519,
+     0.72851
+    ],
+    [
+     0.1926,
+     0.73627
+    ]
+   ]
+  ]
+ }
+}

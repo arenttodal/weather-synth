@@ -66,6 +66,21 @@ juce::var Day::toVar() const
     o->setProperty ("pressure", pressure);
     o->setProperty ("mappingVersion", mappingVersion);
     if (sound.isObject()) o->setProperty ("sound", sound);
+    if (! conditionIds.isEmpty())
+    {
+        juce::Array<juce::var> ids;
+        for (int id : conditionIds)
+            ids.add (id);
+        o->setProperty ("conditionIds", ids);
+    }
+    auto opt = [o] (const char* k, double v) {
+        if (v >= 0) o->setProperty (k, v);
+    };
+    opt ("windDeg", windDeg);
+    opt ("gust", gust);
+    opt ("visibility", visibility);
+    opt ("rain1h", rain1h);
+    opt ("snow1h", snow1h);
     return juce::var (o);
 }
 
@@ -93,6 +108,24 @@ Day Day::fromVar (const juce::var& v)
     d.pressure = juce::jlimit (850.0, 1090.0, num ("pressure", d.pressure));
     d.mappingVersion = (int) num ("mappingVersion", kMappingVersion);
     if (v["sound"].isObject()) d.sound = v["sound"];
+    if (auto* ids = v["conditionIds"].getArray())
+        for (auto& id : *ids)
+            if (id.isInt() || id.isInt64() || id.isDouble())
+            {
+                const int c = (int) id;
+                if (c >= 200 && c < 1000 && d.conditionIds.size() < 8) d.conditionIds.add (c);
+            }
+    // Unknown stays negative; anything non-finite or out of physical range is dropped
+    auto opt = [&] (const char* k, double lo, double hi) {
+        if (! v.hasProperty (k) || v[k].isVoid() || ! (v[k].isDouble() || v[k].isInt() || v[k].isInt64())) return -1.0;
+        const double x = (double) v[k];
+        return std::isfinite (x) && x >= lo && x <= hi ? x : -1.0;
+    };
+    d.windDeg = opt ("windDeg", 0, 360);
+    d.gust = opt ("gust", 0, 150);
+    d.visibility = opt ("visibility", 0, 100000);
+    d.rain1h = opt ("rain1h", 0, 500);
+    d.snow1h = opt ("snow1h", 0, 500);
     return d;
 }
 

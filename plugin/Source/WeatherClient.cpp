@@ -75,7 +75,10 @@ WeatherClient::Result WeatherClient::parseSky (const juce::var& j, int64_t now)
     d.country = place["country"].toString();
     d.lat = (double) place["lat"];
     d.lon = (double) place["lon"];
-    r.day = Day::fromVar (d.toVar()); // clamps everything into range
+    auto v = d.toVar();
+    for (auto* k : { "conditionIds", "windDeg", "gust", "visibility", "rain1h", "snow1h" })
+        if (j.hasProperty (k) && ! j[k].isVoid()) v.getDynamicObject()->setProperty (k, j[k]);
+    r.day = Day::fromVar (v); // clamps and validates everything
     r.ok = true;
     return r;
 }

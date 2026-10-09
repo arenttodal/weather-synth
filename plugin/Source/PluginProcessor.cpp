@@ -178,6 +178,12 @@ void AtmosProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
         handleMidi (meta.getMessage());
     }
     if (pos < n) render (pos, n - pos);
+
+    // Activity for the editor: block peak with a ~0.4 s release, one atomic store per block
+    const float peak = n > 0 && chans > 0 ? buffer.getMagnitude (0, 0, n) : 0.0f;
+    const float release = std::exp (-(float) n / (0.4f * (float) getSampleRate() + 1.0f));
+    activityEnv = juce::jmax (juce::jmin (1.0f, peak * 2.5f), activityEnv * release);
+    activity.store (activityEnv, std::memory_order_relaxed);
 }
 
 void AtmosProcessor::applyDay (const Day& in)

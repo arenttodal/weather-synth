@@ -24,6 +24,10 @@ struct Day
     juce::String condition = "Clouds";
     double temp = 6, humidity = 80, precip = 0, wind = 4, clouds = 0.7, pressure = 1010;
     int mappingVersion = kMappingVersion;
+    // Visual-only detail for the scene (negative = unknown). The sound never reads these.
+    juce::Array<int> conditionIds; // OpenWeather condition codes, most significant first
+    double windDeg = -1, gust = -1, visibility = -1, rain1h = -1, snow1h = -1;
+
     // The core sound this Day plays, frozen the first time it is heard (designer export format).
     // Kept Days and projects carry it, so editing the bible later never changes them.
     juce::var sound;

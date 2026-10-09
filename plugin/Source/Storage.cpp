@@ -157,4 +157,28 @@ bool Storage::deleteDay (const juce::String& id)
         if (days[i].id == id) days.remove (i);
     return days.size() != before && writeDays (days);
 }
+Storage::VisualPrefs Storage::visualPrefs()
+{
+    auto v = settings()["visual"];
+    VisualPrefs p;
+    if (v.isObject())
+    {
+        const auto a = v["animation"].toString();
+        if (a == "full" || a == "economy" || a == "still") p.animation = a;
+        p.reduceFlashes = (bool) v["reduceFlashes"];
+        p.reduceMotion = (bool) v["reduceMotion"];
+    }
+    return p;
+}
+
+void Storage::setVisualPrefs (const VisualPrefs& p)
+{
+    auto s = settings();
+    auto* o = new juce::DynamicObject();
+    o->setProperty ("animation", p.animation);
+    o->setProperty ("reduceFlashes", p.reduceFlashes);
+    o->setProperty ("reduceMotion", p.reduceMotion);
+    s.getDynamicObject()->setProperty ("visual", juce::var (o));
+    writeSettings (s);
+}
 } // namespace atmos

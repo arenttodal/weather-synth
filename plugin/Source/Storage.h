@@ -36,6 +36,15 @@ public:
     static bool saveDay (Day day); // assigns an id when missing; replaces same id
     static bool deleteDay (const juce::String& id);
 
+    // Display preferences (global, never stored in projects): animation "full" / "economy" / "still"
+    struct VisualPrefs
+    {
+        juce::String animation = "full";
+        bool reduceFlashes = false, reduceMotion = false;
+    };
+    static VisualPrefs visualPrefs();
+    static void setVisualPrefs (const VisualPrefs&);
+
     // Tests point storage at a temp folder
     static void setFolderOverride (const juce::File&);
 
