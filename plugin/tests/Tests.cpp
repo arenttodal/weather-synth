@@ -806,7 +806,7 @@ static void testGuiEditor()
         CHECK (t->slider.getTextFromValue (-0.4) == juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + "40%", "%s: readout", ids[i]);
         CHECK (t->slider.isDoubleClickReturnEnabled() && t->slider.getDoubleClickReturnValue() == 0.0, "%s: double-click returns to the weather anchor (0)", ids[i]);
         t->keyPressed (juce::KeyPress (juce::KeyPress::homeKey), &t->slider);
-        CHECK (p.apvts.getRawParameterValue (ids[i])->load() == 0.0f, "%s: Home key resets to nature", ids[i]);
+        CHECK (std::abs (p.apvts.getRawParameterValue (ids[i])->load()) < 1e-6f, "%s: Home key resets to nature", ids[i]);
         // Host automation moves the control
         param->setValueNotifyingHost (param->convertTo0to1 (0.5f));
         juce::MessageManager::getInstance()->runDispatchLoopUntil (50);

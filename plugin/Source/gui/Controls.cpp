@@ -3,19 +3,21 @@
 
 namespace atmos::gui
 {
+EmbeddedFonts::EmbeddedFonts()
+{
+    int size = 0;
+    if (const char* d = SceneArt::getNamedResource ("IBMPlexMonoMedium_ttf", size))
+        medium = juce::Typeface::createSystemTypefaceFor (d, (size_t) size);
+    if (const char* d = SceneArt::getNamedResource ("IBMPlexMonoSemiBold_ttf", size))
+        semibold = juce::Typeface::createSystemTypefaceFor (d, (size_t) size);
+}
+
 namespace
 {
     juce::Typeface::Ptr typeface (bool bold)
     {
-        static juce::Typeface::Ptr medium, semibold;
-        auto& t = bold ? semibold : medium;
-        if (t == nullptr)
-        {
-            int size = 0;
-            if (const char* d = SceneArt::getNamedResource (bold ? "IBMPlexMonoSemiBold_ttf" : "IBMPlexMonoMedium_ttf", size))
-                t = juce::Typeface::createSystemTypefaceFor (d, (size_t) size);
-        }
-        return t;
+        juce::SharedResourcePointer<EmbeddedFonts> fonts;
+        return bold ? fonts->semibold : fonts->medium;
     }
 
     float textWidth (const juce::Font& f, const juce::String& t)

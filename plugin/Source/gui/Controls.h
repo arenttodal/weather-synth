@@ -7,6 +7,15 @@
 
 namespace atmos::gui
 {
+// The embedded IBM Plex Mono faces. Shared, and released with the last editor's look-and-feel:
+// a function-level static would outlive JUCE (and the plugin's unload), and JUCE 8's macOS
+// typeface destructor needs JUCE alive.
+struct EmbeddedFonts
+{
+    EmbeddedFonts();
+    juce::Typeface::Ptr medium, semibold;
+};
+
 struct Theme
 {
     static inline const juce::Colour ui { 0xff172b40 }, band { 0xff13233a }, track { 0xff0c1626 }, line { 0xff2a3f5a }, text { 0xffeee6d3 },
@@ -26,6 +35,9 @@ public:
     void drawTooltip (juce::Graphics&, const juce::String& text, int w, int h) override;
     juce::Rectangle<int> getTooltipBounds (const juce::String& tipText, juce::Point<int> screenPos, juce::Rectangle<int> parentArea) override;
     juce::Label* createSliderTextBox (juce::Slider&) override;
+
+private:
+    juce::SharedResourcePointer<EmbeddedFonts> fonts; // keeps the faces loaded while an editor is open
 };
 
 // A square icon button drawn as a path (no glyph fonts), with an accessible title
