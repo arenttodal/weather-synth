@@ -235,7 +235,7 @@ void SceneView::step (double dt)
 
     // Precipitation pool
     const int cap = prefs_.quality == Quality::economy ? 160 : (prefs_.reduceMotion ? 140 : 300);
-    const double load = std::max ({ e.rain, e.drizzle * 0.7, e.snow * 0.8, e.sleet, e.freezing, e.hail * 0.7, e.dust * 0.25 });
+    const double load = std::max ({ e.rain, e.drizzle * 0.7, e.snow * 0.8, e.sleet, e.freezing, e.hail * 0.7, e.dust * 0.4 });
     activeCount = juce::jlimit (0, maxParticles, (int) std::round (cap * std::pow (load, 0.8)));
     const double total = e.rain + e.drizzle + e.snow + e.sleet + e.freezing + e.hail + e.dust * 0.4 + 1e-9;
     auto pickKind = [&] (float r) -> uint8_t {
@@ -262,7 +262,7 @@ void SceneView::step (double dt)
             case 2: p.vy = 38 + rng.nextFloat() * 34; p.vx = wx * 5; p.size = 2.2f + 2.4f * rng.nextFloat(); break;
             case 3: p.vy = 240 + rng.nextFloat() * 60; p.vx = wx * 10; p.size = 1.8f + rng.nextFloat(); break;
             case 4: p.vy = 380 + rng.nextFloat() * 90; p.vx = wx * 8; p.size = 2.0f + 1.6f * rng.nextFloat(); break;
-            case 5: p.vy = 6 + rng.nextFloat() * 10; p.vx = (float) (across * (20 + e.windMps * 6)); p.size = 1.6f + 1.6f * rng.nextFloat(); p.y = rng.nextFloat() * H; break;
+            case 5: p.vy = 6 + rng.nextFloat() * 10; p.vx = (float) (across * (20 + e.windMps * 6)); p.size = 2.6f + 2.8f * rng.nextFloat(); p.y = rng.nextFloat() * H; break;
             default: break;
         }
     };
@@ -439,7 +439,7 @@ void SceneView::buildBackground (float ps)
     if (amount > 0.02f)
     {
         const auto col = veilColour (e, c);
-        g.setColour (col.withAlpha (juce::jmin (0.42f, amount * 0.5f)));
+        g.setColour (col.withAlpha (juce::jmin (0.42f, amount * 0.55f + (float) (0.2 * e.dust + 0.12 * (e.haze + e.smoke)))));
         g.fillRect (0.0f, 0.0f, W, H);
         for (int k = 0; k < 2; ++k)
         {
@@ -499,7 +499,7 @@ void SceneView::buildIsland (float ps)
         }
         if (amount > 0.02f)
         {
-            g.setColour (veilColour (shown, c).withAlpha (juce::jmin (0.4f, amount * 0.48f)));
+            g.setColour (veilColour (shown, c).withAlpha (juce::jmin (0.4f, amount * 0.5f + (float) (0.15 * shown.dust + 0.1 * (shown.haze + shown.smoke)))));
             g.drawImage (copy, dest, juce::RectanglePlacement::stretchToFit, true);
         }
     }

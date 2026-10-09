@@ -231,7 +231,7 @@ def waterline(objects, zmax=0.12):
 def accent_material():
     m = bpy.data.materials.get("WS_AccentMask") or bpy.data.materials.new("WS_AccentMask")
     m.use_nodes = True
-    m.blend_method = "BLEND"
+    m.blend_method = "OPAQUE"
     nt = m.node_tree
     nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
@@ -242,7 +242,7 @@ def accent_material():
     ramp.inputs["From Max"].default_value = 0.9
     emit = nt.nodes.new("ShaderNodeEmission")
     emit.inputs["Color"].default_value = (1, 1, 1, 1)
-    transp = nt.nodes.new("ShaderNodeBsdfTransparent")
+    transp = nt.nodes.new("ShaderNodeHoldout")  # occludes what's behind, contributes alpha 0
     mix = nt.nodes.new("ShaderNodeMixShader")
     patch = nt.nodes.new("ShaderNodeAttribute")
     patch.attribute_name = "ws_patch"

@@ -431,7 +431,7 @@ def add_patch_attribute(rng):
             if ob.name in ("WS_CabinetBody", "WS_Roof", "WS_Mast", "WS_Door"):
                 v = 1.0
             elif "grass" in mname:
-                v = 0.9 if r < 0.3 else 0.15 * r
+                v = 0.4 * r if r < 0.5 else 0.08  # the grass top only ever takes a light dusting
             else:
                 v = 1.0 if r < 0.55 else 0.35 * r
             vals.append(v)

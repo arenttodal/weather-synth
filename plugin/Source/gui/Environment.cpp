@@ -161,6 +161,7 @@ const char* sourceLabel (Source s)
         case Source::estimated: return "ESTIMATED";
         case Source::preview: return "GLOBE PREVIEW";
         case Source::loading: return "READING SKY";
+        case Source::fixture: return "FIXTURE";
     }
     return "";
 }
@@ -381,6 +382,25 @@ SkyColours skyColours (const Environment& e)
     grey = keepGrey;
     for (float& c : s.ambient)
         c = (float) (c * (1 - 0.35 * grey) * (1 - 0.5 * dark));
+
+    // Haze, smoke, dust and ash colour the whole sky and sea, not just a veil in front
+    const double warm = clamp01 (0.55 * e.haze + 0.7 * e.smoke), sand = clamp01 (0.85 * e.dust), ash = clamp01 (0.7 * e.ash);
+    auto tint = [&] (float* c, double brightness) {
+        const double l = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+        const double haze[3] = { 0.66, 0.6, 0.52 }, dust[3] = { 0.8, 0.58, 0.36 }, grey[3] = { 0.55, 0.55, 0.54 };
+        for (int j = 0; j < 3; ++j)
+        {
+            double v = c[j];
+            v = lerp (v, haze[j] * (0.5 + l) * brightness, warm);
+            v = lerp (v, dust[j] * (0.55 + l) * brightness, sand);
+            v = lerp (v, grey[j] * (0.5 + l) * brightness, ash);
+            c[j] = (float) clamp01 (v);
+        }
+    };
+    tint (s.zenith, 0.9);
+    tint (s.horizon, 1.0);
+    tint (s.sea, 0.7);
+    tint (s.seaDeep, 0.6);
     return s;
 }
 } // namespace atmos::gui

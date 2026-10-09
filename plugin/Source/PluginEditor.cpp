@@ -389,6 +389,7 @@ void AtmosEditor::applyBenchOptions (const juce::String& fixture, const juce::St
         fixtureClock = t != nullptr ? juce::String (t->clock) : juce::String();
         auto s = f->snapshot;
         s.place = std::string ("Fixture: ") + f->title;
+        if (s.source == G::Source::live) s.source = G::Source::fixture; // fabricated values never claim LIVE
         applySnapshot (s, true);
     }
 }

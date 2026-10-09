@@ -774,6 +774,9 @@ static void testGuiEditor()
             worst = juce::jmax (worst, e->sceneView().stepForTest (i == 20 ? 3600.0 : 1.0 / 24));
         finite &= e->sceneView().particlesFinite();
     }
+    e->applyBenchOptions ("rain@noon", "full");
+    CHECK (e->headerBar().getDescription().contains ("FIXTURE") && ! e->headerBar().getDescription().contains ("LIVE"),
+           "fixtures never claim LIVE: %s", e->headerBar().getDescription().toRawUTF8());
     CHECK (worst <= G::SceneView::maxParticles && worst > 100, "particle pool bounded (peak %d of %d)", worst, G::SceneView::maxParticles);
     CHECK (finite, "particles finite and on screen after an hour-long stall (delta is clamped)");
 
@@ -844,11 +847,13 @@ static int atlas (const juce::File& dir, const juce::StringArray& args)
 {
     juce::StringArray fx, tm;
     int width = 1024;
+    float scale = 1.0f;
     for (auto& a : args)
     {
         if (a.startsWith ("fixtures=")) fx.addTokens (a.fromFirstOccurrenceOf ("=", false, false), ",", "");
         if (a.startsWith ("times=")) tm.addTokens (a.fromFirstOccurrenceOf ("=", false, false), ",", "");
         if (a.startsWith ("width=")) width = a.fromFirstOccurrenceOf ("=", false, false).getIntValue();
+        if (a.startsWith ("scale=")) scale = a.fromFirstOccurrenceOf ("=", false, false).getFloatValue(); // 2 = Retina
     }
     if (fx.isEmpty())
         for (auto& f : atmos::gui::fixtures())
@@ -871,7 +876,7 @@ static int atlas (const juce::File& dir, const juce::StringArray& args)
         for (int c = 0; c < tm.size(); ++c)
         {
             e->applyBenchOptions (fx[r] + "@" + tm[c], "still");
-            auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, scale);
             auto f = dir.getChildFile (fx[r] + "@" + tm[c] + ".png");
             f.deleteFile();
             juce::FileOutputStream os (f);

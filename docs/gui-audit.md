@@ -1,7 +1,7 @@
 # GUI audit (Phase A)
 
 Baseline commit: `91f4256` on `claude/vibrant-wright-7kfl4a` (the GUI work continues on this branch, in separate reviewable commits).
-Reference machine for every number below: cloud Linux VM, 4 vCPU Intel Xeon @ 2.10 GHz, Ubuntu 24.04, Xvfb + openbox, JUCE 7.0.5 software renderer. **No Mac was available**; Apple Silicon and Intel Mac figures are unverified (see `gui-performance.md`).
+Reference machine for every number below: cloud Linux VM, 4 vCPU Intel Xeon @ 2.10 GHz, Ubuntu 24.04, Xvfb + openbox, JUCE 7.0.5 software renderer. **No Mac was available**; Apple Silicon and Intel Mac figures are unverified (see `gui-performance.md`). Phase H final numbers supersede this baseline.
 
 ## Framework, formats, renderer, build
 

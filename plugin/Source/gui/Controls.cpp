@@ -376,7 +376,7 @@ void MacroTrack::setUiScale (float s)
 {
     scale = s;
     name.setFont (Theme::font (15.5f * s, true).withExtraKerningFactor (0.08f));
-    value.setFont (Theme::mono (13 * s));
+    value.setFont (Theme::mono (15 * s)); // 12 px at the minimum size
     resized();
 }
 
@@ -451,7 +451,7 @@ void HeaderBar::paint (juce::Graphics& g)
     juce::String info;
     for (auto& part : { placeText, tempText, timeText, conditionText })
         if (part.isNotEmpty()) info << (info.isEmpty() ? juce::String() : dot) << part;
-    const auto f = Theme::mono (14.5f * s);
+    const auto f = Theme::mono (15.0f * s); // 12 px at the minimum size
     const float right = getWidth() - 20 * s;
     g.setFont (f);
     const float labelW = textWidth (f, label) + 2;
@@ -481,6 +481,14 @@ void HeaderBar::paint (juce::Graphics& g)
             d.addQuadrilateral (c.x, c.y - iconR, c.x + iconR, c.y, c.x, c.y + iconR, c.x - iconR, c.y);
             g.setColour (Theme::focus);
             g.fillPath (d);
+            break;
+        }
+        case Source::fixture:
+        {
+            juce::Path d;
+            d.addQuadrilateral (c.x, c.y - iconR, c.x + iconR, c.y, c.x, c.y + iconR, c.x - iconR, c.y);
+            g.setColour (Theme::textDim);
+            g.strokePath (d, juce::PathStrokeType (1.6f * s));
             break;
         }
         case Source::loading:

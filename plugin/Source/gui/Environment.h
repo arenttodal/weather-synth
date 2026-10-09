@@ -18,7 +18,8 @@ enum class Source
     savedDay,  // a kept Day or a project's Day
     estimated, // the defined offline fallback (simulated sky for the last known place)
     preview,   // the admin globe
-    loading    // waiting for the first reading
+    loading,   // waiting for the first reading
+    fixture    // developer fixture: never real data
 };
 const char* sourceLabel (Source);
 

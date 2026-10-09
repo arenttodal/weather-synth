@@ -4,7 +4,8 @@ One sound, dealt by your sky. A synth (VST3, AU, standalone) whose single patch 
 
 | Path | What it is |
 |---|---|
-| `plugin/` | The JUCE plugin: processor, Days, globe, UI, tests |
+| `plugin/` | The JUCE plugin: processor, Days, globe, the island-scene editor (`Source/gui`), tests |
+| `design/blender/`, `assets/` | The editor's scene: reproducible Blender scripts and the exported art compiled into the plugin |
 | `engine/` | The sound engine, plain C++ shared by the plugin and the browser: sources, bible, nature rules, and OSP's effects (Kaleidoscope, Space, Echo, Movement, Character filter) in `engine/osp` |
 | `designer/` | The sound designer: the real engine in WebAssembly, for dialling in core sounds and their boundaries |
 | `server/` | The weather relay for Railway (keeps the OpenWeatherMap key off users' machines) |
@@ -27,6 +28,10 @@ The plugin plays one **core sound** a day, drawn from the **bible**: a handful o
 3. Days and projects store the core sound they were made with, so changing the bible never changes a saved Day.
 
 After changing anything in `engine/`, run `tools/sync-designer.sh` so the designer and the relay play the same engine as the plugin.
+
+## The editor
+
+A low-poly synthesizer house on an island whose sky, sea and weather show the Day the sound was dealt from. See `docs/gui-handoff.md` (how it works, rebuilding the art, known issues), `docs/gui-state-coverage.md`, `docs/gui-performance.md` and the contact sheets in `docs/gui/atlas/`.
 
 ## Building locally
 
