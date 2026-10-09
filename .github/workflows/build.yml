@@ -85,6 +85,18 @@ jobs:
           killall -9 AudioComponentRegistrar || true
           sleep 2
           auval -v aumu Atm1 Atmo
+      # Only when the host check failed: rerun it under macOS's malloc debugging (heap checks,
+      # then Guard Malloc, which stops at the first bad write) so the log shows the culprit.
+      - name: Host check diagnostics (only after a failure)
+        if: failure()
+        timeout-minutes: 20
+        run: |
+          H=./build/AtmosHostCheck_artefacts/Release/AtmosHostCheck
+          V=build/Atmospheric_artefacts/Release/VST3/Atmospheric.vst3
+          echo "--- heap checks"
+          MallocStackLogging=1 MallocScribble=1 MallocGuardEdges=1 MallocCheckHeapStart=1 MallocCheckHeapEach=200 MallocErrorAbort=1 "$H" "$V" 2>&1 | tail -60 || true
+          echo "--- guard malloc"
+          DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MallocScribble=1 "$H" "$V" 2>&1 | tail -60 || true
       - name: pluginval
         run: |
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
