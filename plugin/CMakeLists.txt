@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 project(Atmospheric VERSION 0.1.0 LANGUAGES C CXX)
-if(APPLE)
-    enable_language(OBJCXX) # Source/gui/Platform.mm (system reduce-motion setting)
-endif()
+# Never enable_language(OBJCXX): CMake then builds JUCE's .mm modules as a separate language
+# without CMAKE_CXX_STANDARD, and the mixed objects disagree about juce::String internals
+# (the editor crashed in a host). Without it, .mm files (JUCE's and Source/gui/Platform.mm)
+# are compiled by the C++ compiler as Objective-C++, as JUCE expects.
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
