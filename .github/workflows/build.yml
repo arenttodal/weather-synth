@@ -93,10 +93,10 @@ jobs:
         run: |
           H=./build/AtmosHostCheck_artefacts/Release/AtmosHostCheck
           V=build/Atmospheric_artefacts/Release/VST3/Atmospheric.vst3
-          echo "--- heap checks"
-          MallocStackLogging=1 MallocScribble=1 MallocGuardEdges=1 MallocCheckHeapStart=1 MallocCheckHeapEach=200 MallocErrorAbort=1 "$H" "$V" 2>&1 | tail -60 || true
           echo "--- guard malloc"
-          DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MallocScribble=1 "$H" "$V" 2>&1 | tail -60 || true
+          DYLD_INSERT_LIBRARIES=/usr/lib/libgmalloc.dylib MallocScribble=1 "$H" "$V" 2>&1 | grep -i guardmalloc | tail -5 || true
+          echo "--- lldb: which object is freed"
+          lldb --batch -o "command script import tools/lldb_badfree.py" -o "badfree_run" -- "$H" "$V" 2>&1 | tail -120 || true
       - name: pluginval
         run: |
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
