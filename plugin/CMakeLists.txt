@@ -116,6 +116,18 @@ if(ATMOS_BUILD_TESTS)
         juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 endif()
 
+# ---- GUI vs DSP cost benchmark (see tests/GuiBench.cpp)
+if(ATMOS_BUILD_TESTS)
+    juce_add_gui_app(AtmosGuiBench PRODUCT_NAME "AtmosGuiBench" NEEDS_CURL TRUE)
+    target_sources(AtmosGuiBench PRIVATE tests/GuiBench.cpp ${ATMOS_CORE_SOURCES})
+    target_include_directories(AtmosGuiBench PRIVATE ${ATMOS_INCLUDES})
+    target_compile_definitions(AtmosGuiBench PRIVATE ${ATMOS_DEFINES}
+        JucePlugin_Name="Atmospheric" JucePlugin_IsSynth=1 JucePlugin_WantsMidiInput=1 JucePlugin_ProducesMidiOutput=0
+        JucePlugin_IsMidiEffect=0 JucePlugin_EditorRequiresKeyboardFocus=1 JUCE_MODAL_LOOPS_PERMITTED=1)
+    target_link_libraries(AtmosGuiBench PRIVATE AtmosData ${ATMOS_MODULES}
+        juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+endif()
+
 # ---- Loads the built plugin like a DAW would (see tests/HostCheck.cpp)
 if(ATMOS_BUILD_TESTS)
     juce_add_console_app(AtmosHostCheck PRODUCT_NAME "AtmosHostCheck" PLUGINHOST_AU TRUE)

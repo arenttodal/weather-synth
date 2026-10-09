@@ -93,6 +93,11 @@ public:
     void toggleGlobe();
     bool globeVisible() const { return globeLayer.isVisible(); }
 
+    // Benchmark and fixture hooks (AtmosGuiBench, AtmosTests)
+    void applyBenchOptions (const juce::String& /*fixture*/, const juce::String& /*quality*/) {}
+    int benchFrames() const { return 0; }
+    double benchUpdateP95Ms() const { return 0; }
+
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void timerCallback() override;
