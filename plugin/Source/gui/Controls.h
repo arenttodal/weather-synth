@@ -51,16 +51,23 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
     void setUiScale (float s);
+    // Keyboard and typed values: a complete host gesture around each change (drags get theirs
+    // from the slider attachment)
+    void setValueWithGesture (double v);
+    void setValueFromText (const juce::String& t) { setValueWithGesture (slider.valueFromTextFunction (t)); }
     juce::Slider slider;
     Handle handle;
     juce::Colour colour;
 
 private:
     juce::Label name, value;
+    juce::RangedAudioParameter* param = nullptr;
     juce::AudioProcessorValueTreeState::SliderAttachment attachment;
     float scale = 1;
     void updateValue();
-    bool keyPressed (const juce::KeyPress&, juce::Component*) override;
+
+public:
+    bool keyPressed (const juce::KeyPress&, juce::Component*) override; // public for tests
 };
 
 class HeaderBar : public juce::Component

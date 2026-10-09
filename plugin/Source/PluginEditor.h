@@ -53,7 +53,9 @@ public:
     int benchFrames() const { return scene.frames(); }
     double benchUpdateP95Ms() const { return scene.updateP95Ms(); }
     double benchPaintP95Ms() const { return scene.paintP95Ms(); }
-    const atmos::gui::SceneView& sceneView() const { return scene; }
+    atmos::gui::SceneView& sceneView() { return scene; }
+    juce::OwnedArray<atmos::gui::MacroTrack>& macroTracks() { return tracks; }
+    atmos::gui::HeaderBar& headerBar() { return header; }
 
     static constexpr int logicalWidth = 1024, logicalHeight = 682, headerH = 44, sceneH = 460;
 

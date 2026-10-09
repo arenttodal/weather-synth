@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 project(Atmospheric VERSION 0.1.0 LANGUAGES C CXX)
+if(APPLE)
+    enable_language(OBJCXX) # Source/gui/Platform.mm (system reduce-motion setting)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -89,7 +92,8 @@ set(ATMOS_CORE_SOURCES
     Source/gui/SceneModel.cpp
     Source/gui/SceneAssets.cpp
     Source/gui/SceneView.cpp
-    Source/gui/Controls.cpp)
+    Source/gui/Controls.cpp
+    $<IF:$<PLATFORM_ID:Darwin>,${CMAKE_CURRENT_SOURCE_DIR}/Source/gui/Platform.mm,${CMAKE_CURRENT_SOURCE_DIR}/Source/gui/Platform.cpp>)
 
 target_sources(Atmospheric PRIVATE ${ATMOS_CORE_SOURCES})
 target_include_directories(Atmospheric PRIVATE ${ATMOS_INCLUDES})

@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "Storage.h"
+#include "gui/Platform.h"
 #include "gui/SceneModel.h"
 
 using namespace atmos;
@@ -214,11 +215,12 @@ void AtmosEditor::resized()
     header.setBounds (R (0, 0, logicalWidth, headerH));
     header.setUiScale (s);
     scene.setBounds (R (0, headerH, logicalWidth, sceneH));
-    const float bandTop = headerH + sceneH, bandH = logicalHeight - bandTop;
+    const float bandTop = headerH + sceneH, bandH = (float) logicalHeight - bandTop;
     for (int i = 0; i < tracks.size(); ++i)
     {
         const float cx = logicalWidth / 2.0f + (i - 2) * 166.0f;
-        tracks[i]->setBounds (R (cx - 75, bandTop + 10, 150, bandH - 10));
+        auto r = R (cx - 75, bandTop + 10, 150, bandH - 10);
+        tracks[i]->setBounds (r.withBottom (getHeight())); // anchored to the real bottom edge (no rounding overflow)
         tracks[i]->setUiScale (s);
     }
     toastLabel.setFont (G::Theme::mono (14 * s));
@@ -368,6 +370,15 @@ void AtmosEditor::applyBenchOptions (const juce::String& fixture, const juce::St
         scene.setPrefs (p);
     }
     if (fixture.isEmpty()) return;
+    if (fixture == "live") // back to the processor's own Day
+    {
+        fixtureMode = false;
+        fixtureClock.clear();
+        scene.setTimeOverride (nullptr);
+        sceneKey.clear();
+        refresh();
+        return;
+    }
     const auto name = fixture.upToFirstOccurrenceOf ("@", false, false);
     const auto time = fixture.fromFirstOccurrenceOf ("@", false, false);
     if (auto* f = G::findFixture (name))
@@ -388,7 +399,7 @@ void AtmosEditor::applyVisualPrefs()
     G::SceneView::Prefs p;
     p.quality = v.animation == "still" ? G::SceneView::Quality::still : v.animation == "economy" ? G::SceneView::Quality::economy : G::SceneView::Quality::full;
     p.reduceFlashes = v.reduceFlashes;
-    p.reduceMotion = v.reduceMotion;
+    p.reduceMotion = v.reduceMotion || G::osPrefersReducedMotion(); // the system setting always wins
     scene.setPrefs (p);
 }
 
@@ -401,7 +412,8 @@ void AtmosEditor::showSettingsMenu()
     m.addItem (2, "Economy (12 fps)", true, v.animation == "economy");
     m.addItem (3, "Still picture", true, v.animation == "still");
     m.addSeparator();
-    m.addItem (4, "Reduce motion", true, v.reduceMotion);
+    const bool osReduced = G::osPrefersReducedMotion();
+    m.addItem (4, osReduced ? "Reduce motion (on in system settings)" : "Reduce motion", ! osReduced, v.reduceMotion || osReduced);
     m.addItem (5, "No lightning flashes", true, v.reduceFlashes);
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&header.settings), [this] (int r) {
         if (r <= 0) return;

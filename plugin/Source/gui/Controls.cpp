@@ -300,7 +300,7 @@ void IconButton::paintButton (juce::Graphics& g, bool over, bool down)
 
 // ---------------------------------------------------------------- MacroTrack
 MacroTrack::MacroTrack (juce::AudioProcessorValueTreeState& state, const juce::String& id, const juce::String& label, Handle h, juce::Colour c, const juce::String& tip)
-    : handle (h), colour (c), attachment (state, id, slider)
+    : handle (h), colour (c), param (state.getParameter (id)), attachment (state, id, slider)
 {
     slider.setSliderStyle (juce::Slider::LinearVertical);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
@@ -336,7 +336,7 @@ MacroTrack::MacroTrack (juce::AudioProcessorValueTreeState& state, const juce::S
     value.setTooltip ("Double-click to type a value, e.g. +25 or -40");
     value.setTitle (label + " value");
     value.onTextChange = [this] {
-        slider.setValue (slider.valueFromTextFunction (value.getText()), juce::sendNotificationSync);
+        setValueFromText (value.getText());
         updateValue();
     };
     addAndMakeVisible (value);
@@ -358,8 +358,16 @@ bool MacroTrack::keyPressed (const juce::KeyPress& k, juce::Component*)
     else if (code == juce::KeyPress::pageDownKey) v -= 0.1;
     else if (code == juce::KeyPress::homeKey || k.getTextCharacter() == '0') v = 0;
     else return false;
-    slider.setValue (juce::jlimit (-1.0, 1.0, v), juce::sendNotificationSync);
+    setValueWithGesture (v);
     return true;
+}
+
+void MacroTrack::setValueWithGesture (double v)
+{
+    v = juce::jlimit (-1.0, 1.0, v);
+    if (param != nullptr) param->beginChangeGesture();
+    slider.setValue (v, juce::sendNotificationSync);
+    if (param != nullptr) param->endChangeGesture();
 }
 
 void MacroTrack::updateValue() { value.setText (slider.getTextFromValue (slider.getValue()), juce::dontSendNotification); }

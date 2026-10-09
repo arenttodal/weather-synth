@@ -188,6 +188,16 @@ void SceneView::timerCallback()
     repaint();
 }
 
+bool SceneView::particlesFinite() const
+{
+    for (int i = 0; i < activeCount; ++i)
+    {
+        const auto& p = parts[(size_t) i];
+        if (! std::isfinite (p.x) || ! std::isfinite (p.y) || p.x < -200 || p.x > 1300 || p.y < -200 || p.y > 700) return false;
+    }
+    return true;
+}
+
 double SceneView::updateP95Ms() const { return percentile (updateMs, 0.95); }
 double SceneView::paintP95Ms() const { return percentile (paintMs, 0.95); }
 

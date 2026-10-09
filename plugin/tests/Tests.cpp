@@ -12,6 +12,7 @@
 #include "../Source/Storage.h"
 #include "../Source/WeatherClient.h"
 #include "../Source/gui/SceneModel.h"
+#include "Sky.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <cmath>
 #include <cstdio>
@@ -578,6 +579,264 @@ static void snapshot (const juce::File& out)
     std::printf ("Editor snapshot written to %s\n", out.getFullPathName().toRawUTF8());
 }
 
+// ---------------------------------------------------------------- GUI behaviour
+namespace G = atmos::gui;
+
+static bool envFinite (const G::Environment& e)
+{
+    const double v[] = { e.sunAlt, e.sunAz, e.moonAlt, e.moonAz, e.moonFraction, e.moonPhase, e.daylight, e.cloud, e.overcast, e.drizzle, e.rain, e.snow,
+                         e.sleet, e.hail, e.freezing, e.thunder, e.squall, e.tornado, e.mist, e.haze, e.smoke, e.dust, e.ash, e.visibility, e.windMps,
+                         e.gustMps, e.waves, e.accent, e.accentIce, e.lamps, e.stars };
+    for (double x : v)
+        if (! std::isfinite (x)) return false;
+    const double unit[] = { e.moonFraction, e.moonPhase, e.daylight, e.cloud, e.overcast, e.drizzle, e.rain, e.snow, e.sleet, e.hail, e.freezing,
+                            e.thunder, e.mist, e.haze, e.smoke, e.dust, e.ash, e.visibility, e.waves, e.accent, e.accentIce, e.lamps, e.stars };
+    for (double x : unit)
+        if (x < 0 || x > 1) return false;
+    return true;
+}
+
+static G::Snapshot snapAt (double lat, double lon, int64_t t, std::vector<int> ids, double temp = 10, double cloud = 0.5, double precip = 0, double wind = 4)
+{
+    G::Snapshot s;
+    s.lat = lat;
+    s.lon = lon;
+    s.observedAt = t;
+    s.conditionIds = std::move (ids);
+    s.tempC = temp;
+    s.cloud = cloud;
+    s.precip = precip;
+    s.windMps = wind;
+    return s;
+}
+
+static void testGuiEnvironment()
+{
+    std::printf ("Scene state: fixtures, codes, astronomy, labels\n");
+    // Every fixture at every time: deterministic, finite, clamped, and with a lighting blend that sums to 1
+    int combos = 0;
+    for (auto& f : G::fixtures())
+        for (auto& t : G::timesOfDay())
+        {
+            auto a = G::computeEnvironment (f.snapshot), b = G::computeEnvironment (f.snapshot);
+            G::applyTime (a, t);
+            G::applyTime (b, t);
+            CHECK (envFinite (a), "%s@%s: environment finite and clamped", f.name, t.name);
+            CHECK (a.rain == b.rain && a.cloud == b.cloud && a.sunAlt == b.sunAlt && a.accent == b.accent, "%s@%s: deterministic", f.name, t.name);
+            double sum = 0;
+            for (auto& w : G::anchorWeights (a))
+                sum += w.weight;
+            CHECK (std::abs (sum - 1) < 1e-9, "%s@%s: lighting weights sum to %.6f", f.name, t.name, sum);
+            ++combos;
+        }
+    std::printf ("  %d fixture x time combinations\n", combos);
+
+    const int64_t t = utc (2026, 10, 9, 12, 0);
+    // Unknown and missing codes: benign, no invented weather
+    auto u = snapAt (60, 10, t, { 999, 123 }, 12, 0.3);
+    const auto uc = G::classify (u);
+    const auto ue = G::computeEnvironment (u);
+    CHECK (uc.unknownCode && envFinite (ue) && ue.rain == 0 && ue.snow == 0 && ue.thunder == 0, "unknown codes fall back without inventing weather");
+    auto none = snapAt (60, 10, t, {}, 12, 0.7);
+    none.conditionMain = "";
+    CHECK (envFinite (G::computeEnvironment (none)), "no codes and no category is still a valid sky");
+    auto older = snapAt (60, 10, t, {}, 8, 0.9, 0.6);
+    older.conditionMain = "Rain";
+    CHECK (G::computeEnvironment (older).rain > 0, "older Days without codes use OpenWeather's category word");
+
+    // Temperature alone never fabricates frost, snow on the ground, rain or a tornado
+    for (double temp : { -35.0, -2.0, 0.0, 44.0 })
+    {
+        const auto e = G::computeEnvironment (snapAt (60, 10, t, { 800 }, temp, 0.0));
+        CHECK (e.accent == 0 && e.snow == 0 && e.rain == 0 && e.tornado == 0 && e.dust == 0, "clear sky at %.0f C shows no invented weather", temp);
+    }
+    CHECK (G::computeEnvironment (snapAt (60, 10, t, { 601 }, -3, 1, 0.5)).accent > 0, "reported snow at -3 C settles");
+    CHECK (G::computeEnvironment (snapAt (60, 10, t, { 601 }, 6, 1, 0.5)).accent == 0, "reported snow at +6 C does not settle");
+
+    // Combinations: independent modifiers, not one giant switch
+    const auto rf = G::computeEnvironment (snapAt (60, 10, t, { 500, 741 }, 8, 1, 0.4));
+    CHECK (rf.rain > 0 && rf.mist > 0 && rf.visibility < 0.5, "rain and fog together");
+    const auto ws = G::computeEnvironment (snapAt (60, 10, t, { 601 }, -4, 1, 0.5, 15));
+    CHECK (ws.snow > 0 && ws.waves > 0.6, "wind and snow together");
+    const auto th = G::computeEnvironment (snapAt (60, 10, t, { 211 }, 15, 0.9, 0.0));
+    CHECK (th.thunder > 0 && th.rain == 0 && th.drizzle == 0, "thunder without supplied rain shows no rain");
+    const auto fr = G::computeEnvironment (snapAt (60, 10, t, { 511 }, 3, 1, 0.5));
+    CHECK (fr.freezing > 0 && fr.rain == 0 && fr.accentIce > 0, "511 is freezing rain, decided before generic rain");
+    const auto sl = G::computeEnvironment (snapAt (60, 10, t, { 615 }, 1, 1, 0.4));
+    CHECK (sl.sleet > 0 && sl.snow == 0, "615 is mixed rain and snow");
+    CHECK (G::classify (snapAt (60, 10, t, { 202 }, 15, 1, 0.9)).precip != G::Conditions::Precip::hail, "thunderstorms never infer hail");
+    const auto vis = snapAt (60, 10, t, { 800 }, 10, 0);
+    auto foggy = vis;
+    foggy.visibilityM = 400;
+    CHECK (G::computeEnvironment (foggy).visibility < G::computeEnvironment (vis).visibility, "reported visibility shortens the view");
+    auto night = snapAt (63.43, 10.39, utc (2026, 10, 9, 0, 0), { 741 }, 5, 1);
+    night.visibilityM = 300;
+    const auto ne = G::computeEnvironment (night);
+    CHECK (ne.daylight < 0.05 && ne.visibility < 0.3 && ne.lamps > 0.8, "fog at night: dark, short view, lamps on");
+
+    // Day, night, polar day and polar night come from the sun's position, never NaN
+    const auto noon = G::computeEnvironment (snapAt (63.43, 10.39, utc (2026, 6, 21, 11, 0), { 800 }));
+    const auto midnight = G::computeEnvironment (snapAt (63.43, 10.39, utc (2026, 12, 21, 23, 0), { 800 }));
+    CHECK (noon.daylight > 0.95 && midnight.daylight < 0.05, "Trondheim: midsummer noon is day, midwinter midnight is night");
+    const auto polarDay = G::computeEnvironment (snapAt (69.65, 18.96, utc (2026, 6, 21, 22, 30), { 800 }));
+    const auto polarNight = G::computeEnvironment (snapAt (69.65, 18.96, utc (2026, 12, 21, 11, 0), { 800 }));
+    CHECK (polarDay.sunAlt > 0 && envFinite (polarDay), "Tromso midnight sun: sun above the horizon at 00:30 local (%.1f)", polarDay.sunAlt);
+    CHECK (polarNight.sunAlt < 0 && polarNight.sunAlt > -10 && envFinite (polarNight), "Tromso polar night: noon is twilight (%.1f)", polarNight.sunAlt);
+    for (auto* e : { &polarDay, &polarNight })
+        CHECK (! G::anchorWeights (*e).empty(), "polar light still has lighting anchors");
+
+    // Moon: phase is a date quantity, visibility depends on place; it can share the sky with the sun
+    const auto ml = atmos::sky::moonLight (utc (2026, 10, 9, 12, 0));
+    const auto m1 = atmos::sky::moon (60, 10, utc (2026, 10, 9, 12, 0)), m2 = atmos::sky::moon (-33.9, 151.2, utc (2026, 10, 9, 12, 0));
+    CHECK (ml.fraction >= 0 && ml.fraction <= 1 && std::abs (m1.altitudeDeg - m2.altitudeDeg) > 1, "moon phase is global, moon position local");
+    bool both = false;
+    for (int h = 0; h < 24 * 30 && ! both; h += 3)
+    {
+        const auto tt = utc (2026, 10, 1, 0, 0) + h * 3600;
+        both = atmos::sky::sun (45, 0, tt).altitudeDeg > 10 && atmos::sky::moon (45, 0, tt).altitudeDeg > 10;
+    }
+    CHECK (both, "sun and moon can be up together");
+
+    // Header: local time from the provider's offset (DST included), "~" when estimated
+    auto lt = snapAt (59.9, 10.75, utc (2026, 7, 1, 10, 0), { 800 });
+    lt.utcOffset = 7200;
+    lt.offsetKnown = true;
+    CHECK (G::timeLabel (lt) == "12:00", "summer time label %s", G::timeLabel (lt).toRawUTF8());
+    lt.utcOffset = 3600;
+    CHECK (G::timeLabel (lt) == "11:00", "winter offset label %s", G::timeLabel (lt).toRawUTF8());
+    lt.offsetKnown = false;
+    CHECK (G::timeLabel (lt).startsWith ("~"), "estimated offset is marked");
+
+    // Source labels describe reality
+    Day d = estimateDay (63.43, 10.39, "Trondheim", juce::Time::currentTimeMillis() / 1000);
+    d.source = "live";
+    const auto now = juce::Time::currentTimeMillis() / 1000;
+    CHECK (G::makeSnapshot (d, G::FeedStatus::live, true, now).source == G::Source::live, "fresh reading is LIVE");
+    CHECK (G::makeSnapshot (d, G::FeedStatus::live, true, now + 7200).source == G::Source::stale, "two-hour-old reading is STALE");
+    CHECK (G::makeSnapshot (d, G::FeedStatus::live, false, now).source == G::Source::stale, "yesterday's reading is STALE");
+    CHECK (G::makeSnapshot (d, G::FeedStatus::restored, true, now).source == G::Source::savedDay, "restored project is SAVED DAY");
+    d.source = "estimate";
+    const auto est = G::makeSnapshot (d, G::FeedStatus::estimate, true, now);
+    CHECK (est.source == G::Source::estimated && est.offline, "network failure: OFFLINE, ESTIMATED (never LIVE)");
+    CHECK (juce::String (G::sourceLabel (G::Source::live)) == "LIVE" && juce::String (G::sourceLabel (G::Source::savedDay)) == "SAVED DAY", "label text");
+}
+
+static void testGuiEditor()
+{
+    std::printf ("Editor: assets, lifecycle, controls, late replies\n");
+    {
+        juce::SharedResourcePointer<G::SceneAssets> assets;
+        CHECK (assets->valid(), "scene assets compiled in and manifest parsed");
+        for (auto* a : { "dawn", "morning", "noon", "late_afternoon", "sunset", "dusk", "night", "overcast" })
+        {
+            const auto img = assets->lighting (a);
+            CHECK (img.isValid() && std::abs (img.getWidth() / 2.0f - assets->artBox().getWidth()) < 1.5f, "lighting %s decodes at the art box size", a);
+        }
+        CHECK (assets->decodedBytes() < 64u * 1024 * 1024, "decoded scene art %.1f MiB (budget 32-64)", assets->decodedBytes() / 1048576.0);
+        CHECK (assets->vaneFrames() == 16 && assets->anemometerFrames() == 6 && assets->accentMask().isValid(), "sprites and masks present");
+        CHECK (assets->isLand (assets->marker ("MarkerCabinetCentre")) && ! assets->isLand ({ 5, 455 }), "island coverage for splashes");
+    }
+
+    AtmosProcessor p;
+    p.prepareToPlay (48000, 256);
+    std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
+    auto* e = dynamic_cast<AtmosEditor*> (ed.get());
+    CHECK (e != nullptr, "editor is the scene editor");
+    if (e == nullptr) return;
+    juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
+    CHECK (! e->sceneView().animating(), "an editor that isn't on screen runs no animation timer");
+
+    // Layout at minimum, default and maximum size: everything inside, nothing overlapping the scene
+    for (auto sz : { juce::Point<int> (820, 546), juce::Point<int> (1024, 682), juce::Point<int> (2048, 1364) })
+    {
+        ed->setSize (sz.x, sz.y);
+        bool inside = true, clear = true;
+        for (auto* c : ed->getChildren())
+            if (c->isVisible() && ! ed->getLocalBounds().contains (c->getBounds()))
+            {
+                inside = false;
+                std::printf ("    outside: %s %s\n", c->getName().toRawUTF8(), c->getBounds().toString().toRawUTF8());
+            }
+        for (auto* t : e->macroTracks())
+            clear &= ! t->getBounds().intersects (e->sceneView().getBounds()) && t->slider.getHeight() >= 0.1 * sz.y;
+        CHECK (inside && clear, "layout at %dx%d: controls inside, below the scene, tracks tall enough", sz.x, sz.y);
+    }
+    ed->setSize (820, 546);
+    CHECK (std::abs (e->sceneView().getWidth() / (double) e->sceneView().getHeight() - 1024.0 / 460.0) < 0.02, "scene keeps its aspect at minimum size");
+
+    // Particles stay bounded and finite for every weather, even after a long stall
+    int worst = 0;
+    bool finite = true;
+    for (auto& f : G::fixtures())
+    {
+        e->applyBenchOptions (juce::String (f.name) + "@noon", "full");
+        for (int i = 0; i < 40; ++i)
+            worst = juce::jmax (worst, e->sceneView().stepForTest (i == 20 ? 3600.0 : 1.0 / 24));
+        finite &= e->sceneView().particlesFinite();
+    }
+    CHECK (worst <= G::SceneView::maxParticles && worst > 100, "particle pool bounded (peak %d of %d)", worst, G::SceneView::maxParticles);
+    CHECK (finite, "particles finite and on screen after an hour-long stall (delta is clamped)");
+
+    // Macros: real parameters, host gestures for every change, reset to the weather's anchor
+    struct Gestures : juce::AudioProcessorListener
+    {
+        int begins = 0, ends = 0, changes = 0;
+        void audioProcessorParameterChanged (juce::AudioProcessor*, int, float) override { ++changes; }
+        void audioProcessorChanged (juce::AudioProcessor*, const ChangeDetails&) override {}
+        void audioProcessorParameterChangeGestureBegin (juce::AudioProcessor*, int) override { ++begins; }
+        void audioProcessorParameterChangeGestureEnd (juce::AudioProcessor*, int) override { ++ends; }
+    } gestures;
+    p.addListener (&gestures);
+    auto& tracks = e->macroTracks();
+    CHECK (tracks.size() == 5, "five macro tracks");
+    const char* ids[] = { "tone", "bloom", "motion", "space", "intensity" };
+    for (int i = 0; i < tracks.size(); ++i)
+    {
+        auto* t = tracks[i];
+        auto* param = p.apvts.getParameter (ids[i]);
+        t->keyPressed (juce::KeyPress (juce::KeyPress::upKey), &t->slider);
+        CHECK (std::abs (p.apvts.getRawParameterValue (ids[i])->load() - 0.02f) < 1e-4f, "%s: up arrow nudges +2%%", ids[i]);
+        t->keyPressed (juce::KeyPress (juce::KeyPress::downKey, juce::ModifierKeys::shiftModifier, 0), &t->slider);
+        CHECK (std::abs (p.apvts.getRawParameterValue (ids[i])->load() - 0.018f) < 1e-4f, "%s: shift-down is a fine step", ids[i]);
+        t->setValueFromText ("-40");
+        CHECK (std::abs (p.apvts.getRawParameterValue (ids[i])->load() + 0.4f) < 1e-4f, "%s: typed value -40 lands at -40%%", ids[i]);
+        CHECK (t->slider.getTextFromValue (-0.4) == juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + "40%", "%s: readout", ids[i]);
+        CHECK (t->slider.isDoubleClickReturnEnabled() && t->slider.getDoubleClickReturnValue() == 0.0, "%s: double-click returns to the weather anchor (0)", ids[i]);
+        t->keyPressed (juce::KeyPress (juce::KeyPress::homeKey), &t->slider);
+        CHECK (p.apvts.getRawParameterValue (ids[i])->load() == 0.0f, "%s: Home key resets to nature", ids[i]);
+        // Host automation moves the control
+        param->setValueNotifyingHost (param->convertTo0to1 (0.5f));
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+        CHECK (std::abs (t->slider.getValue() - 0.5) < 1e-3, "%s: host automation updates the track", ids[i]);
+        param->setValueNotifyingHost (param->convertTo0to1 (0.0f));
+        CHECK (t->slider.getTitle().isNotEmpty() && t->slider.getTooltip().contains ("limits"), "%s: accessible name and tooltip", ids[i]);
+    }
+    CHECK (gestures.begins >= 15 && gestures.begins == gestures.ends, "every GUI change is wrapped in a host gesture (%d begins, %d ends)", gestures.begins, gestures.ends);
+    p.removeListener (&gestures);
+
+    // The scene follows the processor's Day: Keep Day / load, late replies, restores
+    Storage::setRelayUrl ("http://127.0.0.1:9");
+    auto kept = estimateDay (-33.87, 151.21, "Sydney", utc (2026, 10, 8, 4, 0));
+    p.dealToday();
+    p.loadDay (kept);
+    juce::MessageManager::getInstance()->runDispatchLoopUntil (1500);
+    CHECK (p.currentDay().placeName == "Sydney", "a late weather reply cannot replace a loaded Day (now %s)", p.currentDay().placeName.toRawUTF8());
+    e->applyBenchOptions ("live", "full");
+    CHECK (e->headerBar().getDescription().contains ("Sydney") && e->headerBar().getDescription().contains ("SAVED DAY"),
+           "header shows the loaded Day as SAVED DAY: %s", e->headerBar().getDescription().toRawUTF8());
+    CHECK (std::abs (e->sceneView().shownEnvironment().sunAlt - atmos::sky::sun (kept.lat, kept.lon, kept.observedAt).altitudeDeg) < 0.01,
+           "the scene's sky is the kept Day's own sky (immediately, no transition)");
+
+    // Closing and reopening: no timers left behind, shared art survives another editor closing
+    std::unique_ptr<juce::AudioProcessorEditor> second (p.createEditor());
+    ed.reset();
+    {
+        juce::SharedResourcePointer<G::SceneAssets> assets;
+        CHECK (assets->lighting ("noon").isValid(), "art still available to the remaining editor");
+    }
+    second.reset();
+}
+
 // Visual matrix: every fixture at every time of day, rendered through the real editor.
 //   AtmosTests --atlas out/ [fixtures=a,b] [times=noon,night] [width=1024]
 // Writes out/<fixture>@<time>.png and a contact sheet out/atlas.png (fixtures down, times across).
@@ -645,6 +904,8 @@ int main (int argc, char** argv)
     testEngine();
     testProcessorState();
     testGlobe();
+    testGuiEnvironment();
+    testGuiEditor();
     if (argc > 2 && juce::String (argv[1]) == "--snapshot") snapshot (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
     std::printf ("\n%d checks, %d failed\n", checks, failures);
     return failures == 0 ? 0 : 1;

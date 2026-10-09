@@ -56,6 +56,14 @@ public:
     double updateP95Ms() const;
     double paintP95Ms() const;
     int activeParticles() const { return activeCount; }
+    bool animating() const { return isTimerRunning(); }
+    // Tests only: advance the simulation without a timer and report the particle count
+    int stepForTest (double seconds)
+    {
+        step (juce::jlimit (0.0, 0.1, seconds));
+        return activeCount;
+    }
+    bool particlesFinite() const;
     static constexpr int maxParticles = 400;
 
 private:
