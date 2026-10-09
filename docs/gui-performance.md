@@ -13,7 +13,7 @@ All numbers come from `AtmosGuiBench` (`plugin/tests/GuiBench.cpp`); raw results
 | Audio | 48 kHz, 256-sample blocks, paced in real time on its own thread; a 6-note chord every 4 s (≈6 voices of the default core sound) |
 | Quality | full = 24 fps, economy = 12 fps, still = no timer |
 
-**Not tested:** any Mac (Apple Silicon or Intel), Windows, Retina at runtime, a real DAW. These are unverified; see the manual procedure below.
+**Not measured yet:** performance on a Mac (CI on Apple Silicon passes every functional check, including pluginval's editor tests; its benchmark step is being fixed), Windows, Retina at runtime, a real DAW. See the manual procedure below.
 
 ## Method
 

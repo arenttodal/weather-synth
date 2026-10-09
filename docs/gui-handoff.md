@@ -44,7 +44,7 @@ python3 design/blender/validate_scene.py --repeat
 
 ## Known issues and limits
 
-1. **Not run on a Mac, Windows or in a DAW.** GitHub Actions has been refusing to start jobs since 2026-10-08 20:13 UTC (private repo, Actions minutes), so the macOS/Windows builds, auval and pluginval have not run on this work. `gui/Platform.mm` (macOS reduce-motion) and the Windows variant have not been compiled.
+1. **macOS verified in CI, not yet in a DAW; Windows not built.** On GitHub's Apple Silicon runner (M1, macOS 14.8, JUCE 8.0.8, run [38005001472](https://github.com/arenttodal/weather-synth/actions/runs/38005001472)) the universal build, 5929 unit checks, the VST3 host check with the editor, auval and pluginval strictness 7 (all tests, Editor Automation included) pass. Not yet: a real DAW session, an Intel Mac, Windows (the workflow builds macOS only for now; the Windows job is kept but disabled). Two macOS-only bugs were found and fixed on the way: the embedded fonts outlived JUCE at exit, and `enable_language(OBJCXX)` broke juce::String in hosts (see the CMake comment).
 2. **GUI CPU is higher than the old editor**: 52–101 ms/s (5–10% of a core) at full 24 fps on this VM's software renderer versus 38 ms/s. New installs default to economy (12 fps, about half); still removes it.
 3. **The sky is the Day's sky, not the clock's.** A Day dealt at 09:00 keeps its 09:00 sky (and sound) until Refresh. After an hour the header says STALE. This keeps picture and sound consistent, as the brief requires.
 4. Hail and frost are fixtures only (no provider code). Snow settles only when reported snow meets ≤ 2 °C (an artistic rule, documented).

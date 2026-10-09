@@ -112,7 +112,7 @@ jobs:
           for a in "--instances 0" "--editors 0" "--editors 1 --fixture clear@noon --quality full" "--editors 1 --fixture heavy_rain@noon --quality full" \
                    "--editors 1 --fixture heavy_rain@noon --quality economy" "--editors 1 --fixture heavy_rain@noon --quality still" \
                    "--instances 4 --editors 4 --fixture rain@noon --quality economy" "--editors 0 --cycles 50"; do
-            timeout 120 "$B" --seconds 10 $a | tail -1 >> gui-mac.jsonl || echo "{\"failed\":\"$a\"}" >> gui-mac.jsonl
+            perl -e 'alarm shift; exec @ARGV' 120 "$B" --seconds 10 $a | tail -1 >> gui-mac.jsonl || echo "{\"failed\":\"$a\"}" >> gui-mac.jsonl
           done
           cat gui-mac.txt gui-mac.jsonl
           ./build/AtmosTests_artefacts/Release/AtmosTests --atlas mac-atlas fixtures=clear,heavy_rain,snow,fog,thunderstorm times=noon,night scale=2
