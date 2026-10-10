@@ -115,6 +115,10 @@ jobs:
             perl -e 'alarm shift; exec @ARGV' 120 "$B" --seconds 10 $a | tail -1 >> gui-mac.jsonl || echo "{\"failed\":\"$a\"}" >> gui-mac.jsonl
           done
           cat gui-mac.txt gui-mac.jsonl
+          # Memory across editor open/close: is the growth linear, and is it a leak (unreferenced) or held?
+          for n in 10 40; do perl -e 'alarm shift; exec @ARGV' 180 "$B" --seconds 1 --editors 0 --cycles $n | tail -1 | tee -a gui-mac-cycles.jsonl; done
+          MallocStackLogging=1 perl -e 'alarm shift; exec @ARGV' 300 leaks --atExit -- "$B" --seconds 1 --editors 0 --cycles 10 > gui-mac-leaks.txt 2>&1 || true
+          grep -E "leaks for|total leaked|Process [0-9]+:" gui-mac-leaks.txt | head -5; head -c 20000 gui-mac-leaks.txt | tail -c 15000
           ./build/AtmosTests_artefacts/Release/AtmosTests --atlas mac-atlas fixtures=clear,heavy_rain,snow,fog,thunderstorm times=noon,night scale=2
       - uses: actions/upload-artifact@v4
         if: always()
@@ -123,6 +127,8 @@ jobs:
           path: |
             gui-mac.txt
             gui-mac.jsonl
+            gui-mac-cycles.jsonl
+            gui-mac-leaks.txt
             mac-atlas
       - name: Package
         run: |
