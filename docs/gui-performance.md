@@ -13,7 +13,25 @@ All numbers come from `AtmosGuiBench` (`plugin/tests/GuiBench.cpp`); raw results
 | Audio | 48 kHz, 256-sample blocks, paced in real time on its own thread; a 6-note chord every 4 s (≈6 voices of the default core sound) |
 | Quality | full = 24 fps, economy = 12 fps, still = no timer |
 
-**Not measured yet:** performance on a Mac (CI on Apple Silicon passes every functional check, including pluginval's editor tests; its benchmark step is being fixed), Windows, Retina at runtime, a real DAW. See the manual procedure below.
+**Not measured:** Windows, Retina at runtime, a real DAW, an Intel Mac. Apple Silicon numbers from CI are in the next section, with their limits.
+
+## Apple Silicon (GitHub CI runner)
+
+GitHub's macOS runner: Apple M1 (virtual), macOS 14.8.9, JUCE 8.0.8 (CoreGraphics renderer), universal Release build, no physical display (1× scale). Same bench and audio load as above; run [38006209426](https://github.com/arenttodal/weather-synth/actions/runs/38006209426), raw lines in `docs/gui-mac.jsonl`. The macOS bench's idle floor is ≈ 0 (0.04 ms/s), so nothing is subtracted.
+
+| Configuration | Quality | GUI ms/s | fps reached | DSP load | Overruns / 10 s | RSS |
+|---|---|---|---|---|---|---|
+| 1 instance, editor closed | — | 0.1 | — | 6.6% | 0 | 24 MiB |
+| clear, noon | full | 20.4 | 9.8 | 5.7% | 0 | 71 MiB |
+| heavy rain, noon | full | 17.3 | 9.0 | 5.7% | 0 | 87 MiB |
+| heavy rain, noon | economy | 15.4 | 6.7 | 5.9% | 0 | 89 MiB |
+| heavy rain, noon | still | 10.1 | 0.1 | 5.6% | 1 (7.4 ms block) | 84 MiB |
+| 4 instances, 4 editors, rain | economy | 34.4 | 7.0 each | 23.5% | 0 | 109 MiB |
+
+Read with care:
+- **The runner never reached the target frame rate** (24 or 12 fps). It has no display, so macOS paces window repaints itself; the GUI cost is therefore for fewer frames than a real screen would ask for. Per frame it is about 2 ms (20.4 ms/s ÷ 9.8 fps at full), which at 24 fps would be ≈ 50 ms/s (5% of a core), in line with the Linux software renderer. A Mac with a screen is still needed for the real figure.
+- The one overrun (still mode) is a single 7.4 ms block on a shared virtual machine; the p99 block time stayed at 0.68 ms.
+- **Open/close memory grows on macOS**: 50 editor open/close cycles took RSS from 18 to 440 MiB (≈ 8.4 MiB per cycle; flat on Linux). Under investigation (see `gui-handoff.md`).
 
 ## Method
 
