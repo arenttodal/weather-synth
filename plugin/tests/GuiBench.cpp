@@ -28,12 +28,15 @@ double threadCpuSeconds()
     return ts.tv_sec + ts.tv_nsec * 1e-9;
 }
 
+// Linux: resident set. macOS: physical footprint (what Activity Monitor shows); the resident
+// size there keeps counting freed window surfaces and reusable malloc pages, so it climbed with
+// every editor open/close while `leaks` found nothing leaked and the footprint stayed flat.
 double residentMiB()
 {
 #if JUCE_MAC
-    mach_task_basic_info info {};
-    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    if (task_info (mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t) &info, &count) == KERN_SUCCESS) return info.resident_size / 1048576.0;
+    task_vm_info_data_t info {};
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info (mach_task_self(), TASK_VM_INFO, (task_info_t) &info, &count) == KERN_SUCCESS) return info.phys_footprint / 1048576.0;
     return 0;
 #elif JUCE_LINUX
     long pages = 0, rss = 0;
