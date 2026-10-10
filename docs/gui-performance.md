@@ -31,7 +31,7 @@ GitHub's macOS runner: Apple M1 (virtual), macOS 14.8.9, JUCE 8.0.8 (CoreGraphic
 Read with care:
 - **The runner never reached the target frame rate** (24 or 12 fps). It has no display, so macOS paces window repaints itself; the GUI cost is therefore for fewer frames than a real screen would ask for. Per frame it is about 2 ms (20.4 ms/s ÷ 9.8 fps at full), which at 24 fps would be ≈ 50 ms/s (5% of a core), in line with the Linux software renderer. A Mac with a screen is still needed for the real figure.
 - The one overrun (still mode) is a single 7.4 ms block on a shared virtual machine; the p99 block time stayed at 0.68 ms.
-- **No leak on editor open/close.** The RSS column above climbed with every open/close (18 → 440 MiB over 50 cycles), but macOS's `leaks --atExit` after 10 cycles found **0 leaked bytes**, and the physical footprint (Activity Monitor's number) was 63 MB, below the 82 MB peak with an editor open. On macOS the resident size keeps counting freed window surfaces and reusable malloc pages. The bench now reports physical footprint on macOS; the RSS figures in this table and in `gui-mac.jsonl` are the older, resident-size ones.
+- **Editor open/close memory on macOS: nothing leaked, but it grows.** `leaks --atExit` after 10 cycles finds 0 leaked bytes, yet the physical footprint (Activity Monitor's number, which the bench now reports on macOS) grows about 3 MiB per open/close: 57 MiB after 10 cycles, 146 after 40, 190 after 50 (run [38009244131](https://github.com/arenttodal/weather-synth/actions/runs/38009244131)). The memory is still referenced, so something accumulates per editor; being traced with `heap`/`vmmap`. The resident-size column above overstates it (it also counts freed window surfaces). Linux stays flat.
 
 ## Method
 
