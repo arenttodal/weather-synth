@@ -159,13 +159,19 @@ int main (int argc, char** argv)
     double openMsCold = 0, openMsWarm = 0;
     for (int c = 0; c < (instances > 0 ? cycles : 0); ++c)
     {
-        const auto t0 = juce::Time::getMillisecondCounterHiRes();
-        openEditor (*procs[0]);
-        juce::MessageManager::getInstance()->runDispatchLoopUntil (30);
-        const auto ms = juce::Time::getMillisecondCounterHiRes() - t0 - 30;
-        (c == 0 ? openMsCold : openMsWarm) += ms;
-        closeEditor (*procs[0]);
-        juce::MessageManager::getInstance()->runDispatchLoopUntil (5);
+        // The bench runs inside initialise(), before the app's own run loop has started, so
+        // nothing drains Cocoa's autorelease pool: every closed window (its layers and its
+        // drawing, images included) would stay alive. A host's run loop drains it; so do we.
+        JUCE_AUTORELEASEPOOL
+        {
+            const auto t0 = juce::Time::getMillisecondCounterHiRes();
+            openEditor (*procs[0]);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (30);
+            const auto ms = juce::Time::getMillisecondCounterHiRes() - t0 - 30;
+            (c == 0 ? openMsCold : openMsWarm) += ms;
+            closeEditor (*procs[0]);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (5);
+        }
     }
     if (cycles > 1) openMsWarm /= (cycles - 1);
     const double rssAfterCycles = residentMiB();
