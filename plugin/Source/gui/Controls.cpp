@@ -3,6 +3,8 @@
 
 namespace atmos::gui
 {
+JUCE_IMPLEMENT_SINGLETON (EmbeddedFonts)
+
 EmbeddedFonts::EmbeddedFonts()
 {
     int size = 0;
@@ -16,7 +18,7 @@ namespace
 {
     juce::Typeface::Ptr typeface (bool bold)
     {
-        juce::SharedResourcePointer<EmbeddedFonts> fonts;
+        auto* fonts = EmbeddedFonts::getInstance();
         return bold ? fonts->semibold : fonts->medium;
     }
 
