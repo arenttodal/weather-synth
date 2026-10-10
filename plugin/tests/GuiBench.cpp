@@ -2,6 +2,7 @@
 //
 //   AtmosGuiBench [--seconds 10] [--instances 1] [--editors 0] [--fixture name] [--quality normal|economy|still]
 //                 [--cycles N]   (open/close every editor N times first, then report memory)
+//                 [--hold N]     (stay alive N s after printing, for heap/vmmap)
 //
 // Prints one JSON object. CPU times come from per-thread CPU clocks, so they are
 // independent of how busy the machine is; "load" is CPU time divided by wall time.
@@ -213,5 +214,9 @@ int main (int argc, char** argv)
                  audio.worstBlockMs, audio.xruns, msgCpu / std::max (1e-9, msgWall), msgCpu * 1000.0 / std::max (1e-9, msgWall), frames,
                  editors > 0 ? frames / (double) editors / std::max (1e-9, msgWall) : 0.0, frameP95, openAllMs, openMsCold, openMsWarm, rss0,
                  rssProcs, rssAfterCycles, rssOpen, rssRun, rssClosed, cycles);
+    std::fflush (stdout);
+    // --hold N: stay alive N seconds after reporting, so heap/vmmap can inspect the process
+    if (const double hold = arg (a, "--hold", "0").getDoubleValue(); hold > 0)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil ((int) (hold * 1000));
     return 0;
 }

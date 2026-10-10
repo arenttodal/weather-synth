@@ -117,6 +117,14 @@ jobs:
           cat gui-mac.txt gui-mac.jsonl
           # Memory across editor open/close: is the growth linear, and is it a leak (unreferenced) or held?
           for n in 10 40; do perl -e 'alarm shift; exec @ARGV' 180 "$B" --seconds 1 --editors 0 --cycles $n | tail -1 | tee -a gui-mac-cycles.jsonl; done
+          # What the growth is made of: heap/vmmap on the live process after 40 cycles
+          ("$B" --seconds 1 --editors 0 --cycles 40 --hold 40 > /dev/null &) ; sleep 25
+          P=$(pgrep -n AtmosGuiBench || true)
+          if [ -n "$P" ]; then
+            heap -s --sortBySize "$P" 2>&1 | head -60 > gui-mac-heap.txt || true
+            vmmap --summary "$P" 2>&1 | sed -n '/REGION TYPE/,/TOTAL/p' >> gui-mac-heap.txt || true
+            cat gui-mac-heap.txt; kill "$P" || true
+          fi
           MallocStackLogging=1 perl -e 'alarm shift; exec @ARGV' 300 leaks --atExit -- "$B" --seconds 1 --editors 0 --cycles 10 > gui-mac-leaks.txt 2>&1 || true
           grep -E "leaks for|total leaked|Process [0-9]+:" gui-mac-leaks.txt | head -5; head -c 20000 gui-mac-leaks.txt | tail -c 15000
           ./build/AtmosTests_artefacts/Release/AtmosTests --atlas mac-atlas fixtures=clear,heavy_rain,snow,fog,thunderstorm times=noon,night scale=2
@@ -129,6 +137,7 @@ jobs:
             gui-mac.jsonl
             gui-mac-cycles.jsonl
             gui-mac-leaks.txt
+            gui-mac-heap.txt
             mac-atlas
       - name: Package
         run: |
