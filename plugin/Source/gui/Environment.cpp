@@ -352,7 +352,8 @@ std::vector<AnchorWeight> anchorWeights (const Environment& e)
         const char* name;
     };
     static const Key morning[] = { { -14, "night" }, { -4, "dawn" }, { 14, "morning" }, { 42, "noon" } };
-    static const Key evening[] = { { -14, "night" }, { -6, "dusk" }, { 1, "sunset" }, { 18, "late_afternoon" }, { 42, "noon" } };
+    // Dusk is the hero: the sun just under the horizon, its glow still on it
+    static const Key evening[] = { { -14, "night" }, { -1, "dusk" }, { 4, "sunset" }, { 18, "late_afternoon" }, { 42, "noon" } };
     const Key* k = e.evening ? evening : morning;
     const int n = e.evening ? 5 : 4;
     std::vector<AnchorWeight> w;
@@ -367,8 +368,9 @@ std::vector<AnchorWeight> anchorWeights (const Environment& e)
                 w.push_back ({ k[i].name, 1 - t });
                 w.push_back ({ k[i + 1].name, t });
             }
-    // Overcast replaces part of the sunlit look with diffuse light (daytime only)
-    const double oc = clamp01 (e.overcast * e.daylight * 0.85);
+    // Overcast replaces part of the sunlit look with diffuse light (daytime only), once the sky
+    // is really closing: broken cloud and showers keep the sunlit look (the hero's monsoon dusk)
+    const double oc = clamp01 (smooth (0.6, 1.0, e.overcast) * e.daylight * 0.85);
     if (oc > 0.01)
     {
         for (auto& x : w)

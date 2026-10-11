@@ -138,37 +138,29 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
     for (auto& p : parts)
         p.age = -1;
     activeCount = 0;
-    // Cloud layout follows cover: a few broad shapes, more under an overcast sky. The Blender
-    // clouds are bigger, so fewer of them (the hero shows about six with sky between them); the
-    // overcast deck in the cached sky carries the rest
-    const bool sprites = assets->cloudCount() > 0;
-    const int cumulus = juce::jlimit (0, sprites ? 6 : 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
-    const int count = cumulus;
+    // Cloud layout follows cover. With the hero's clouds (hero.json) they sit where the hero
+    // has them and appear in its order as cover grows (all five by broken cloud); otherwise a few
+    // path clouds, more under an overcast sky
+    const bool sprites = assets->heroCloudCount() > 0;
+    const int count = sprites ? juce::jlimit (0, assets->heroCloudCount(), (int) std::round (target.cloud * 6.5 + (target.overcast > 0.5 ? 1 : 0)))
+                              : juce::jlimit (0, 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
     if ((int) clouds.size() != count || (count > 0 && (clouds.front().shape >= 0) != sprites))
     {
         juce::Random r ((juce::int64) snap.visualSeed + 99);
         const float W = assets->viewportWidth(), H = assets->viewportHeight(), hz = H * assets->horizon();
-        std::vector<int> puffs;
-        for (int k = 0; k < assets->cloudCount(); ++k)
-            if (! assets->cloudIsStratus (k)) puffs.push_back (k);
         clouds.clear();
-        for (int i = 0; i < cumulus; ++i)
+        for (int i = 0; i < count; ++i)
         {
-            const float x0 = (i + r.nextFloat() * 0.6f) / juce::jmax (1, cumulus);
-            if (sprites && ! puffs.empty())
+            if (sprites)
             {
-                const int k = puffs[(size_t) (i + (int) (snap.visualSeed % 7)) % puffs.size()];
-                const float w = (180 + 140 * r.nextFloat()) * (float) (1 + 0.35 * target.overcast);
-                const float h = w / assets->cloudAspect (k);
-                const float y = 0.04f * H + r.nextFloat() * (hz * 0.66f - 0.04f * H);
-                clouds.push_back ({ x0 * (W + w) - w / 2, y, w, h, k, 0.6f + 0.6f * r.nextFloat() });
+                const auto b = assets->heroCloudBox (i);
+                clouds.push_back ({ b.getX(), b.getY(), b.getWidth(), b.getHeight(), i, 0.6f + 0.5f * r.nextFloat() });
+                continue;
             }
-            else
-            {
-                const float w = (130 + 130 * r.nextFloat()) * (float) (1 + 0.5 * target.overcast);
-                const float y = 0.05f * H + r.nextFloat() * (hz * 0.62f - 0.05f * H);
-                clouds.push_back ({ x0 * (W + w) - w / 2, y, w, w * 0.4f, -1 - r.nextInt (5), 0.6f + 0.6f * r.nextFloat() });
-            }
+            const float x0 = (i + r.nextFloat() * 0.6f) / juce::jmax (1, count);
+            const float w = (130 + 130 * r.nextFloat()) * (float) (1 + 0.5 * target.overcast);
+            const float y = 0.05f * H + r.nextFloat() * (hz * 0.62f - 0.05f * H);
+            clouds.push_back ({ x0 * (W + w) - w / 2, y, w, w * 0.4f, -1 - r.nextInt (5), 0.6f + 0.6f * r.nextFloat() });
         }
     }
     if (immediate || prefs_.quality == Quality::still)
@@ -381,6 +373,40 @@ void SceneView::buildBackground (float ps)
     juce::Graphics g (img);
     g.addTransform (juce::AffineTransform::scale (ps));
 
+    std::vector<std::pair<float, juce::Colour>> rows;
+    if (assets->hasHero())
+    {
+        // The hero's sky: its anchors' colour rows, blended like the craft's renders. Rain and
+        // storms darken it a little; overcast comes from the overcast anchor's weight
+        double acc = 0;
+        for (auto& w : anchorWeights (e))
+        {
+            if (w.weight < 0.004) continue;
+            const auto r = assets->skyRows (w.name);
+            if (r.empty()) continue;
+            if (rows.empty())
+                rows.assign (r.size(), { 0.0f, juce::Colour() });
+            acc += w.weight;
+            const float t = (float) (w.weight / acc);
+            for (size_t k = 0; k < rows.size() && k < r.size(); ++k)
+                rows[k] = { r[k].first, acc == w.weight ? r[k].second : rows[k].second.interpolatedWith (r[k].second, t) };
+        }
+    }
+    if (rows.size() >= 2)
+    {
+        const float dark = (float) juce::jlimit (0.0, 0.3, 0.08 * std::max ({ e.rain, e.freezing, e.hail, e.sleet * 0.8 }) + 0.15 * e.thunder);
+        juce::ColourGradient sky (rows.front().second, 0, rows.front().first, rows.back().second, 0, rows.back().first, false);
+        for (size_t k = 1; k + 1 < rows.size(); ++k)
+            sky.addColour ((rows[k].first - rows.front().first) / (rows.back().first - rows.front().first), rows[k].second);
+        g.setGradientFill (sky);
+        g.fillRect (0.0f, 0.0f, W, H);
+        if (dark > 0.01f)
+        {
+            g.setColour (juce::Colour (0xff1a2236).withAlpha (dark));
+            g.fillRect (0.0f, 0.0f, W, H);
+        }
+    }
+    else
     {
         // Three stops: the zenith holds most of the sky, the horizon colour rises late
         juce::ColourGradient sky (rgb (c.zenith), 0, 0, rgb (c.horizon), 0, hz, false);
@@ -465,19 +491,17 @@ void SceneView::buildBackground (float ps)
     }
 
     // Ground far below: the regional backdrop (visual only, never from the weather)
-    if (landscape() == Landscape::city && assets->hasBackdrop ("city"))
+    if (assets->hasHero())
     {
-        // Blender city: far ridges and skyline hazed into the horizon colour, then the near city
-        auto far = blendBackdrop ("far", ps);
-        {
-            juce::Graphics fg (far);
-            const auto copy = far.createCopy();
-            fg.setColour (rgb (c.horizon).withAlpha (0.32f));
-            fg.drawImage (copy, far.getBounds().toFloat(), juce::RectanglePlacement::stretchToFit, true);
-        }
+        // Flat cloud bands across the glowing horizon, in front of the sun (as in the hero)
+        g.setOpacity (1.0f);
+        g.drawImage (blendHero ("bands", ps), assets->heroBox ("bands"));
+    }
+    if (landscape() == Landscape::city && assets->hasHero())
+    {
+        // The hero city: ridges, three depths of towers, the bridge, haze baked in per anchor
         g.setOpacity (1.0f); // drawImage uses the current colour's alpha (the sun's glow was last)
-        g.drawImage (far, assets->backdropBox ("city", "far"));
-        g.drawImage (blendBackdrop ("near", ps), assets->backdropBox ("city", "near"));
+        g.drawImage (blendHero ("city", ps), assets->heroBox ("city"));
     }
     else
         drawLandscape (g, landscape(), W, H, hz, c, e);
@@ -488,11 +512,14 @@ void SceneView::buildBackground (float ps)
         const float l = juce::jmax (0.18f, lum (c.ambient));
         // Cool slate taken from the zenith, so a rainy dusk stays blue above and warm low down
         const auto deck = juce::Colour (0xffb4bfd4).interpolatedWith (rgb (c.zenith), 0.35f).withMultipliedBrightness (l * 0.8f);
-        g.setGradientFill (juce::ColourGradient (deck.withAlpha ((float) (0.42 * e.overcast)), 0, 0, deck.withAlpha (0.0f), 0, hz * 0.75f, false));
+        // (lighter over the hero's sky: its anchors already carry the mood, and the overcast anchor the rest)
+        const float deckA = (float) (rows.size() >= 2 ? 0.5 * juce::jlimit (0.0, 1.0, (e.overcast - 0.7) / 0.3) : 0.42 * e.overcast);
+        g.setGradientFill (juce::ColourGradient (deck.withAlpha (deckA), 0, 0, deck.withAlpha (0.0f), 0, hz * 0.7f, false));
         g.fillRect (0.0f, 0.0f, W, hz);
     }
     // Visibility veil: a clamped wash plus soft bands thickest at the horizon
-    const float amount = (float) juce::jlimit (0.0, 1.0, 1 - e.visibility);
+    // (the hero's rain does not haze the view: the veil starts below about 8 km)
+    const float amount = (float) juce::jlimit (0.0, 1.0, (1 - e.visibility - (rows.size() >= 2 ? 0.15 : 0.0)) / (rows.size() >= 2 ? 0.85 : 1.0));
     if (amount > 0.02f)
     {
         const auto col = veilColour (e, c);
@@ -630,14 +657,15 @@ juce::Image SceneView::blendCloud (int k, float w, float h, float ps)
     for (auto& a : anchorWeights (shown))
     {
         if (a.weight < 0.004) continue;
-        auto src = assets->cloud (k, a.name);
+        auto src = assets->heroCloud (k, a.name);
         if (! src.isValid()) continue;
         acc += a.weight;
         g.setOpacity ((float) (a.weight / acc));
         g.drawImage (src, dest, juce::RectanglePlacement::stretchToFit);
     }
-    // Storm cells darken beyond what the overcast render does
-    const float storm = (float) juce::jlimit (0.0, 1.0, 0.5 * shown.thunder + 0.4 * std::max ({ shown.rain, shown.hail, shown.freezing }));
+    // Storm cells darken beyond what the overcast render does (showers alone barely: the hero's
+    // monsoon clouds keep their light)
+    const float storm = (float) juce::jlimit (0.0, 1.0, 0.5 * shown.thunder + 0.12 * std::max ({ shown.rain, shown.hail, shown.freezing }));
     if (storm > 0.02f)
     {
         const auto copy = img.createCopy();
@@ -648,9 +676,9 @@ juce::Image SceneView::blendCloud (int k, float w, float h, float ps)
     return img;
 }
 
-juce::Image SceneView::blendBackdrop (const juce::String& layer, float ps)
+juce::Image SceneView::blendHero (const juce::String& layer, float ps)
 {
-    const auto box = assets->backdropBox ("city", layer);
+    const auto box = assets->heroBox (layer);
     juce::Image img (juce::Image::ARGB, juce::jmax (1, (int) std::ceil (box.getWidth() * ps)), juce::jmax (1, (int) std::ceil (box.getHeight() * ps)), true);
     juce::Graphics g (img);
     g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
@@ -659,7 +687,7 @@ juce::Image SceneView::blendBackdrop (const juce::String& layer, float ps)
     for (auto& a : anchorWeights (shown))
     {
         if (a.weight < 0.004) continue;
-        auto src = assets->backdrop ("city", layer, a.name);
+        auto src = assets->heroLayer (layer, a.name);
         if (! src.isValid()) continue;
         acc += a.weight;
         g.setOpacity ((float) (a.weight / acc));

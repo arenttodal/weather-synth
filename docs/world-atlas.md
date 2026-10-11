@@ -42,22 +42,42 @@ Twelve families plus neutral and open water (`gui/Landscape.cpp`): city, tempera
 
 Never from temperature, humidity or precipitation. The user's **Scene style** (display settings) overrides the picture only.
 
-## Hero fidelity (sky, clouds, city)
+## Hero fidelity
 
-Goal: match `design/references/balloon-hero.png`, not approximate it.
+Goal: match `design/references/balloon-hero.png` element by element, not approximate it.
 
-- **Framing:** the scene runs under a transparent header (1024 x 504 logical, the macro band below); the envelope is cropped at the top as in the hero and the cabinet is about a quarter of the width.
-- **Sky:** three-stop gradient (zenith holds most of the sky), a wide warm glow along the horizon around a low sun (sun altitude -10 to 18 degrees), larger low sun disc, retuned dusk/sunset keys.
-- **Clouds:** `design/blender/export_backdrops.py` renders six faceted cumulus, lit by the same eight lighting anchors as the craft. The runtime mixes them by anchor weight (like the craft), darkens storm cells, and caches each cloud at screen size; it re-lights them only when the light changes. Without the art it falls back to the path clouds.
-- **City:** two Blender layers per anchor: far (faceted ridges and a low skyline, hazed into the horizon colour at runtime) and near (slim towers with sparse lit windows, a cable-stayed bridge on the right, a dense near band). Windows light up from the anchor's lamp level. Drawn into the cached background, so it costs nothing per frame.
+**One 3D scene** (`design/blender/hero_env.py`). The hero's environment is built as a single lit scene with a perspective camera, not 2D sprites:
+- **Placement:** each element is placed by where it appears in the hero (pixel x, y) and how far away it is, then lifted along the camera ray.
+- **Depth:** every material fades with distance towards the sky behind it or the city haze (aerial perspective). That is where the hero's depth comes from.
+- **Clouds:** lofted from silhouettes measured on the hero, in its two tiers (a lower body bulging forward, the dome set back, the crease between them), lit by a warm key from the right and a cool fill from above.
+- **City:** ridges in three layers, far, middle and near towers with lit window pairs, the cable-stayed bridge, and treetops along the bottom, all at the hero's measured positions.
+- **Matched numerically:** mean colours per region (sky top, middle and low; ridges; towers; near city; cloud tops and undersides; sun) were brought to within a few levels of the hero.
 
-Rain alone now counts for less overcast (cloud cover decides), rain skies grey towards a cool slate instead of brown, and the overcast wash comes from the zenith colour, so a rainy dusk stays blue above and warm low down. The `mumbai_monsoon` demo fixture now has broken cloud, as in the hero.
+**Lighting anchors.** The same eight anchors as the craft:
+- **Dusk** is the hero itself.
+- **Dawn, noon, golden hour (sunset), night and overcast** are measured on `design/references/balloon-lighting.png`.
+- **Morning and late afternoon** sit between their neighbours.
+- Each anchor sets the sky ramp, the haze, key and fill light, cloud colours and window glow.
 
-Side by side: `gui/hero-vs-app-dusk.png` (app left, hero right), `gui/city-times.png` (monsoon and haze at dawn, noon, dusk and night).
+**Export.** `hero_env.py -- --export assets/weather_scene/hero` renders, per anchor:
+- `city_<anchor>.png`: ridges, city and bridge, haze baked in.
+- `bands_<anchor>.png`: the flat cloud bands over the horizon.
+- `cloud<k>_<anchor>.png`: the hero's five clouds, each with its box.
+- `hero.json`: the boxes, plus the sky as colour rows down the scene.
 
-Still different from the hero: the clouds are lavender and evenly lit (the hero's are slate with warm lit undersides); the horizon glow is weaker at the atlas's dusk (sun 6 degrees below the horizon; the hero shows it on the horizon); the envelope stripes and cabinet are the existing craft art.
+It runs one Blender process per layer and crops with `tools/crop_alpha.py` (Pillow).
 
-Re-render: `xvfb-run -a blender -b --factory-startup --python design/blender/export_backdrops.py -- [--parts clouds,city] [--anchors dusk] [--fast] [--out dir]`, then reconfigure CMake (the art is compiled in).
+**In the plugin.** Everything is blended by the same anchor weights as the craft, so time of day and overcast move through all layers together:
+- **Cached background:** the sky ramp, then the sun and moon (still placed astronomically by the plugin), the bands, then the city layer. Families other than city stay procedural for now.
+- **Clouds:** they sit where the hero has them and appear in its order as cover grows (all five at broken cloud). They drift with the wind and are re-lit only when the light changes.
+
+**Craft** (`build_scene.py`, `scene_config.json`):
+- **Camera:** perspective, level, at cabinet height and yawed to the cabinet's left side, so the envelope's underside shows.
+- **Envelope and suspension:** the hero's envelope profile; a wide collar with a hanging orange burner; short black brackets for the dish and wind mast, each with a line from the envelope.
+- **Cabinet:** the hero's face layout (ring knobs, slim cream fader caps in black slots, the patch field, grilled speakers, cables), with a larger lit service window.
+- **Dusk light:** warm white from the front left (the hero's craft is not lit pink).
+
+Stills: `xvfb-run -a blender -b --factory-startup --python design/blender/hero_env.py -- --out still.png [--anchor noon] [--fast]`.
 
 ## Not done yet (honest list)
 
@@ -65,5 +85,5 @@ Re-render: `xvfb-run -a blender -b --factory-startup --python design/blender/exp
 - A worldwide classifier: needs a validated source (for example a build-time, size-measured class grid from land cover plus elevation), a licence review and a version; not shipped.
 - Globe/Search tabs at the smallest sizes (the panel scales instead), a 2D map fallback, keyboard arrow navigation through results (Tab works).
 - Pausing the hidden scene's animation while the browser is open.
-- Blender-authored family layers: **city is done** (see below); the other eleven families are still procedural and follow one at a time, each checked side by side against the reference.
+- Blender-authored family layers: **city is done** (Hero fidelity, above); the other eleven families are still procedural and follow one at a time, each checked side by side against the reference.
 - Host checks of the audition (realtime playback, stopped transport, offline bounce) in real DAWs.

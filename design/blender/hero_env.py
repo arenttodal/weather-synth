@@ -34,29 +34,109 @@ FOCAL_MM, SENSOR_MM = 50.0, 36.0
 F = W * FOCAL_MM / SENSOR_MM  # focal length in pixels
 CAM_Z = 40.0               # camera height above the ground
 
-# Light and atmosphere (monsoon dusk)
-SKY = [  # elevation (deg) -> colour, measured on clear sky in the hero (row y -> atan((HZ - y) / F))
-    (-8.0, (96, 98, 130)),     # below the horizon: the haze over the city, cool lavender
-    (-2.0, (128, 110, 140)),
-    (0.0, (205, 120, 106)),
-    (0.67, (217, 122, 99)),
-    (1.75, (208, 115, 99)),
-    (2.8, (159, 104, 111)),
-    (3.9, (133, 96, 116)),
-    (5.0, (115, 88, 113)),
-    (6.0, (105, 85, 110)),
-    (7.1, (90, 78, 107)),
-    (8.1, (74, 70, 98)),
-    (9.2, (72, 71, 99)),
-    (11.3, (68, 71, 99)),
-    (13.3, (64, 69, 96)),
-    (15.3, (62, 69, 94)),
-    (30.0, (56, 62, 88)),
-]
-SUN_X = 1065.0  # the sun disc sits behind the bridge
-SUN_COLOUR = (255, 150, 105)
-HAZE = (112, 108, 145)        # the cool lavender haze over the city
-HAZE_RIDGE = (168, 124, 150)  # ridges fade warmer, towards the glowing horizon
+# Light and atmosphere per lighting anchor (the same eight the craft uses). Dusk is the hero
+# itself (monsoon dusk); the others are measured on design/references/balloon-lighting.png
+# (dawn, noon, golden hour = sunset, dusk, night, overcast day); morning and late afternoon
+# sit between their neighbours. sky: elevation (deg) -> colour, clear sky, row y -> atan((HZ - y) / F)
+ANCHORS = {
+    "dusk": {
+        "sky": [(-8.0, (96, 98, 130)), (-2.0, (128, 110, 140)), (0.0, (205, 120, 106)), (0.67, (217, 122, 99)), (1.75, (208, 115, 99)),
+                (2.8, (159, 104, 111)), (3.9, (133, 96, 116)), (5.0, (115, 88, 113)), (6.0, (105, 85, 110)), (7.1, (90, 78, 107)),
+                (8.1, (74, 70, 98)), (9.2, (72, 71, 99)), (11.3, (68, 71, 99)), (13.3, (64, 69, 96)), (15.3, (62, 69, 94)), (30.0, (56, 62, 88))],
+        "haze": (112, 108, 145), "ridge": (168, 124, 150),
+        "key": ((255, 128, 92), 6.0, (0.95, 0.2, 0.25)), "fill": ((205, 200, 235), 2.1, (-0.3, -0.25, 0.92)),
+        "cloud": (150, 146, 176), "cloudLow": (132, 132, 168), "cloudFar": (150, 140, 172),
+        "streakLit": (226, 132, 108), "streakDark": (132, 106, 136), "win": 1.0, "amb": 1.0,
+        "glow": (255, 160, 115), "sun": (242, 142, 102),
+    },
+    "dawn": {
+        "sky": [(-8.0, (92, 104, 132)), (-2.0, (130, 128, 146)), (0.0, (250, 184, 128)), (0.6, (255, 185, 124)), (1.8, (245, 177, 135)),
+                (4.1, (200, 163, 160)), (7.6, (140, 149, 178)), (11.0, (95, 133, 183)), (14.5, (70, 117, 172)), (30.0, (58, 100, 160))],
+        "haze": (120, 128, 156), "ridge": (172, 150, 160),
+        "key": ((255, 190, 150), 5.0, (-0.85, 0.25, 0.3)), "fill": ((170, 190, 230), 1.9, (0.3, -0.25, 0.9)),
+        "cloud": (196, 168, 186), "cloudLow": (170, 156, 180), "cloudFar": (210, 176, 180),
+        "streakLit": (250, 186, 150), "streakDark": (150, 140, 168), "win": 0.6, "amb": 1.0,
+        "glow": (255, 200, 140), "sun": (255, 214, 140),
+    },
+    "noon": {
+        "sky": [(-8.0, (100, 130, 160)), (-2.0, (130, 165, 195)), (0.0, (150, 192, 222)), (1.8, (134, 182, 219)), (4.1, (113, 173, 221)),
+                (7.6, (94, 160, 216)), (11.0, (86, 149, 209)), (14.5, (75, 135, 197)), (30.0, (62, 120, 186))],
+        "haze": (128, 158, 188), "ridge": (140, 170, 200),
+        "key": ((255, 252, 245), 4.4, (-0.35, -0.3, 0.88)), "fill": ((185, 210, 240), 2.4, (0.4, -0.3, 0.86)),
+        "cloud": (236, 240, 248), "cloudLow": (200, 210, 228), "cloudFar": (225, 232, 242),
+        "streakLit": (236, 242, 250), "streakDark": (190, 205, 225), "win": 0.0, "amb": 1.15,
+        "glow": (255, 250, 230), "sun": (255, 248, 220),
+    },
+    "sunset": {
+        "sky": [(-8.0, (104, 96, 112)), (-2.0, (150, 120, 120)), (0.0, (255, 183, 104)), (1.8, (254, 181, 104)), (4.1, (253, 177, 105)),
+                (7.6, (222, 160, 124)), (11.0, (195, 150, 133)), (14.5, (154, 134, 142)), (30.0, (128, 118, 140))],
+        "haze": (140, 122, 128), "ridge": (196, 150, 128),
+        "key": ((255, 168, 96), 6.0, (0.9, 0.2, 0.22)), "fill": ((175, 160, 205), 1.7, (-0.3, -0.25, 0.92)),
+        "cloud": (190, 150, 156), "cloudLow": (160, 132, 150), "cloudFar": (230, 164, 136),
+        "streakLit": (255, 196, 128), "streakDark": (176, 130, 132), "win": 0.7, "amb": 1.0,
+        "glow": (255, 214, 140), "sun": (255, 226, 140),
+    },
+    "night": {
+        "sky": [(-8.0, (24, 44, 74)), (-2.0, (30, 58, 100)), (0.0, (33, 72, 130)), (1.8, (27, 65, 120)), (4.1, (24, 58, 106)),
+                (7.6, (20, 49, 91)), (11.0, (18, 43, 80)), (14.5, (20, 43, 79)), (30.0, (16, 36, 68))],
+        "haze": (34, 58, 96), "ridge": (38, 64, 108),
+        "key": ((150, 172, 230), 1.6, (-0.5, -0.3, 0.8)), "fill": ((70, 90, 150), 1.2, (0.4, -0.3, 0.86)),
+        "cloud": (78, 96, 146), "cloudLow": (60, 78, 124), "cloudFar": (70, 90, 140),
+        "streakLit": (60, 86, 136), "streakDark": (36, 58, 98), "win": 1.6, "amb": 0.42,
+        "glow": (60, 90, 150), "sun": (238, 226, 190),
+    },
+    "overcast": {
+        "sky": [(-8.0, (96, 120, 142)), (-2.0, (130, 150, 170)), (0.0, (172, 186, 201)), (1.8, (165, 180, 196)), (4.1, (147, 165, 185)),
+                (7.6, (145, 160, 181)), (11.0, (144, 161, 180)), (14.5, (138, 158, 179)), (30.0, (128, 148, 170))],
+        "haze": (128, 146, 166), "ridge": (140, 158, 178),
+        "key": ((235, 238, 242), 1.2, (0.0, -0.3, 0.95)), "fill": ((205, 212, 225), 3.0, (0.2, -0.4, 0.9)),
+        "cloud": (186, 196, 210), "cloudLow": (156, 168, 186), "cloudFar": (180, 192, 206),
+        "streakLit": (190, 200, 214), "streakDark": (150, 164, 182), "win": 0.4, "amb": 0.95,
+        "glow": (220, 226, 232), "sun": (230, 232, 236),
+    },
+}
+
+
+def _mix_anchor(a, b, t):
+    """An anchor between two measured ones (morning, late afternoon)."""
+    A_, B_ = ANCHORS[a], ANCHORS[b]
+
+    def mc(x, y):
+        return tuple(int(round(x[i] + (y[i] - x[i]) * t)) for i in range(3))
+
+    out = {}
+    els = sorted({e for e, _ in A_["sky"]} | {e for e, _ in B_["sky"]})
+
+    def at_el(sky, e):
+        for (e0, c0), (e1, c1) in zip(sky[:-1], sky[1:]):
+            if e0 <= e <= e1:
+                u = (e - e0) / (e1 - e0)
+                return mc(c0, c1) if False else tuple(int(round(c0[i] + (c1[i] - c0[i]) * u)) for i in range(3))
+        return sky[0][1] if e < sky[0][0] else sky[-1][1]
+
+    out["sky"] = [(e, mc(at_el(A_["sky"], e), at_el(B_["sky"], e))) for e in els]
+    for k in A_:
+        if k == "sky":
+            continue
+        if k in ("key", "fill"):
+            (ca, ea, da), (cb, eb, db) = A_[k], B_[k]
+            out[k] = (mc(ca, cb), ea + (eb - ea) * t, tuple(da[i] + (db[i] - da[i]) * t for i in range(3)))
+        elif isinstance(A_[k], tuple):
+            out[k] = mc(A_[k], B_[k])
+        else:
+            out[k] = A_[k] + (B_[k] - A_[k]) * t
+    return out
+
+
+ANCHORS["morning"] = _mix_anchor("dawn", "noon", 0.65)
+ANCHORS["late_afternoon"] = _mix_anchor("noon", "sunset", 0.6)
+
+ANCHOR_ORDER = ["dawn", "morning", "noon", "late_afternoon", "sunset", "dusk", "night", "overcast"]
+ANCHOR = opt("--anchor", "dusk")
+A = ANCHORS[ANCHOR]
+SKY, HAZE, HAZE_RIDGE = A["sky"], A["haze"], A["ridge"]
+SUN_X = 1065.0  # the hero's sun sits behind the bridge (stills only: the plugin draws its own sun)
+SUN_COLOUR = A["sun"]
 
 
 def lin(c):
@@ -191,7 +271,7 @@ def world(sc):
     links.new(pw.outputs[0], sc_.inputs[0])
     links.new(sc_.outputs[0], glow.inputs["Factor"])
     links.new(ramp.outputs["Color"], glow.inputs["A"])
-    glow.inputs["B"].default_value = lin((255, 160, 115))
+    glow.inputs["B"].default_value = lin(A["glow"])
     lp = nodes.new("ShaderNodeLightPath")
     sel = nodes.new("ShaderNodeMix")
     sel.data_type = "RGBA"
@@ -218,9 +298,9 @@ def lamp(sc, name, colour, energy, d):
 def sun_lamp(sc):
     # Key: the low sun, swung to the right so flanks facing it warm up (the hero's peach facets)
     # (Strength 1 gives about 0.25 on a facing surface; materials read light as a 0..1 term)
-    lamp(sc, "Key", (255, 128, 92), 6.0, (0.95, 0.2, 0.25))
+    lamp(sc, "Key", A["key"][0], A["key"][1], A["key"][2])
     # Fill: the cool sky from above and a little in front
-    lamp(sc, "Fill", (205, 200, 235), 2.1, (-0.3, -0.25, 0.92))
+    lamp(sc, "Fill", A["fill"][0], A["fill"][1], A["fill"][2])
 
 
 # ------------------------------------------------------------------ materials
@@ -233,6 +313,9 @@ def hazed(name, colour, emission=None, haze=1.0, density=1.0, fog=None, amb=0.55
     The light comes from the key and fill lamps (EEVEE Shader to RGB of a white diffuse)."""
     if name in MATS:
         return MATS[name]
+    amb *= A["amb"]
+    if emission:
+        emission = (emission[0], emission[1] * A["win"])
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
@@ -437,12 +520,12 @@ def tiered_cloud(name, profile, base_l, base_r, d, seed, mats, lower=0.62):
         t = (x - x0) / (x1 - x0)
         yb = base_l + (base_r - base_l) * t
         low.append((x, yb - (yb - y) * lower))
-    loft_cloud(name + "Low", low, base_l, base_r, d - px(d, 6), seed + 100, hazed("cloudLow", (132, 132, 168), haze=0.22, amb=0.36, gain=0.7), depth=0.55)
+    loft_cloud(name + "Low", low, base_l, base_r, d - px(d, 6), seed + 100, hazed("cloudLow", A["cloudLow"], haze=0.22, amb=0.36, gain=0.7), depth=0.55)
 
 
 def clouds():
-    m = hazed("cloud", (150, 146, 176), haze=0.22, amb=0.38, gain=1.0)
-    mf = hazed("cloudFar", (150, 140, 172), haze=0.55, amb=0.55, gain=0.6)
+    m = hazed("cloud", A["cloud"], haze=0.22, amb=0.38, gain=1.0)
+    mf = hazed("cloudFar", A["cloudFar"], haze=0.55, amb=0.55, gain=0.6)
     # Silhouettes measured on the hero: top edge (x, y), base y at the ends, distance
     tiered_cloud("CloudUL", [(80, 258), (92, 215), (118, 178), (165, 172), (205, 160), (235, 143), (262, 141), (292, 160), (322, 185), (352, 194),
                            (378, 205), (402, 226), (428, 236), (448, 248), (466, 272)], 297, 284, 3000, 1, m)
@@ -463,8 +546,8 @@ def clouds():
 def stratus():
     """Broad flat cloud bands across the glowing horizon (lavender, thin lit edges), measured
     on the hero: (left x, right x, centre y, thickness px, distance, lit)."""
-    dark = hazed("streakDark", (132, 106, 136), haze=0.35, amb=0.75, gain=0.3)
-    lit = hazed("streakLit", (226, 132, 108), haze=0.3, amb=0.9, gain=0.2)
+    dark = hazed("streakDark", A["streakDark"], haze=0.35, amb=0.75, gain=0.3)
+    lit = hazed("streakLit", A["streakLit"], haze=0.3, amb=0.9, gain=0.2)
     bands = [(-20, 560, 566, 14, 9000, 0), (380, 980, 548, 9, 9500, 0), (600, 1536, 576, 12, 10000, 0), (1150, 1536, 600, 5, 10500, 1),
              (-20, 1100, 616, 9, 11000, 0), (780, 1000, 612, 5, 11500, 1), (-20, 400, 586, 4, 10000, 1), (1250, 1536, 560, 5, 9500, 1)]
     bm = bmesh.new()
@@ -495,7 +578,9 @@ def ridge(name, d, y_base, peaks, colour, haze, seed):
         bm.faces.new([bm.verts.new(a), bm.verts.new(b), bm.verts.new(mid)])
         bm.faces.new([bm.verts.new(mid), bm.verts.new(b), bm.verts.new(bb)])
         bm.faces.new([bm.verts.new(ba), bm.verts.new(mid), bm.verts.new(bb)])
-    return obj(name, bm, [hazed(name, colour, haze=haze, fog=HAZE_RIDGE)])
+    # the measured (dusk) ridge colours, pulled towards this anchor's ridge haze
+    tint = tuple(int(colour[i] * 0.45 + HAZE_RIDGE[i] * 0.55 * (colour[i] / 150.0)) for i in range(3)) if ANCHOR != "dusk" else colour
+    return obj(name, bm, [hazed(name, tint, haze=haze, fog=HAZE_RIDGE)])
 
 
 def mountains():
@@ -653,7 +738,7 @@ def sun_disc():
     for n in list(nodes):
         nodes.remove(n)
     em = nodes.new("ShaderNodeEmission")
-    em.inputs["Color"].default_value = lin((242, 142, 102))
+    em.inputs["Color"].default_value = lin(A["sun"])
     em.inputs["Strength"].default_value = 1.0
     out = nodes.new("ShaderNodeOutputMaterial")
     m.node_tree.links.new(em.outputs[0], out.inputs["Surface"])
@@ -674,8 +759,133 @@ def build():
     return sc
 
 
-if __name__ == "__main__":
+# ------------------------------------------------------------------ export for the plugin
+EXPORT_SCALE = 4.0 / 3.0   # hero pixels (1536 wide) -> plugin art pixels (2048 wide = 1024 logical x 2)
+LOGICAL = 1024.0 / W       # hero pixels -> logical scene pixels
+CLOUD_NAMES = ["CloudUL", "CloudUR", "CloudL", "CloudR", "CloudLL"]  # in the order they appear as cover grows
+BAND_OBJECTS = ("Streaks", "CloudF1", "CloudF2", "CloudF3")
+CITY_OBJECTS = ("RidgeFar", "RidgeMid", "RidgeNear", "CityFar", "CityMid", "CityMidLow", "CityNear", "Trees", "Bridge")
+
+
+def sky_rows(n=48):
+    """The sky gradient as colours down the scene (logical rows), as Blender's ramp blends them
+    (linear), so the plugin can draw exactly this sky and blend anchors."""
+    def to_srgb(v):
+        v = max(0.0, min(1.0, v))
+        return round(255 * (v * 12.92 if v <= 0.0031308 else 1.055 * v ** (1 / 2.4) - 0.055))
+    out = []
+    for k in range(n + 1):
+        y = H * k / n
+        e = math.degrees(math.atan((HZ - y) / F))
+        keys = SKY
+        if e <= keys[0][0]:
+            c = lin(keys[0][1])
+        elif e >= keys[-1][0]:
+            c = lin(keys[-1][1])
+        else:
+            for (e0, c0), (e1, c1) in zip(keys[:-1], keys[1:]):
+                if e0 <= e <= e1:
+                    u = (e - e0) / (e1 - e0)
+                    a0, a1 = lin(c0), lin(c1)
+                    c = tuple(a0[i] + (a1[i] - a0[i]) * u for i in range(3))
+                    break
+        out.append([round(y * LOGICAL, 2), [to_srgb(c[0]), to_srgb(c[1]), to_srgb(c[2])]])
+    return out
+
+
+def alpha_crop(path):
+    """Crop a transparent render to its content (system Python with Pillow: Blender's own
+    Python may lack numpy); returns the box in plugin art pixels."""
+    import json
+    import subprocess
+    tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools", "crop_alpha.py")
+    r = subprocess.run(["python3", tool, path], capture_output=True, text=True, check=True)
+    return json.loads(r.stdout)[path]
+
+
+def worker(job, out_dir):
+    anchor, layer = job.split(":")
     sc = build()
-    sc.render.filepath = OUT
-    bpy.ops.render.render(write_still=True)
-    print("WS_HERO_OK", OUT)
+    sc.render.film_transparent = True
+    sc.render.image_settings.color_mode = "RGBA"
+    sc.render.resolution_x, sc.render.resolution_y = int(W * EXPORT_SCALE), int(H * EXPORT_SCALE)
+    for name in ("Sun",):
+        if name in bpy.data.objects:
+            bpy.data.objects[name].hide_render = True
+    results = []
+
+    def only(names, file):
+        for ob in sc.objects:
+            if ob.type == "MESH":
+                ob.hide_render = not any(ob.name == n or ob.name.startswith(n + "Low") for n in names)
+        path = os.path.join(out_dir, file)
+        sc.render.filepath = path
+        bpy.ops.render.render(write_still=True)
+        box = alpha_crop(path)
+        return [round(v / 2.0, 2) for v in box] if box else None  # logical scene pixels
+
+    if layer == "city":
+        results.append({"layer": "city", "anchor": anchor, "file": "hero/city_%s.png" % anchor, "box": only(CITY_OBJECTS, "city_%s.png" % anchor)})
+    elif layer == "bands":
+        results.append({"layer": "bands", "anchor": anchor, "file": "hero/bands_%s.png" % anchor, "box": only(BAND_OBJECTS, "bands_%s.png" % anchor)})
+    elif layer == "clouds":
+        for k, n in enumerate(CLOUD_NAMES):
+            f = "cloud%d_%s.png" % (k, anchor)
+            results.append({"layer": "cloud", "index": k, "anchor": anchor, "file": "hero/" + f, "box": only((n,), f)})
+    import json
+    json.dump(results, open(os.path.join(out_dir, "_job_%s_%s.json" % (anchor, layer)), "w"))
+    print("WS_HERO_JOB_OK", job)
+
+
+def orchestrate(out_dir, anchors):
+    import json
+    import subprocess
+    os.makedirs(out_dir, exist_ok=True)
+    for a in anchors:
+        for layer in ("city", "bands", "clouds"):
+            cmd = [bpy.app.binary_path, "-b", "--factory-startup", "--python", os.path.abspath(__file__), "--", "--anchor", a,
+                   "--job", a + ":" + layer, "--export", out_dir] + (["--fast"] if FAST else [])
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0 or "WS_HERO_JOB_OK" not in r.stdout:
+                print(r.stdout[-3000:], r.stderr[-2000:])
+                raise SystemExit("hero job %s:%s failed" % (a, layer))
+            print("WS_HERO_JOB", a, layer, flush=True)
+    mpath = os.path.join(out_dir, "..", "hero.json")
+    man = json.load(open(mpath)) if os.path.exists(mpath) else {}
+    man.update({"version": 1, "generator": "design/blender/hero_env.py", "viewport": {"width": 1024, "height": 504, "horizonY": round(HZ / H, 4)}})
+    sky = man.setdefault("sky", {})
+    for a in anchors:
+        global SKY
+        SKY = ANCHORS[a]["sky"]
+        sky[a] = sky_rows()
+    layers = man.setdefault("layers", {})
+    clouds = {int(c["index"]): c for c in man.get("clouds", [])}
+    for f in sorted(os.listdir(out_dir)):
+        if not f.startswith("_job_"):
+            continue
+        for e in json.load(open(os.path.join(out_dir, f))):
+            if e["layer"] == "cloud":
+                c = clouds.setdefault(e["index"], {"index": e["index"], "frames": {}})
+                c["frames"][e["anchor"]] = e["file"]
+                c["box"] = e["box"]
+            else:
+                L = layers.setdefault(e["layer"], {"frames": {}})
+                L["frames"][e["anchor"]] = e["file"]
+                L["box"] = e["box"]
+        os.remove(os.path.join(out_dir, f))
+    man["clouds"] = [clouds[k] for k in sorted(clouds)]
+    json.dump(man, open(mpath, "w"), indent=1)
+    print("WS_HERO_EXPORT_OK", mpath)
+
+
+if __name__ == "__main__":
+    export = opt("--export")
+    if export and opt("--job"):
+        worker(opt("--job"), os.path.abspath(export))
+    elif export:
+        orchestrate(os.path.abspath(export), [a for a in opt("--anchors", ",".join(ANCHOR_ORDER)).split(",") if a])
+    else:
+        sc = build()
+        sc.render.filepath = OUT
+        bpy.ops.render.render(write_still=True)
+        print("WS_HERO_OK", OUT)

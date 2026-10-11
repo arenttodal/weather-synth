@@ -37,24 +37,25 @@ public:
     int anemometerFrames() const { return anemoN; }
     float anemometerDegreesPerFrame() const { return anemoStep; }
 
-    // Blender-rendered sky and backdrops (backdrops.json): lit clouds and family layers, one
-    // image per lighting anchor, decoded on demand into a small cache
-    int cloudCount() const { return (int) cloudDefs.size(); }
-    bool cloudIsStratus (int k) const;
-    float cloudAspect (int k) const;
-    juce::Image cloud (int k, const juce::String& anchor);
-    bool hasBackdrop (const juce::String& family) const;
-    juce::Rectangle<float> backdropBox (const juce::String& family, const juce::String& layer) const; // scene coordinates
-    juce::Image backdrop (const juce::String& family, const juce::String& layer, const juce::String& anchor);
+    // The hero environment (hero.json, design/blender/hero_env.py): per lighting anchor, the sky
+    // as colours down the scene, the city and the horizon bands as layers, and the hero's clouds,
+    // each decoded on demand into a small cache
+    bool hasHero() const { return hero.isObject(); }
+    std::vector<std::pair<float, juce::Colour>> skyRows (const juce::String& anchor) const; // (logical y, colour)
+    juce::Rectangle<float> heroBox (const juce::String& layer) const;                       // scene coordinates
+    juce::Image heroLayer (const juce::String& layer, const juce::String& anchor);
+    int heroCloudCount() const { return heroClouds.size(); }
+    juce::Rectangle<float> heroCloudBox (int k) const;
+    juce::Image heroCloud (int k, const juce::String& anchor);
 
     size_t decodedBytes() const;
 
 private:
     juce::Image load (const juce::String& file) const;
     const SpriteFrame& sprite (std::vector<SpriteFrame>&, const juce::Array<juce::var>&, int frame);
-    juce::var manifest, backdrops;
-    juce::Array<juce::var> cloudDefs;
-    std::map<juce::String, juce::Image> extra; // clouds and backdrop layers, keyed by file
+    juce::var manifest, hero;
+    juce::Array<juce::var> heroClouds;
+    std::map<juce::String, juce::Image> extra; // hero layers and clouds, keyed by file
     std::vector<juce::String> extraLru;
     juce::Image cachedExtra (const juce::String& file, size_t keep);
     bool ok = false;

@@ -37,11 +37,10 @@ SceneAssets::SceneAssets()
     vaneSprites.resize ((size_t) vaneN);
     anemoSprites.resize ((size_t) anemoN);
     ok = ! art.isEmpty() && manifest["lighting"].getDynamicObject() != nullptr;
-    if (const char* data = SceneArt::getNamedResource ("backdrops_json", size))
-        backdrops = juce::JSON::parse (juce::String::fromUTF8 (data, size));
-    if (auto* obj = backdrops["clouds"].getDynamicObject())
-        for (auto& p : obj->getProperties())
-            cloudDefs.add (p.value);
+    if (const char* data = SceneArt::getNamedResource ("hero_json", size))
+        hero = juce::JSON::parse (juce::String::fromUTF8 (data, size));
+    if (auto* c = hero["clouds"].getArray())
+        heroClouds = *c;
 }
 
 juce::Image SceneAssets::cachedExtra (const juce::String& file, size_t keep)
@@ -64,28 +63,40 @@ juce::Image SceneAssets::cachedExtra (const juce::String& file, size_t keep)
     return it->second;
 }
 
-bool SceneAssets::cloudIsStratus (int k) const { return k >= 0 && k < cloudDefs.size() && cloudDefs[k]["kind"].toString() == "stratus"; }
-float SceneAssets::cloudAspect (int k) const { return k >= 0 && k < cloudDefs.size() ? (float) (double) cloudDefs[k].getProperty ("aspect", 3.0) : 3.0f; }
-
-juce::Image SceneAssets::cloud (int k, const juce::String& anchor)
+namespace
 {
-    if (k < 0 || k >= cloudDefs.size()) return {};
-    // Eight shapes x the anchors in a blend (two or three) stay decoded; a few hundred KB
-    return cachedExtra (cloudDefs[k]["frames"][juce::Identifier (anchor)].toString(), 40);
+    juce::Rectangle<float> boxOf (const juce::var& v)
+    {
+        if (auto* b = v.getArray(); b != nullptr && b->size() == 4)
+            return { (float) (double) (*b)[0], (float) (double) (*b)[1], (float) (double) (*b)[2], (float) (double) (*b)[3] };
+        return {};
+    }
+} // namespace
+
+std::vector<std::pair<float, juce::Colour>> SceneAssets::skyRows (const juce::String& anchor) const
+{
+    std::vector<std::pair<float, juce::Colour>> out;
+    if (auto* rows = hero["sky"][juce::Identifier (anchor)].getArray())
+        for (auto& r : *rows)
+            if (auto* c = r[1].getArray(); c != nullptr && c->size() == 3)
+                out.push_back ({ (float) (double) r[0], juce::Colour ((juce::uint8) (int) (*c)[0], (juce::uint8) (int) (*c)[1], (juce::uint8) (int) (*c)[2]) });
+    return out;
 }
 
-bool SceneAssets::hasBackdrop (const juce::String& family) const { return backdrops["families"][juce::Identifier (family)].isObject(); }
+juce::Rectangle<float> SceneAssets::heroBox (const juce::String& layer) const { return boxOf (hero["layers"][juce::Identifier (layer)]["box"]); }
 
-juce::Rectangle<float> SceneAssets::backdropBox (const juce::String& family, const juce::String& layer) const
+juce::Image SceneAssets::heroLayer (const juce::String& layer, const juce::String& anchor)
 {
-    if (auto* b = backdrops["families"][juce::Identifier (family)]["layers"][juce::Identifier (layer)]["box"].getArray(); b != nullptr && b->size() == 4)
-        return { (float) (double) (*b)[0], (float) (double) (*b)[1], (float) (double) (*b)[2], (float) (double) (*b)[3] };
-    return {};
+    return cachedExtra (hero["layers"][juce::Identifier (layer)]["frames"][juce::Identifier (anchor)].toString(), 40);
 }
 
-juce::Image SceneAssets::backdrop (const juce::String& family, const juce::String& layer, const juce::String& anchor)
+juce::Rectangle<float> SceneAssets::heroCloudBox (int k) const { return k >= 0 && k < heroClouds.size() ? boxOf (heroClouds[k]["box"]) : juce::Rectangle<float> {}; }
+
+juce::Image SceneAssets::heroCloud (int k, const juce::String& anchor)
 {
-    return cachedExtra (backdrops["families"][juce::Identifier (family)]["layers"][juce::Identifier (layer)]["frames"][juce::Identifier (anchor)].toString(), 40);
+    if (k < 0 || k >= heroClouds.size()) return {};
+    // Five clouds x the anchors in a blend (two or three) stay decoded
+    return cachedExtra (heroClouds[k]["frames"][juce::Identifier (anchor)].toString(), 40);
 }
 
 juce::Point<float> SceneAssets::marker (const juce::String& name) const

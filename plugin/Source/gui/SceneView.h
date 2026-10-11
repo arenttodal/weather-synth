@@ -119,7 +119,7 @@ private:
         juce::String key;
     };
     void drawSpriteClouds (juce::Graphics&, float ps);
-    juce::Image blendBackdrop (const juce::String& layer, float ps);
+    juce::Image blendHero (const juce::String& layer, float ps);
     juce::Image blendCloud (int k, float w, float h, float ps);
     std::vector<Cloud> clouds;
 

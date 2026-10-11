@@ -28,5 +28,5 @@ Brief: "Weather Synth — floating observatory GUI migration", 11 October 2026. 
 ## Status
 
 - Done: craft, export, renderer, twelve landscape families plus neutral and open water (World Atlas addendum), geography-only resolver, Scene style override, region fixtures, Explore Locations browser (`world-atlas.md`). Screenshots: `gui/balloon-families-noon.png`, `gui/balloon-families-dusk.png`, `gui/explore-locations.png`.
-- The art is 3.8 MB (was 8.7 MB). The ground band is 20 % of the scene (horizon at 0.80).
+- The art is about 12 MB: craft 6 MB, hero environment 6 MB (eight anchors). The horizon sits at 0.853 of the scene, as in the hero.
 - Pending: Apple Silicon benchmark of the new scene (CI), full atlas regeneration in `docs/gui/atlas/`, art sign-off.
