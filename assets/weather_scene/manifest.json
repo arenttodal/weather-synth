@@ -14,49 +14,49 @@
   "dawn": {
    "file": "lighting/dawn.png",
    "tint": "#D9B8C0",
-   "sha256": "1ae42250060e2a3a"
+   "sha256": "83a98f6473c2255f"
   },
   "morning": {
    "file": "lighting/morning.png",
    "tint": "#F2F2F0",
-   "sha256": "cdd9d691816e59a7"
+   "sha256": "a861fcf2ccc7377b"
   },
   "noon": {
    "file": "lighting/noon.png",
    "tint": "#FFFFFF",
-   "sha256": "d49e3727e0666843"
+   "sha256": "ddea37aff1ef446c"
   },
   "late_afternoon": {
    "file": "lighting/late_afternoon.png",
    "tint": "#F6E2C8",
-   "sha256": "5613e88c33f84c76"
+   "sha256": "f01c4e5ea553e40a"
   },
   "sunset": {
    "file": "lighting/sunset.png",
    "tint": "#E8B49A",
-   "sha256": "ea9bbce50950534d"
+   "sha256": "72b0fcf20369fc7e"
   },
   "dusk": {
    "file": "lighting/dusk.png",
    "tint": "#9C98C8",
-   "sha256": "ca26c9e978f807e0"
+   "sha256": "c6c4b630141f03d6"
   },
   "night": {
    "file": "lighting/night.png",
    "tint": "#6F7FA8",
-   "sha256": "7bbd6b975cf6e74f"
+   "sha256": "3eacd267e87ae002"
   },
   "overcast": {
    "file": "lighting/overcast.png",
    "tint": "#D8DCE0",
-   "sha256": "18a0d423a9414c8d"
+   "sha256": "f7522c5c91dfd628"
   }
  },
  "masks": {
   "accent": {
    "file": "masks/accent.png",
    "role": "snow/frost/ice accent on upward faces",
-   "sha256": "2e03aa73d54243df"
+   "sha256": "861f9fde0593e057"
   }
  },
  "mechanisms": {
@@ -65,168 +65,168 @@
     {
      "file": "mechanisms/vane_00.png",
      "box": [
-      638.0,
-      212.0,
-      40.0,
-      19.0
+      627.0,
+      194.0,
+      57.0,
+      28.0
      ],
-     "sha256": "5f79d1d811eff94f"
+     "sha256": "393bd7d8f41a37a7"
     },
     {
      "file": "mechanisms/vane_01.png",
      "box": [
-      644.0,
-      212.0,
-      29.0,
-      19.0
+      636.0,
+      193.0,
+      41.0,
+      29.0
      ],
-     "sha256": "2ef22efc6cee5246"
+     "sha256": "5031b69e1563b43f"
     },
     {
      "file": "mechanisms/vane_02.png",
      "box": [
-      652.0,
-      212.0,
-      14.0,
-      19.0
+      649.0,
+      193.0,
+      19.0,
+      28.0
      ],
-     "sha256": "d0d3148915ebbd0b"
+     "sha256": "1b7de8d10aeaf6bd"
     },
     {
      "file": "mechanisms/vane_03.png",
      "box": [
-      654.0,
-      212.0,
-      11.0,
-      20.0
+      652.0,
+      193.0,
+      16.0,
+      28.0
      ],
-     "sha256": "a63e60020a2c996f"
+     "sha256": "d8a2e837ed0d1d0f"
     },
     {
      "file": "mechanisms/vane_04.png",
      "box": [
-      647.0,
-      212.0,
-      27.0,
-      20.0
+      644.0,
+      193.0,
+      37.0,
+      28.0
      ],
-     "sha256": "e77af9680c9e7fe5"
+     "sha256": "b93fe17933099dba"
     },
     {
      "file": "mechanisms/vane_05.png",
      "box": [
-      642.0,
-      212.0,
-      38.0,
-      19.0
+      636.0,
+      194.0,
+      55.0,
+      28.0
      ],
-     "sha256": "d2b30d75a2649456"
+     "sha256": "bedca22502f1e0c7"
     },
     {
      "file": "mechanisms/vane_06.png",
      "box": [
-      638.0,
-      213.0,
-      46.0,
-      18.0
+      632.0,
+      194.0,
+      64.0,
+      28.0
      ],
-     "sha256": "dcf4f6511e5c7a4d"
+     "sha256": "8fbb31676ba65491"
     },
     {
      "file": "mechanisms/vane_07.png",
      "box": [
-      638.0,
-      213.0,
-      46.0,
-      18.0
+      632.0,
+      195.0,
+      64.0,
+      28.0
      ],
-     "sha256": "5477771147dd0d8f"
+     "sha256": "7cf54010873d3b70"
     },
     {
      "file": "mechanisms/vane_08.png",
      "box": [
-      641.0,
-      213.0,
-      40.0,
-      19.0
+      635.0,
+      195.0,
+      56.0,
+      28.0
      ],
-     "sha256": "7f20ab67ff46fcbf"
+     "sha256": "54baf774939bd519"
     },
     {
      "file": "mechanisms/vane_09.png",
      "box": [
-      646.0,
-      213.0,
-      29.0,
-      19.0
+      642.0,
+      196.0,
+      40.0,
+      28.0
      ],
-     "sha256": "20539f0b7663a8f7"
+     "sha256": "0503d8012b884571"
     },
     {
      "file": "mechanisms/vane_10.png",
      "box": [
-      653.0,
-      213.0,
-      14.0,
-      19.0
+      650.0,
+      197.0,
+      20.0,
+      27.0
      ],
-     "sha256": "758ce8bd935283cb"
+     "sha256": "8f4e150ece0a11d9"
     },
     {
      "file": "mechanisms/vane_11.png",
      "box": [
-      654.0,
-      212.0,
-      11.0,
-      20.0
+      652.0,
+      197.0,
+      15.0,
+      27.0
      ],
-     "sha256": "0fb8f8f4e4ef8f1d"
+     "sha256": "5cca7290f0cd4915"
     },
     {
      "file": "mechanisms/vane_12.png",
      "box": [
-      645.0,
-      212.0,
-      27.0,
-      20.0
+      639.0,
+      196.0,
+      37.0,
+      28.0
      ],
-     "sha256": "f05438a856e585a5"
+     "sha256": "546e44ffff6baf7f"
     },
     {
      "file": "mechanisms/vane_13.png",
      "box": [
-      639.0,
-      213.0,
-      39.0,
-      19.0
+      629.0,
+      196.0,
+      54.0,
+      27.0
      ],
-     "sha256": "ef03c79e43c251cb"
+     "sha256": "f402b51961dd2adf"
     },
     {
      "file": "mechanisms/vane_14.png",
      "box": [
-      635.0,
-      213.0,
-      46.0,
-      18.0
+      623.0,
+      195.0,
+      64.0,
+      28.0
      ],
-     "sha256": "191ecd53c89561b2"
+     "sha256": "636091e4c3816d44"
     },
     {
      "file": "mechanisms/vane_15.png",
      "box": [
-      635.0,
-      213.0,
-      46.0,
-      18.0
+      622.0,
+      195.0,
+      65.0,
+      27.0
      ],
-     "sha256": "035c2683f2d453e5"
+     "sha256": "38bd4ab532c6c343"
     }
    ],
    "degreesPerFrame": 22.5,
    "pivot": [
     0.64375,
-    0.44086
+    0.41436
    ]
   },
   "anemometer": {
@@ -234,68 +234,68 @@
     {
      "file": "mechanisms/anemometer_00.png",
      "box": [
-      639.0,
-      230.0,
-      39.0,
-      13.0
+      632.0,
+      221.0,
+      52.0,
+      18.0
      ],
-     "sha256": "0d91f5f257bfef04"
+     "sha256": "09375585ce896af3"
     },
     {
      "file": "mechanisms/anemometer_01.png",
      "box": [
-      638.0,
-      230.0,
-      37.0,
-      14.0
+      630.0,
+      221.0,
+      50.0,
+      18.0
      ],
-     "sha256": "d1c0355487c18eff"
+     "sha256": "dcbbd076435054b0"
     },
     {
      "file": "mechanisms/anemometer_02.png",
      "box": [
-      639.0,
-      230.0,
-      38.0,
-      14.0
+      632.0,
+      221.0,
+      51.0,
+      18.0
      ],
-     "sha256": "c26caab33d38ae6c"
+     "sha256": "8b360387fe7943da"
     },
     {
      "file": "mechanisms/anemometer_03.png",
      "box": [
-      641.0,
-      230.0,
-      39.0,
-      14.0
+      635.0,
+      221.0,
+      52.0,
+      18.0
      ],
-     "sha256": "e5a22a1b1987e9e4"
+     "sha256": "7771dfcf30a0a007"
     },
     {
      "file": "mechanisms/anemometer_04.png",
      "box": [
-      644.0,
-      230.0,
-      37.0,
-      14.0
+      639.0,
+      221.0,
+      50.0,
+      18.0
      ],
-     "sha256": "c6d796b1ac637991"
+     "sha256": "56ca34ad63042a66"
     },
     {
      "file": "mechanisms/anemometer_05.png",
      "box": [
-      642.0,
-      230.0,
-      38.0,
-      13.0
+      637.0,
+      220.0,
+      50.0,
+      19.0
      ],
-     "sha256": "b96b49df497b1387"
+     "sha256": "e9b5ef6280c2c3d0"
     }
    ],
    "degreesPerFrame": 20.0,
    "pivot": [
     0.64375,
-    0.47054
+    0.45676
    ]
   }
  },
@@ -326,11 +326,11 @@
   ],
   "MarkerVane": [
    0.64375,
-   0.44086
+   0.41436
   ],
   "MarkerAnemometer": [
    0.64375,
-   0.47054
+   0.45676
   ],
   "MarkerPod": [
    0.50626,

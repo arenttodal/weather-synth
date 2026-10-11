@@ -674,7 +674,7 @@ def city():
         w = 22 + rng.random() * 34
         building(near, x * 1.0, x + w, 712 + rng.random() * 16, 1400, rng, n_windows=rng.choice((0, 0, 1)), cell_px=4)
         x += w + rng.random() * 10
-    obj("CityNear", near, [hazed("cityNear", (66, 72, 100), haze=0.32, fog=HAZE), hazed("winNear", win, emission=(win, 1.0), haze=0.04, fog=HAZE)])
+    obj("CityNear", near, [hazed("cityNear", (70, 76, 104), haze=0.34, fog=HAZE), hazed("winNear", win, emission=(win, 1.0), haze=0.04, fog=HAZE)])
     # Foreground: dark rounded treetops along the very bottom
     trees = bmesh.new()
     x = -20
@@ -688,7 +688,7 @@ def city():
         vs.append(trees.verts.new((c.x + rr, 600, c.z - px(600, 40))))
         trees.faces.new(vs[: n + 1] + [vs[-1], vs[-2]])
         x += r * 1.4
-    obj("Trees", trees, [hazed("trees", (60, 67, 92), haze=0.3, fog=HAZE)])
+    obj("Trees", trees, [hazed("trees", (66, 74, 100), haze=0.38, fog=HAZE)])
 
 
 def bridge():
@@ -837,12 +837,12 @@ def worker(job, out_dir):
     print("WS_HERO_JOB_OK", job)
 
 
-def orchestrate(out_dir, anchors):
+def orchestrate(out_dir, anchors, layers=("city", "bands", "clouds")):
     import json
     import subprocess
     os.makedirs(out_dir, exist_ok=True)
     for a in anchors:
-        for layer in ("city", "bands", "clouds"):
+        for layer in layers:
             cmd = [bpy.app.binary_path, "-b", "--factory-startup", "--python", os.path.abspath(__file__), "--", "--anchor", a,
                    "--job", a + ":" + layer, "--export", out_dir] + (["--fast"] if FAST else [])
             r = subprocess.run(cmd, capture_output=True, text=True)
@@ -883,7 +883,8 @@ if __name__ == "__main__":
     if export and opt("--job"):
         worker(opt("--job"), os.path.abspath(export))
     elif export:
-        orchestrate(os.path.abspath(export), [a for a in opt("--anchors", ",".join(ANCHOR_ORDER)).split(",") if a])
+        orchestrate(os.path.abspath(export), [a for a in opt("--anchors", ",".join(ANCHOR_ORDER)).split(",") if a],
+                    [l for l in opt("--layers", "city,bands,clouds").split(",") if l])
     else:
         sc = build()
         sc.render.filepath = OUT

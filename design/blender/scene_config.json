@@ -39,7 +39,7 @@
     "rockDark": "#615D59",
     "metal": "#3A3F44",
     "dish": "#D9D6CE",
-    "vane": "#D86A33",
+    "vane": "#EE6A34",
     "accent": "#F4F7FA",
     "envelopeCream": "#EDD5B0",
     "envelopeRed": "#C95E3A",
@@ -107,8 +107,8 @@
   },
   "roof": {
     "antennaHeight": 1.15,
-    "dishRadius": 0.38,
-    "mastHeight": 0.75
+    "dishRadius": 0.5,
+    "mastHeight": 1.0
   },
   "cables": [
     {

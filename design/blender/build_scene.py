@@ -531,7 +531,7 @@ def build_craft(coll, mech, markers, roof_z):
         sx_ = x0 + sgn * (W / 2 - 0.02)
         box(obm, (sx_ + ex) / 2, oy, zo, abs(ex - sx_), 0.12, 0.12)            # arm
         rod(obm, (sx_, oy, zo - 0.45), (ex - sgn * 0.08, oy, zo), 0.035)       # brace
-        box(obm, ex, oy, zo + 0.06, 0.16, 0.16, 0.14)                           # mount
+        box(obm, ex, oy, zo + 0.06, 0.26, 0.26, 0.24)                           # mount
     mast_top = zo + 0.2 + R["mastHeight"]
     rod(obm, (rx, oy, zo + 0.2), (rx, oy, mast_top), 0.032)
     rod(obm, (lx, oy, zo + 0.12), (lx - 0.06, oy, zo + 0.74), 0.035)           # dish stalk
@@ -547,20 +547,21 @@ def build_craft(coll, mech, markers, roof_z):
 
     vane_pivot = empty("VanePivot", mech, (rx, oy, mast_top - 0.02))
     vbm = bmesh.new()
-    box(vbm, 0, 0, -0.012, 0.62, 0.025, 0.025, 0)
-    head = [vbm.verts.new(p) for p in ((-0.42, 0, 0.0), (-0.26, 0, 0.13), (-0.26, 0, -0.13))]
+    # (the hero's vane is a bold orange arrow; sized to read at plugin scale)
+    box(vbm, 0, 0, -0.02, 0.9, 0.04, 0.04, 0)
+    head = [vbm.verts.new(p) for p in ((-0.66, 0, 0.0), (-0.38, 0, 0.22), (-0.38, 0, -0.22))]
     vbm.faces.new(head).material_index = 1
-    tail = [vbm.verts.new(p) for p in ((0.22, 0, 0.0), (0.36, 0, 0.12), (0.36, 0, -0.12))]
+    tail = [vbm.verts.new(p) for p in ((0.3, 0, 0.0), (0.48, 0, 0.14), (0.48, 0, -0.14))]
     vbm.faces.new(tail).material_index = 1
     bmesh.ops.solidify(vbm, geom=vbm.faces[:], thickness=0.02)
     mesh_object("Vane", vbm, mech, [mat("metal"), mat("vane")]).parent = vane_pivot
-    anemo_pivot = empty("AnemoPivot", mech, (rx, oy, mast_top - 0.3))
+    anemo_pivot = empty("AnemoPivot", mech, (rx, oy, mast_top - 0.42))
     abm = bmesh.new()
     for k in range(3):
         rot = Matrix.Rotation(2 * math.pi * k / 3, 3, "Z")
-        arm = box(abm, 0.14, 0, -0.01, 0.28, 0.02, 0.02, 0)
+        arm = box(abm, 0.19, 0, -0.015, 0.38, 0.03, 0.03, 0)
         bmesh.ops.rotate(abm, verts=arm, cent=(0, 0, 0), matrix=rot)
-        cup = cylinder(abm, 0.3, 0, 0.0, 0.07, 0.1, segs=6, axis="Y", mat_index=1, r2=0.03)
+        cup = cylinder(abm, 0.4, 0, 0.0, 0.11, 0.15, segs=6, axis="Y", mat_index=1, r2=0.05)
         bmesh.ops.rotate(abm, verts=cup, cent=(0, 0, 0), matrix=rot)
     mesh_object("Anemometer", abm, mech, [mat("metal"), mat("dish")]).parent = anemo_pivot
     empty("MarkerVane", markers, vane_pivot.location)

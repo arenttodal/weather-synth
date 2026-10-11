@@ -759,7 +759,20 @@ void SceneView::drawLamps (juce::Graphics& g)
     glow (assets->marker ("MarkerServiceLight"), 12, amber, (float) (0.12 + 0.4 * e.lamps));
     // Burner: a small warm light under the envelope, with a slow, gentle flicker
     const float flicker = (float) (0.88 + 0.12 * std::sin (clock * 3.1 * motion) * std::sin (clock * 1.7 * motion + 0.5));
-    glow (assets->marker ("MarkerBurner"), 16, juce::Colour (0xffffb35c), (float) (0.3 + 0.35 * e.lamps) * flicker);
+    const auto burner = assets->marker ("MarkerBurner");
+    {
+        // and a soft cone of its light falling towards the cabinet, as in the hero
+        const float a = (float) (0.1 + 0.18 * e.lamps) * flicker, len = 46;
+        juce::Path cone;
+        cone.startNewSubPath (burner.x - 4, burner.y + 6);
+        cone.lineTo (burner.x + 4, burner.y + 6);
+        cone.lineTo (burner.x + 15, burner.y + 6 + len);
+        cone.lineTo (burner.x - 15, burner.y + 6 + len);
+        cone.closeSubPath();
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xffffb35c).withAlpha (a), burner.x, burner.y + 6, juce::Colour (0xffffb35c).withAlpha (0.0f), burner.x, burner.y + 6 + len, false));
+        g.fillPath (cone);
+    }
+    glow (burner, 16, juce::Colour (0xffffb35c), (float) (0.3 + 0.35 * e.lamps) * flicker);
     // Pod light, and its one pulse downwards when a new reading has been accepted
     const auto pod = assets->marker ("MarkerPod");
     glow (pod, 8, amber, (float) (0.25 + 0.35 * e.lamps));
