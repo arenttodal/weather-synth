@@ -1,6 +1,6 @@
 # World Atlas and Explore Locations
 
-Addendum: "Weather Synth: World Atlas and Location Audition", 11 October 2026. Concept references (the browser mock-up and the twelve-family atlas sheet) were shared in conversation; they should be saved as `design/references/atlas-browser.png` and `design/references/world-atlas.png`.
+Addendum: "Weather Synth: World Atlas and Location Audition", 11 October 2026. Concept references: `design/references/atlas-browser.png` (the browser) and `design/references/world-atlas.png` (the twelve families). Concept art with illustrative conditions, not live weather or production assets.
 
 ![Explore Locations](gui/explore-locations.png)
 
