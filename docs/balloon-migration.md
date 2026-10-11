@@ -17,7 +17,7 @@ Brief: "Weather Synth — floating observatory GUI migration", 11 October 2026. 
 | Editor | `plugin/Source/PluginEditor.cpp`, `Storage.*` | Scene style menu and preference. |
 | Tests, docs | `plugin/tests/Tests.cpp`, `docs/gui-*.md` | Updated for the new scene; new matrix. |
 
-**Not touched:** the engine, `PluginProcessor`, parameters and IDs, weather-to-sound mapping, saved state, Keep Day, late-reply protection, relay.
+**Not touched:** the engine, parameters and IDs, weather-to-sound mapping, saved state format, Keep Day, late-reply protection, relay. `PluginProcessor` gained only what the World Atlas browser needs (`prepareDay`, shared with the existing load path; `commitLocation`; the audition slot), see `world-atlas.md`.
 
 ## Decisions taken
 
