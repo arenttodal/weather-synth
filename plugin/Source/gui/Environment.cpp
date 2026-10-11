@@ -7,6 +7,57 @@ namespace atmos::gui
 {
 namespace
 {
+    struct LandscapeName
+    {
+        Landscape l;
+        const char *id, *title;
+    };
+    constexpr LandscapeName landscapeNames[] = {
+        { Landscape::neutral, "neutral", "Neutral" },
+        { Landscape::city, "city", "City" },
+        { Landscape::temperate, "temperate", "Temperate" },
+        { Landscape::boreal, "boreal", "Boreal" },
+        { Landscape::tropical, "tropical", "Tropical" },
+        { Landscape::grassland, "grassland", "Grassland" },
+        { Landscape::savanna, "savanna", "Savanna" },
+        { Landscape::desert, "desert", "Desert" },
+        { Landscape::mediterranean, "mediterranean", "Mediterranean" },
+        { Landscape::alpine, "alpine", "Alpine" },
+        { Landscape::tundra, "tundra", "Tundra / polar" },
+        { Landscape::coast, "coast", "Coast / islands" },
+        { Landscape::wetland, "wetland", "Wetland / delta" },
+        { Landscape::openWater, "open_water", "Open water" },
+    };
+
+} // namespace
+
+const char* landscapeId (Landscape l)
+{
+    for (auto& n : landscapeNames)
+        if (n.l == l) return n.id;
+    return "neutral";
+}
+
+const char* landscapeTitle (Landscape l)
+{
+    for (auto& n : landscapeNames)
+        if (n.l == l) return n.title;
+    return "Neutral";
+}
+
+bool parseLandscape (const std::string& id, Landscape& out)
+{
+    for (auto& n : landscapeNames)
+        if (id == n.id)
+        {
+            out = n.l;
+            return true;
+        }
+    return false;
+}
+
+namespace
+{
     double clamp01 (double x) { return std::isfinite (x) ? std::clamp (x, 0.0, 1.0) : 0.0; }
     double smooth (double a, double b, double x)
     {

@@ -1,4 +1,5 @@
-"""Builds the Weather Synth island scene from scene_config.json.
+"""Builds the Weather Synth scene from scene_config.json: the floating observatory (the
+cabinet hanging under a low-poly balloon) or, with "variant": "island", the old island.
 
     blender -b --factory-startup --python design/blender/build_scene.py -- [--save path.blend] [--preview out.png]
 
@@ -19,6 +20,7 @@ from mathutils import Matrix, Vector
 HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(HERE, "scene_config.json")))
 ROOT = "WEATHER_SYNTH"
+BALLOON = CFG.get("variant", "island") == "balloon"
 
 
 # ------------------------------------------------------------------ helpers
@@ -310,22 +312,35 @@ def build_cabinet(coll, mech, markers):
         ob = bpy.data.objects.new("WS_Cable%d" % k, cu)
         coll.objects.link(ob)
 
-    # Door and steps on the left cheek (faces -X), near the front
+    # Left cheek: a door with steps on the island; a small lit service window when the
+    # cabinet hangs as a gondola
     Dd = CFG["door"]
     side = x0 - W / 2 - 0.005
     door_y = front + 0.32
     dbm = bmesh.new()
-    box(dbm, side - 0.012, door_y, z0, 0.02, Dd["width"], Dd["height"], 0)
-    box(dbm, side - 0.03, door_y + 0.02, z0 + Dd["height"] * 0.45, 0.02, Dd["width"] * 0.38, Dd["height"] * 0.42, 1)  # lit window
-    for s in range(Dd["steps"]):
-        depth = Dd["stepDepth"] * (Dd["steps"] - s)
-        box(dbm, side - depth / 2 - 0.02, door_y, z0 - 0.02 + 0, depth, Dd["width"] + 0.16, Dd["stepRise"] * (s + 1), 2)
-    mesh_object("Door", dbm, coll, [mat("doorDark"), mat("lamp", "lamp", 4.0), mat("cream")])
-    empty("MarkerDoorLight", markers, (side - 0.04, door_y + 0.02, z0 + Dd["height"] * 0.66))
+    if BALLOON:
+        box(dbm, side - 0.012, door_y, z0 + H * 0.38, 0.02, Dd["width"] * 0.8, Dd["height"] * 0.55, 0)
+        box(dbm, side - 0.03, door_y, z0 + H * 0.38 + Dd["height"] * 0.1, 0.02, Dd["width"] * 0.5, Dd["height"] * 0.35, 1)  # lit window
+        mesh_object("ServiceWindow", dbm, coll, [mat("doorDark"), mat("lamp", "lamp", 4.0)])
+        empty("MarkerServiceLight", markers, (side - 0.04, door_y, z0 + H * 0.38 + Dd["height"] * 0.28))
+    else:
+        box(dbm, side - 0.012, door_y, z0, 0.02, Dd["width"], Dd["height"], 0)
+        box(dbm, side - 0.03, door_y + 0.02, z0 + Dd["height"] * 0.45, 0.02, Dd["width"] * 0.38, Dd["height"] * 0.42, 1)  # lit window
+        for s_ in range(Dd["steps"]):
+            depth = Dd["stepDepth"] * (Dd["steps"] - s_)
+            box(dbm, side - depth / 2 - 0.02, door_y, z0 - 0.02 + 0, depth, Dd["width"] + 0.16, Dd["stepRise"] * (s_ + 1), 2)
+        mesh_object("Door", dbm, coll, [mat("doorDark"), mat("lamp", "lamp", 4.0), mat("cream")])
+        empty("MarkerDoorLight", markers, (side - 0.04, door_y + 0.02, z0 + Dd["height"] * 0.66))
 
+    # Musical indicator spots on the face (used by the runtime for small lamps)
+    empty("MarkerFaceLamp", markers, (x0 - W / 2 + ch + 0.25, front - 0.06, z0 + rows[2][1] - 0.2))
+    empty("MarkerFaceFader", markers, (x0 + 0.6, front - 0.06, z0 + rows[2][0] + 0.4))
+    empty("MarkerCabinetCentre", markers, (x0, front, z0 + H / 2))
+    roof_z = z0 + H + 0.04
+    if BALLOON:
+        return roof_z
     # Roof: antenna, beacon, dish, mast with wind vane and anemometer
     R = CFG["roof"]
-    roof_z = z0 + H + 0.04
     rbm = bmesh.new()
     ax = x0 - W / 2 + ch + 0.35
     cylinder(rbm, ax, y0 + 0.25, roof_z + R["antennaHeight"] / 2, 0.035, R["antennaHeight"], segs=6, mat_index=0)
@@ -380,12 +395,176 @@ def build_cabinet(coll, mech, markers):
     anemo.parent = anemo_pivot
     empty("MarkerVane", markers, vane_pivot.location)
     empty("MarkerAnemometer", markers, anemo_pivot.location)
-
-    # Musical indicator spots on the face (used by the runtime for small lamps)
-    empty("MarkerFaceLamp", markers, (x0 - W / 2 + ch + 0.25, front - 0.06, z0 + rows[2][1] - 0.2))
-    empty("MarkerFaceFader", markers, (x0 + 0.6, front - 0.06, z0 + rows[2][0] + 0.4))
-    empty("MarkerCabinetCentre", markers, (x0, front, z0 + H / 2))
     return roof_z
+
+
+# ------------------------------------------------------------------ balloon craft
+def rod(bm, a, b, r, segs=6, mat_index=0):
+    """A thin cylinder from point a to point b (suspension lines, cables, outrigger arms)."""
+    a, b = Vector(a), Vector(b)
+    d = b - a
+    verts = cylinder(bm, 0, 0, 0, r, d.length, segs=segs, mat_index=mat_index)
+    bmesh.ops.rotate(bm, verts=verts, cent=(0, 0, 0), matrix=d.to_track_quat("Z", "Y").to_matrix())
+    bmesh.ops.translate(bm, vec=(a + b) / 2, verts=verts)
+    return verts
+
+
+def dish_mesh(coll, at, tilt_z, tilt_x):
+    R = CFG["roof"]
+    dish = bmesh.new()
+    res = bmesh.ops.create_cone(dish, cap_ends=True, segments=10, radius1=R["dishRadius"], radius2=R["dishRadius"] * 0.35, depth=0.1)
+    horn = bmesh.ops.create_cone(dish, cap_ends=True, segments=4, radius1=0.02, radius2=0.02, depth=0.22)
+    bmesh.ops.translate(dish, vec=(0, 0, 0.14), verts=horn["verts"])
+    allv = res["verts"] + horn["verts"]
+    rot = Matrix.Rotation(math.radians(tilt_z), 3, "Z") @ Matrix.Rotation(math.radians(tilt_x), 3, "X")
+    bmesh.ops.rotate(dish, verts=allv, cent=(0, 0, 0), matrix=rot)
+    bmesh.ops.translate(dish, vec=at, verts=allv)
+    mesh_object("Dish", dish, coll, [mat("dish")])
+    return Vector(at) + rot @ Vector((0, 0, 0.25))  # horn tip
+
+
+def build_envelope(coll, base):
+    """Lathed from a small profile of (radius, height) rings; flat-shaded gores alternate
+    cream and terracotta. A few hundred triangles."""
+    Bc = CFG["balloon"]
+    n = Bc["segments"]
+    prof = Bc["profile"]
+    bm = bmesh.new()
+    rings = []
+    for (rad, z) in prof[:-1]:
+        rings.append([bm.verts.new((base.x + math.cos(2 * math.pi * (i + 0.5) / n) * rad, base.y + math.sin(2 * math.pi * (i + 0.5) / n) * rad, base.z + z)) for i in range(n)])
+    apex = bm.verts.new((base.x, base.y, base.z + prof[-1][1]))
+    for r in range(len(rings) - 1):
+        a, b = rings[r], rings[r + 1]
+        for i in range(n):
+            j = (i + 1) % n
+            f = bm.faces.new((a[i], a[j], b[j], b[i]))
+            f.material_index = i % 2
+    for i in range(n):
+        f = bm.faces.new((rings[-1][i], rings[-1][(i + 1) % n], apex))
+        f.material_index = i % 2
+    bm.faces.new(list(reversed(rings[0])))  # closed mouth (never seen from the camera)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return mesh_object("Envelope", bm, coll, [mat("envelopeCream"), mat("envelopeRed"), mat("frame")])
+
+
+def build_craft(coll, mech, markers, roof_z):
+    C, Bc, R = CFG["cabinet"], CFG["balloon"], CFG["roof"]
+    W, H, D, ch = C["width"], C["height"], C["depth"], C["cheek"]
+    x0, y0, z0 = C["x"], C["y"], C["baseZ"]
+    bar = Bc["frameBar"]
+    m = -Bc["frameInset"]  # frame margin around the cabinet
+
+    # Cradle: a rectangle of bars under the base and over the roof, joined at the corners
+    fbm = bmesh.new()
+    corners = [(sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
+    hx, hy = W / 2 + m, D / 2 + m
+    for z in (z0 - bar, roof_z + 0.02):
+        box(fbm, x0, y0 - hy, z, 2 * hx + bar, bar, bar)
+        box(fbm, x0, y0 + hy, z, 2 * hx + bar, bar, bar)
+        box(fbm, x0 - hx, y0, z, bar, 2 * hy, bar)
+        box(fbm, x0 + hx, y0, z, bar, 2 * hy, bar)
+    for sx, sy in corners:
+        box(fbm, x0 + sx * hx, y0 + sy * hy, z0 - bar, bar, bar, roof_z + 0.02 + bar - (z0 - bar))
+    mesh_object("Frame", fbm, coll, [mat("frame")])
+
+    # Collar, burner and envelope above the roof
+    zc = roof_z + Bc["gap"]
+    cbm = bmesh.new()
+    cylinder(cbm, x0, y0, zc + Bc["collarHeight"] / 2, Bc["collarRadius"], Bc["collarHeight"], segs=12)
+    mesh_object("Collar", cbm, coll, [mat("frame")])
+    bbm = bmesh.new()
+    box(bbm, x0, y0, zc - 0.2, 0.2, 0.2, 0.2, 0)
+    box(bbm, x0, y0, zc - 0.05, 0.12, 0.12, 0.06, 1)
+    mesh_object("Burner", bbm, coll, [mat("lamp", "lamp", 6.0), mat("frame")])
+    empty("MarkerBurner", markers, (x0, y0 - 0.12, zc - 0.1))
+    build_envelope(coll, Vector((x0, y0, zc + Bc["collarHeight"])))
+
+    # Four straight lines from the frame's top corners to the collar rim
+    lbm = bmesh.new()
+    cr = Bc["collarRadius"] * 0.92
+    for sx, sy in corners:
+        top = (x0 + sx * cr * 0.8, y0 + sy * cr * 0.55, zc + 0.02)
+        rod(lbm, (x0 + sx * hx, y0 + sy * hy, roof_z + 0.02 + bar), top, 0.022)
+        rod(lbm, (x0, y0, zc - 0.02), top, 0.015)  # burner spokes
+    mesh_object("Lines", lbm, coll, [mat("frame")])
+
+    # Left outrigger with the dish (the link to the weather feed)
+    zo = z0 + H * 0.72
+    reach = Bc["outrigger"]
+    obm = bmesh.new()
+    lx = x0 - W / 2 - reach
+    rod(obm, (x0 - W / 2, y0, zo), (lx, y0, zo), 0.035)
+    rod(obm, (lx, y0, zo), (lx, y0, zo + 0.32), 0.03)
+    # Right outrigger with the wind mast
+    rx = x0 + W / 2 + reach * 0.9
+    rod(obm, (x0 + W / 2, y0, zo), (rx, y0, zo), 0.035)
+    mast_top = zo + R["mastHeight"] + 0.25
+    rod(obm, (rx, y0, zo), (rx, y0, mast_top), 0.03)
+    cylinder(obm, rx, y0, zo + 0.05, 0.08, 0.1, segs=6)
+    mesh_object("Outriggers", obm, coll, [mat("metal")])
+    tip = dish_mesh(coll, (lx, y0, zo + 0.42), -35, -50)
+    empty("MarkerAntennaTip", markers, tip)
+
+    vane_pivot = empty("VanePivot", mech, (rx, y0, mast_top - 0.02))
+    vbm = bmesh.new()
+    box(vbm, 0, 0, -0.012, 0.62, 0.025, 0.025, 0)
+    head = [vbm.verts.new(p) for p in ((-0.42, 0, 0.0), (-0.26, 0, 0.13), (-0.26, 0, -0.13))]
+    vbm.faces.new(head).material_index = 1
+    tail = [vbm.verts.new(p) for p in ((0.22, 0, 0.0), (0.36, 0, 0.12), (0.36, 0, -0.12))]
+    vbm.faces.new(tail).material_index = 1
+    bmesh.ops.solidify(vbm, geom=vbm.faces[:], thickness=0.02)
+    mesh_object("Vane", vbm, mech, [mat("metal"), mat("vane")]).parent = vane_pivot
+    anemo_pivot = empty("AnemoPivot", mech, (rx, y0, mast_top - 0.3))
+    abm = bmesh.new()
+    for k in range(3):
+        rot = Matrix.Rotation(2 * math.pi * k / 3, 3, "Z")
+        arm = box(abm, 0.14, 0, -0.01, 0.28, 0.02, 0.02, 0)
+        bmesh.ops.rotate(abm, verts=arm, cent=(0, 0, 0), matrix=rot)
+        cup = cylinder(abm, 0.3, 0, 0.0, 0.07, 0.1, segs=6, axis="Y", mat_index=1, r2=0.03)
+        bmesh.ops.rotate(abm, verts=cup, cent=(0, 0, 0), matrix=rot)
+    mesh_object("Anemometer", abm, mech, [mat("metal"), mat("dish")]).parent = anemo_pivot
+    empty("MarkerVane", markers, vane_pivot.location)
+    empty("MarkerAnemometer", markers, anemo_pivot.location)
+
+    # Sensor pod on a short cable under the cabinet (narrative: the station's link to the ground weather)
+    ps, drop = Bc["podSize"], Bc["podDrop"]
+    pbm = bmesh.new()
+    pz = z0 - bar - drop
+    rod(pbm, (x0, y0, z0 - bar), (x0, y0, pz), 0.018, mat_index=1)
+    box(pbm, x0, y0, pz - ps, ps, ps, ps, 0)
+    box(pbm, x0, y0 - ps / 2 - 0.01, pz - ps * 0.68, ps * 0.42, 0.02, ps * 0.36, 2)
+    mesh_object("Pod", pbm, coll, [mat("pod"), mat("frame"), mat("lamp", "lamp", 5.0)])
+    empty("MarkerPod", markers, (x0, y0 - ps / 2 - 0.03, pz - ps * 0.5))
+    empty("MarkerPodBottom", markers, (x0, y0, pz - ps))
+
+
+def fit_camera(cam):
+    """Frames the whole craft: its projected extent fills the configured part of the viewport,
+    so the envelope is never cropped and the pod clears the bottom."""
+    F, vp = CFG["fit"], CFG["viewport"]
+    W, Hh = vp["logicalWidth"], vp["logicalHeight"]
+    bpy.context.view_layer.update()
+    right = cam.matrix_world.to_3x3() @ Vector((1, 0, 0))
+    up = cam.matrix_world.to_3x3() @ Vector((0, 1, 0))
+    xs, ys = [], []
+    for ob in bpy.data.collections[ROOT].all_objects:
+        if ob.type != "MESH":
+            continue
+        for v in ob.data.vertices:
+            co = ob.matrix_world @ v.co
+            xs.append(co.dot(right))
+            ys.append(co.dot(up))
+    ppu = Hh * (F["bottom"] - F["top"]) / (max(ys) - min(ys))  # logical pixels per unit
+    cam.data.ortho_scale = W / ppu
+    # Move the camera so the craft's centre lands where the fit asks
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    want_x = (F["centerX"] - 0.5) * W / ppu
+    want_y = (0.5 - (F["top"] + F["bottom"]) / 2) * Hh / ppu
+    loc = cam.location
+    cur_x, cur_y = loc.dot(right), loc.dot(up)
+    cam.location = loc + right * (cx - want_x - cur_x) + up * (cy - want_y - cur_y)
+    return ppu
 
 
 # ------------------------------------------------------------------ camera
@@ -428,8 +607,10 @@ def add_patch_attribute(rng):
         for poly in me.polygons:
             mname = names[poly.material_index] if poly.material_index < len(names) else ""
             r = rng.random()
-            if ob.name in ("WS_CabinetBody", "WS_Roof", "WS_Mast", "WS_Door"):
+            if ob.name in ("WS_CabinetBody", "WS_Roof", "WS_Mast", "WS_Door", "WS_Frame", "WS_Collar", "WS_Pod"):
                 v = 1.0
+            elif ob.name == "WS_Envelope":
+                v = 1.0 if r < 0.7 else 0.5
             elif "grass" in mname:
                 v = 0.4 * r if r < 0.5 else 0.08  # the grass top only ever takes a light dusting
             else:
@@ -445,11 +626,17 @@ def build():
     static = sub_collection(root, "WS_STATIC")
     mech = sub_collection(root, "WS_MECHANISMS")
     markers = sub_collection(root, "WS_MARKERS")
-    build_island(static, rng)
-    build_rocks(static, rng)
-    build_cabinet(static, mech, markers)
+    if BALLOON:
+        roof_z = build_cabinet(static, mech, markers)
+        build_craft(static, mech, markers, roof_z)
+    else:
+        build_island(static, rng)
+        build_rocks(static, rng)
+        build_cabinet(static, mech, markers)
     add_patch_attribute(random.Random(CFG["seed"] + 11))
-    build_camera(root)
+    cam = build_camera(root)
+    if BALLOON:
+        fit_camera(cam)
     return root
 
 

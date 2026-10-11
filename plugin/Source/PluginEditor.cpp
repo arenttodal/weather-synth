@@ -402,6 +402,10 @@ void AtmosEditor::applyVisualPrefs()
     p.reduceFlashes = v.reduceFlashes;
     p.reduceMotion = v.reduceMotion || G::osPrefersReducedMotion(); // the system setting always wins
     scene.setPrefs (p);
+    // Scene style: visual only, never in the project, never touches the sound
+    G::Landscape l;
+    const bool chosen = G::parseLandscape (v.landscape.toStdString(), l) && l != G::Landscape::neutral;
+    scene.setLandscapeOverride (chosen ? &l : nullptr);
 }
 
 void AtmosEditor::showSettingsMenu()
@@ -416,6 +420,15 @@ void AtmosEditor::showSettingsMenu()
     const bool osReduced = G::osPrefersReducedMotion();
     m.addItem (4, osReduced ? "Reduce motion (on in system settings)" : "Reduce motion", ! osReduced, v.reduceMotion || osReduced);
     m.addItem (5, "No lightning flashes", true, v.reduceFlashes);
+    m.addSeparator();
+    m.addSectionHeader ("Scene style (picture only)");
+    G::Landscape current = G::Landscape::neutral;
+    G::parseLandscape (v.landscape.toStdString(), current);
+    for (int i = 0; i < G::landscapeCount; ++i)
+    {
+        const auto l = (G::Landscape) i;
+        m.addItem (100 + i, l == G::Landscape::neutral ? juce::String ("Neutral (default)") : juce::String (G::landscapeTitle (l)), true, l == current);
+    }
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&header.settings), [this] (int r) {
         if (r <= 0) return;
         auto p = Storage::visualPrefs();
@@ -424,6 +437,8 @@ void AtmosEditor::showSettingsMenu()
         if (r == 3) p.animation = "still";
         if (r == 4) p.reduceMotion = ! p.reduceMotion;
         if (r == 5) p.reduceFlashes = ! p.reduceFlashes;
+        if (r >= 100 && r < 100 + G::landscapeCount)
+            p.landscape = (G::Landscape) (r - 100) == G::Landscape::neutral ? juce::String() : juce::String (G::landscapeId ((G::Landscape) (r - 100)));
         Storage::setVisualPrefs (p);
         applyVisualPrefs();
     });

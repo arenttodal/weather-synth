@@ -1,4 +1,5 @@
 #include "SceneView.h"
+#include "Landscape.h"
 #include <cmath>
 
 namespace atmos::gui
@@ -54,6 +55,14 @@ void SceneView::setPrefs (const Prefs& p)
     repaint();
 }
 
+void SceneView::setLandscapeOverride (const Landscape* l)
+{
+    hasLandscapeOverride = l != nullptr;
+    if (l != nullptr) landscapeOverride = *l;
+    bgKey.clear();
+    repaint();
+}
+
 void SceneView::setTimeOverride (const TimeOfDay* t)
 {
     timeOverride = t;
@@ -66,6 +75,9 @@ void SceneView::setTimeOverride (const TimeOfDay* t)
 void SceneView::setSnapshot (const Snapshot& s, bool immediate)
 {
     const bool seedChanged = s.visualSeed != snap.visualSeed || cloudShapes.empty();
+    // The pod pulses once when a newly accepted reading arrives (never for restores, never on a loop)
+    const bool fresh = ! cloudShapes.empty() && (s.generation != snap.generation || s.observedAt != snap.observedAt || s.place != snap.place);
+    if (fresh && ! immediate) podPulse = 0;
     snap = s;
     from = shown;
     retarget();
@@ -117,13 +129,6 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
                 c.tones[2].addTriangle (mid[(size_t) i], bot[(size_t) i + 1], bot[(size_t) i]);
             }
             cloudShapes.push_back (std::move (c));
-        }
-        waves.clear();
-        const float W = assets->viewportWidth(), H = assets->viewportHeight(), hz = H * assets->horizon();
-        for (int i = 0; i < 64; ++i)
-        {
-            const float t = std::pow (rng.nextFloat(), 0.8f);
-            waves.push_back ({ rng.nextFloat() * W, hz + 5 + t * (H - hz - 8), 6 + 22 * t, rng.nextFloat() * 6.28f });
         }
     }
     // New weather: re-pick every particle (kind and position) so nothing from the previous
@@ -287,12 +292,6 @@ void SceneView::step (double dt)
         const bool landed = p.kind != 5 && p.y >= p.groundY;
         if (landed)
         {
-            const bool sea = ! assets->isLand ({ p.x, p.y });
-            if ((p.kind == 0 || p.kind == 4 || p.kind == 3) && sea && rng.nextFloat() < (p.kind == 0 ? 0.25f : 0.5f))
-            {
-                splashes[(size_t) nextSplash] = { p.x, p.y, 0 };
-                nextSplash = (nextSplash + 1) % (int) splashes.size();
-            }
             if (p.kind == 4 && rng.nextFloat() < 0.4f)
             {
                 p.kind = 6;
@@ -305,8 +304,7 @@ void SceneView::step (double dt)
         else if (p.x < -80 || p.x > W + 80 || p.y > H + 20)
             spawn (p, false);
     }
-    for (auto& s : splashes)
-        s.age += (float) dt;
+    podPulse += dt;
 
     // Lightning: occasional, small and in the distance; no full-screen flashes
     boltAge += dt;
@@ -341,7 +339,15 @@ juce::AffineTransform SceneView::toComponent() const
 void SceneView::resized()
 {
     bgKey.clear();
-    islandKey.clear();
+    craftKey.clear();
+}
+
+juce::Point<float> SceneView::craftOffset() const
+{
+    // Barely noticeable: about 1.5 px of slow bob and a little drift; none when still or
+    // when motion is reduced. Controls never move.
+    if (prefs_.quality == Quality::still || prefs_.reduceMotion) return {};
+    return { (float) (0.8 * std::sin (clock * 0.31 + 1.0)), (float) (1.6 * std::sin (clock * 0.55)) };
 }
 
 // ---------------------------------------------------------------- cached layers
@@ -420,11 +426,8 @@ void SceneView::buildBackground (float ps)
         g.fillPath (m);
     }
 
-    // Sea: flat colour deepening towards the viewer, a lighter line at the horizon
-    g.setGradientFill (juce::ColourGradient (rgb (c.sea), 0, hz, rgb (c.seaDeep), 0, H, false));
-    g.fillRect (0.0f, hz, W, H - hz);
-    g.setColour (rgb (c.horizon).withAlpha (0.25f));
-    g.fillRect (0.0f, hz, W, 1.5f);
+    // Ground far below: the regional backdrop (visual only, never from the weather)
+    drawLandscape (g, landscape(), W, H, hz, c, e);
 
     // Overcast: a flat diffuse deck across the upper sky (static, so it lives in the cache)
     if (e.overcast > 0.3)
@@ -454,7 +457,7 @@ void SceneView::buildBackground (float ps)
     bgCache = img;
 }
 
-void SceneView::buildIsland (float ps)
+void SceneView::buildCraft (float ps)
 {
     const auto box = assets->artBox();
     juce::Image img (juce::Image::ARGB, (int) std::ceil (box.getWidth() * ps), (int) std::ceil (box.getHeight() * ps), true);
@@ -485,9 +488,9 @@ void SceneView::buildIsland (float ps)
             g.drawImage (mask, dest, juce::RectanglePlacement::stretchToFit, true);
         }
     }
-    // Storms darken the island a little beyond what the overcast render already does
+    // Storms darken the craft a little beyond what the overcast render already does
     const float dark = (float) juce::jlimit (0.0, 0.4, 0.22 * std::max ({ shown.rain, shown.freezing, shown.hail }) + 0.15 * shown.thunder);
-    // Storms darken the island, fog and dust veil it (clamped: the cabinet must stay readable)
+    // Fog and dust veil it (clamped: the cabinet must stay readable)
     const float amount = (float) juce::jlimit (0.0, 1.0, 1 - shown.visibility);
     if (dark > 0.01f || amount > 0.02f)
     {
@@ -503,7 +506,7 @@ void SceneView::buildIsland (float ps)
             g.drawImage (copy, dest, juce::RectanglePlacement::stretchToFit, true);
         }
     }
-    islandCache = img;
+    craftCache = img;
 }
 
 // ---------------------------------------------------------------- per-frame layers
@@ -561,71 +564,6 @@ void SceneView::drawClouds (juce::Graphics& g)
     }
 }
 
-void SceneView::drawSea (juce::Graphics& g)
-{
-    const float W = assets->viewportWidth(), H = assets->viewportHeight(), hz = H * assets->horizon();
-    const auto& e = shown;
-    const auto c = skyColours (e);
-    const double vb = viewBearing (snap.lat);
-    const double across = e.windFromDeg >= 0 ? std::cos ((e.windFromDeg + 90 - vb) * pi / 180) : 0.35;
-    const double motion = prefs_.quality == Quality::still ? 0.0 : (prefs_.reduceMotion ? 0.3 : 1.0);
-    const int n = juce::jlimit (0, (int) waves.size(), (int) (18 + e.waves * 46));
-    juce::Path calm, caps;
-    const float strength = (float) (0.7 + 0.9 * e.waves);
-    for (int i = 0; i < n; ++i)
-    {
-        const auto& w = waves[(size_t) i];
-        const float depth = (w.y - hz) / (H - hz);
-        const float drift = (float) (across * (2 + e.windMps * 0.8) * (0.3 + depth) * clock * motion);
-        float x = std::fmod (w.x + drift, W + 40.0f);
-        if (x < -20) x += W + 40;
-        const float bob = (float) (std::sin (clock * 1.4 * motion + w.phase) * 1.2);
-        const float len = w.len * strength, h = (1.2f + 2.4f * depth) * strength;
-        const bool cap = e.waves > 0.5 && (i % 3 == 0);
-        auto& p = cap ? caps : calm;
-        p.addTriangle (x - len / 2, w.y + bob, x + len * 0.15f, w.y + bob - (cap ? h * 2.2f : h), x + len / 2, w.y + bob);
-    }
-    const auto seaLight = rgb (c.sea).interpolatedWith (juce::Colours::white, 0.35f);
-    g.setColour (seaLight.withAlpha (0.55f));
-    g.fillPath (calm);
-    g.setColour (juce::Colours::white.withAlpha ((float) (0.45 + 0.4 * e.waves) * juce::jmax (0.35f, lum (c.ambient))));
-    g.fillPath (caps);
-
-    // Foam around the island and rocks (drawn under the island, so only the shore shows)
-    auto ring = [&] (const juce::Array<juce::Point<float>>& poly, float grow) {
-        if (poly.size() < 3) return;
-        juce::Path p;
-        juce::Point<float> c0;
-        for (auto& v : poly)
-            c0 += v;
-        c0 /= (float) poly.size();
-        for (int i = 0; i < poly.size(); ++i)
-        {
-            const auto v = poly[i] + (poly[i] - c0) * grow;
-            if (i == 0) p.startNewSubPath (v);
-            else p.lineTo (v);
-        }
-        p.closeSubPath();
-        const float pulse = (float) (0.85 + 0.15 * std::sin (clock * 0.9 * motion));
-        g.setColour (seaLight.withAlpha ((float) (0.35 + 0.35 * e.waves) * pulse));
-        g.strokePath (p, juce::PathStrokeType ((float) (2.5 + 3.5 * e.waves), juce::PathStrokeType::curved));
-    };
-    ring (assets->shore(), 0.02f);
-    for (auto& r : assets->rockShores())
-        ring (r, 0.08f);
-
-    // Splashes where rain meets open water
-    juce::Path sp;
-    for (auto& s : splashes)
-        if (s.age < 0.25f)
-        {
-            const float r = 1.5f + s.age * 14;
-            sp.addTriangle (s.x - r, s.y, s.x, s.y - r * 0.8f, s.x + r, s.y);
-        }
-    g.setColour (juce::Colours::white.withAlpha (0.5f * juce::jmax (0.4f, lum (c.ambient))));
-    g.fillPath (sp);
-}
-
 void SceneView::drawMechanisms (juce::Graphics& g)
 {
     const auto c = skyColours (shown);
@@ -662,9 +600,25 @@ void SceneView::drawLamps (juce::Graphics& g)
     };
     const auto amber = juce::Colour (0xfff0ae4c);
     const double motion = prefs_.quality == Quality::still ? 0.0 : 1.0;
-    glow (assets->marker ("MarkerDoorLight"), 16, amber, (float) (0.15 + 0.45 * e.lamps));
-    const float beaconPulse = (float) (0.85 + 0.15 * std::sin (clock * 2.2 * motion));
-    glow (assets->marker ("MarkerBeacon"), 18, amber, (float) (0.2 + 0.4 * e.lamps) * beaconPulse);
+    glow (assets->marker ("MarkerServiceLight"), 12, amber, (float) (0.12 + 0.4 * e.lamps));
+    // Burner: a small warm light under the envelope, with a slow, gentle flicker
+    const float flicker = (float) (0.88 + 0.12 * std::sin (clock * 3.1 * motion) * std::sin (clock * 1.7 * motion + 0.5));
+    glow (assets->marker ("MarkerBurner"), 16, juce::Colour (0xffffb35c), (float) (0.3 + 0.35 * e.lamps) * flicker);
+    // Pod light, and its one pulse downwards when a new reading has been accepted
+    const auto pod = assets->marker ("MarkerPod");
+    glow (pod, 8, amber, (float) (0.25 + 0.35 * e.lamps));
+    if (podPulse < 1.6 && motion > 0)
+    {
+        const float t = (float) (podPulse / 1.6);
+        const auto base = assets->marker ("MarkerPodBottom");
+        g.setColour (amber.withAlpha (0.55f * (1 - t)));
+        for (int k = 0; k < 3; ++k)
+        {
+            const float y = base.y + 4 + (t * 26 + k * 7);
+            if (y < base.y + 4) continue;
+            g.fillRect (base.x - 1.0f, y, 2.0f, 2.0f);
+        }
+    }
 
     // Musical feedback: one restrained response per macro, fading when nothing plays
     Musical m;
@@ -752,10 +706,11 @@ void SceneView::paint (juce::Graphics& g)
 
     // Rebuild cached layers only when their inputs change (throttled during transitions)
     const auto c = skyColours (shown);
-    const juce::String bk = juce::String (ps, 3) + "|" + juce::String (q (c.zenith[0], 64)) + juce::String (q (c.zenith[2], 64)) + juce::String (q (c.horizon[0], 64))
+    juce::String bk = juce::String (ps, 3) + "|" + juce::String (q (c.zenith[0], 64)) + juce::String (q (c.zenith[2], 64)) + juce::String (q (c.horizon[0], 64))
                             + juce::String (q (c.sea[1], 64)) + "|" + juce::String (q (shown.sunAlt, 2)) + juce::String (q (shown.sunAz, 1)) + juce::String (q (shown.moonAlt, 2))
                             + juce::String (q (shown.overcast)) + juce::String (q (shown.stars)) + juce::String (q (shown.visibility)) + juce::String (q (shown.dust))
                             + juce::String (q (shown.haze + shown.smoke)) + juce::String (q (shown.ash));
+    bk << landscapeId (landscape()) << q (shown.accent) << q (shown.lamps, 8);
     juce::String ik = juce::String (ps, 3) + "|";
     for (auto& w : anchorWeights (shown))
         ik << w.name << q (w.weight) << ",";
@@ -767,11 +722,11 @@ void SceneView::paint (juce::Graphics& g)
         bgKey = bk;
         lastBgBuild = since;
     }
-    if (ik != islandKey && (settled || since - lastIslandBuild > 0.25 || ! islandCache.isValid()))
+    if (ik != craftKey && (settled || since - lastCraftBuild > 0.25 || ! craftCache.isValid()))
     {
-        buildIsland (ps);
-        islandKey = ik;
-        lastIslandBuild = since;
+        buildCraft (ps);
+        craftKey = ik;
+        lastCraftBuild = since;
     }
 
     static const bool profile = juce::SystemStats::getEnvironmentVariable ("ATMOS_PROFILE", {}) == "1";
@@ -793,23 +748,28 @@ void SceneView::paint (juce::Graphics& g)
     drawLightningAndTornado (g);
     drawClouds (g);
     lap (1);
-    drawSea (g);
     lap (2);
-    const auto box = assets->artBox();
-    g.setOpacity (1.0f); // drawImage uses the current colour's alpha
-    g.drawImageTransformed (islandCache, juce::AffineTransform::scale (1.0f / ps).translated (box.getX(), box.getY()));
-    lap (3);
-    drawMechanisms (g);
-    lap (4);
-    drawLamps (g);
-    lap (5);
+    {
+        // The craft and everything attached to it move together (lines stay connected)
+        juce::Graphics::ScopedSaveState craft (g);
+        const auto off = craftOffset();
+        g.addTransform (juce::AffineTransform::translation (off.x, off.y));
+        const auto box = assets->artBox();
+        g.setOpacity (1.0f); // drawImage uses the current colour's alpha
+        g.drawImageTransformed (craftCache, juce::AffineTransform::scale (1.0f / ps).translated (box.getX(), box.getY()));
+        lap (3);
+        drawMechanisms (g);
+        lap (4);
+        drawLamps (g);
+        lap (5);
+    }
     drawPrecipitation (g);
     lap (6);
     drawVeils (g);
     lap (7);
     if (profile && ++nprof % 150 == 0)
     {
-        std::fprintf (stderr, "ps=%.4f s=%.4f per frame ms: bg %.2f clouds %.2f sea %.2f island %.2f mech %.2f lamps %.2f precip %.2f veils %.2f\n", ps, s, acc[0] * 1000 / nprof,
+        std::fprintf (stderr, "ps=%.4f s=%.4f per frame ms: bg %.2f clouds %.2f - %.2f craft %.2f mech %.2f lamps %.2f precip %.2f veils %.2f\n", ps, s, acc[0] * 1000 / nprof,
                       acc[1] * 1000 / nprof, acc[2] * 1000 / nprof, acc[3] * 1000 / nprof, acc[4] * 1000 / nprof, acc[5] * 1000 / nprof, acc[6] * 1000 / nprof, acc[7] * 1000 / nprof);
     }
     paintMs.push_back ((float) ((nowSeconds() - t0) * 1000.0));

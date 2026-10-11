@@ -41,6 +41,7 @@ public:
     {
         juce::String animation = "economy"; // new installs: 12 fps (full is 24)
         bool reduceFlashes = false, reduceMotion = false;
+        juce::String landscape; // scene style id ("urban", ...); empty: neutral (no regional data is assumed)
     };
     static VisualPrefs visualPrefs();
     static void setVisualPrefs (const VisualPrefs&);

@@ -734,7 +734,9 @@ static void testGuiEditor()
         }
         CHECK (assets->decodedBytes() < 64u * 1024 * 1024, "decoded scene art %.1f MiB (budget 32-64)", assets->decodedBytes() / 1048576.0);
         CHECK (assets->vaneFrames() == 16 && assets->anemometerFrames() == 6 && assets->accentMask().isValid(), "sprites and masks present");
-        CHECK (assets->isLand (assets->marker ("MarkerCabinetCentre")) && ! assets->isLand ({ 5, 455 }), "island coverage for splashes");
+        CHECK (assets->artBox().contains (assets->marker ("MarkerCabinetCentre")) && assets->artBox().contains (assets->marker ("MarkerPodBottom"))
+                   && assets->artBox().getY() >= 0 && assets->artBox().getBottom() <= assets->viewportHeight(),
+               "the whole craft (envelope to pod) fits the scene viewport");
     }
 
     AtmosProcessor p;

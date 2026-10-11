@@ -29,18 +29,6 @@ SceneAssets::SceneAssets()
     if (auto* obj = manifest["markers"].getDynamicObject())
         for (auto& p : obj->getProperties())
             markers[p.name.toString()] = pt (p.value, vpW, vpH);
-    if (auto* poly = manifest["shore"]["island"].getArray())
-        for (auto& p : *poly)
-            shorePoly.add (pt (p, vpW, vpH));
-    if (auto* rocks = manifest["shore"]["rocks"].getArray())
-        for (auto& r : *rocks)
-        {
-            juce::Array<juce::Point<float>> poly;
-            if (auto* pts = r.getArray())
-                for (auto& p : *pts)
-                    poly.add (pt (p, vpW, vpH));
-            rockPolys.add (poly);
-        }
     if (auto* f = manifest["mechanisms"]["vane"]["frames"].getArray()) vaneDefs = *f;
     if (auto* f = manifest["mechanisms"]["anemometer"]["frames"].getArray()) anemoDefs = *f;
     vaneN = vaneDefs.size();
@@ -111,30 +99,6 @@ const SpriteFrame& SceneAssets::sprite (std::vector<SpriteFrame>& cache, const j
 
 const SpriteFrame& SceneAssets::vane (int frame) { return sprite (vaneSprites, vaneDefs, frame); }
 const SpriteFrame& SceneAssets::anemometer (int frame) { return sprite (anemoSprites, anemoDefs, frame); }
-
-bool SceneAssets::isLand (juce::Point<float> p)
-{
-    if (land.empty())
-    {
-        land.assign ((size_t) (landW * landH), 0);
-        // Any lighting anchor has the same alpha; use whichever is decoded (or decode noon)
-        auto img = lights.empty() ? lighting ("noon") : lights.begin()->second;
-        if (img.isValid())
-        {
-            const juce::Image::BitmapData bd (img, juce::Image::BitmapData::readOnly);
-            for (int y = 0; y < landH; ++y)
-                for (int x = 0; x < landW; ++x)
-                {
-                    const int px = (x * img.getWidth()) / landW, py = (y * img.getHeight()) / landH;
-                    land[(size_t) (y * landW + x)] = bd.getPixelColour (px, py).getAlpha() > 128 ? 1 : 0;
-                }
-        }
-    }
-    if (! art.contains (p)) return false;
-    const int x = juce::jlimit (0, landW - 1, (int) ((p.x - art.getX()) / art.getWidth() * landW));
-    const int y = juce::jlimit (0, landH - 1, (int) ((p.y - art.getY()) / art.getHeight() * landH));
-    return land[(size_t) (y * landW + x)] != 0;
-}
 
 size_t SceneAssets::decodedBytes() const
 {

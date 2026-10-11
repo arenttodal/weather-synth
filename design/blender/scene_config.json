@@ -6,7 +6,7 @@
     "logicalWidth": 1024,
     "logicalHeight": 460,
     "scale": 2,
-    "horizonY": 0.555
+    "horizonY": 0.8
   },
   "camera": {
     "yawDeg": 20,
@@ -39,7 +39,11 @@
     "metal": "#3A3F44",
     "dish": "#D9D6CE",
     "vane": "#D86A33",
-    "accent": "#F4F7FA"
+    "accent": "#F4F7FA",
+    "envelopeCream": "#E4D6BA",
+    "envelopeRed": "#C4603F",
+    "frame": "#2C3136",
+    "pod": "#E7DECB"
   },
   "cabinet": {
     "width": 4.6,
@@ -98,7 +102,7 @@
   },
   "roof": {
     "antennaHeight": 1.15,
-    "dishRadius": 0.3,
+    "dishRadius": 0.38,
     "mastHeight": 0.75
   },
   "cables": [
@@ -153,5 +157,60 @@
         ]
       ]
     }
-  ]
+  ],
+  "variant": "balloon",
+  "fit": {
+    "top": 0.03,
+    "bottom": 0.93,
+    "centerX": 0.5
+  },
+  "balloon": {
+    "segments": 14,
+    "profile": [
+      [
+        0.55,
+        0.0
+      ],
+      [
+        1.322,
+        0.35
+      ],
+      [
+        2.472,
+        1.0
+      ],
+      [
+        3.393,
+        1.9
+      ],
+      [
+        3.852,
+        2.85
+      ],
+      [
+        3.795,
+        3.7
+      ],
+      [
+        3.22,
+        4.45
+      ],
+      [
+        2.012,
+        4.95
+      ],
+      [
+        0.0,
+        5.12
+      ]
+    ],
+    "collarRadius": 0.62,
+    "collarHeight": 0.22,
+    "gap": 1.6,
+    "frameInset": -0.12,
+    "frameBar": 0.07,
+    "outrigger": 1.0,
+    "podSize": 0.42,
+    "podDrop": 0.95
+  }
 }

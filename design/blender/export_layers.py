@@ -3,10 +3,10 @@
     xvfb-run -a blender -b --factory-startup --python design/blender/export_layers.py -- [--out assets/weather_scene] [--only noon,night] [--fast]
 
 Outputs (all from the one fixed orthographic camera, so every layer is pixel-aligned):
-  lighting/<anchor>.png   island + cabinet, transparent background, cropped to the shared art box
+  lighting/<anchor>.png   the craft (balloon, frame, cabinet, pod) or the island, transparent, cropped to the shared art box
   masks/accent.png        upward-facing surfaces (snow, frost, ice accents), white with alpha
   mechanisms/vane_NN.png  wind vane at 16 headings, anemometer_NN.png at 6 rotation steps
-  manifest.json           sizes, crop box, pivots, marker positions, shoreline polygons, hashes
+  manifest.json           sizes, crop box, pivots, marker positions, shoreline polygons (island only), hashes
 Mechanisms are hidden in the lighting renders so they are never drawn twice.
 """
 import bpy
@@ -385,8 +385,13 @@ def main():
     # --- markers and shoreline
     for e in bpy.data.collections["WS_MARKERS"].objects:
         manifest["markers"][e.name[3:]] = project(e.matrix_world.translation)
-    island = [bpy.data.objects["WS_Island"], bpy.data.objects["WS_Boulders"]]
-    manifest["shore"] = {"island": waterline(island), "rocks": [waterline([o]) for o in objs("WS_Rock")]}
+    if B.BALLOON:
+        manifest["variant"] = "balloon"
+        manifest["shore"] = {"island": [], "rocks": []}
+    else:
+        manifest["variant"] = "island"
+        island = [bpy.data.objects["WS_Island"], bpy.data.objects["WS_Boulders"]]
+        manifest["shore"] = {"island": waterline(island), "rocks": [waterline([o]) for o in objs("WS_Rock")]}
     if os.path.exists(tmp):
         os.remove(tmp)
 
@@ -394,7 +399,7 @@ def main():
         old = json.load(open(mpath))
         for k in ("lighting", "masks", "mechanisms"):
             old[k].update(manifest[k])
-        for k in ("markers", "shore", "artBox", "pixelBox", "viewport", "blender"):
+        for k in ("markers", "shore", "artBox", "pixelBox", "viewport", "blender", "variant"):
             old[k] = manifest[k]
         manifest = old
     json.dump(manifest, open(mpath, "w"), indent=1)

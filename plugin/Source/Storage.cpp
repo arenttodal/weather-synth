@@ -167,6 +167,7 @@ Storage::VisualPrefs Storage::visualPrefs()
         if (a == "full" || a == "economy" || a == "still") p.animation = a;
         p.reduceFlashes = (bool) v["reduceFlashes"];
         p.reduceMotion = (bool) v["reduceMotion"];
+        p.landscape = v["landscape"].toString();
     }
     return p;
 }
@@ -178,6 +179,7 @@ void Storage::setVisualPrefs (const VisualPrefs& p)
     o->setProperty ("animation", p.animation);
     o->setProperty ("reduceFlashes", p.reduceFlashes);
     o->setProperty ("reduceMotion", p.reduceMotion);
+    o->setProperty ("landscape", p.landscape);
     s.getDynamicObject()->setProperty ("visual", juce::var (o));
     writeSettings (s);
 }

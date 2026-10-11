@@ -93,6 +93,7 @@ set(ATMOS_CORE_SOURCES
     Source/gui/SceneModel.cpp
     Source/gui/SceneAssets.cpp
     Source/gui/SceneView.cpp
+    Source/gui/Landscape.cpp
     Source/gui/Controls.cpp
     $<IF:$<PLATFORM_ID:Darwin>,${CMAKE_CURRENT_SOURCE_DIR}/Source/gui/Platform.mm,${CMAKE_CURRENT_SOURCE_DIR}/Source/gui/Platform.cpp>)
 

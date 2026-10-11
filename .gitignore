@@ -7,3 +7,4 @@ plugin/build-asan/
 plugin/build-tsan/
 plugin/tsan.log
 __pycache__/
+*.blend1

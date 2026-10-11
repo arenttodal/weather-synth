@@ -23,6 +23,17 @@ enum class Source
 };
 const char* sourceLabel (Source);
 
+// The backdrop under the balloon: a stylised region type, visual only. It never follows the
+// current weather (a hot day is not a desert) and never touches the sound. With no
+// trustworthy regional data in the product, the default is neutral; the user can pick a
+// style, and fixtures name one for demos.
+// The twelve atlas families plus a neutral horizon and open water (World Atlas addendum).
+enum class Landscape { neutral, city, temperate, boreal, tropical, grassland, savanna, desert, mediterranean, alpine, tundra, coast, wetland, openWater };
+constexpr int landscapeCount = 14;
+const char* landscapeId (Landscape);    // "open_water", stored in settings
+const char* landscapeTitle (Landscape); // "Green hills", shown in the menu
+bool parseLandscape (const std::string&, Landscape&);
+
 // The scene's view of one accepted Day. Unknown numbers are negative, never zero.
 struct Snapshot
 {
@@ -44,6 +55,7 @@ struct Snapshot
     uint32_t visualSeed = 1;
     // Fixture-only states the live provider cannot report
     bool fixtureHail = false, fixtureFrost = false;
+    Landscape landscape = Landscape::neutral; // visual only
 };
 
 // Structured reading of the condition codes

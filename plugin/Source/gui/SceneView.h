@@ -1,16 +1,17 @@
 #pragma once
-// The living island: a fixed-camera, layered 2.5D scene.
+// The floating observatory: the synth cabinet hanging under a low-poly balloon, over a
+// sparse regional backdrop. A fixed-camera, layered 2.5D scene.
 //
-// Draw order: sky and horizon tint; stars, sun and moon; distant lightning and tornado;
-// rear clouds; sea, wave marks and shore foam; island art (blended lighting anchors with
-// surface accents); wind vane and anemometer sprites; lamps and musical indicators;
-// precipitation; fog and dust veils. Controls and text are separate components, never
-// drawn into the scene.
+// Draw order: sky and horizon tint; stars, sun and moon; regional backdrop (cached with the
+// sky); distant lightning and tornado; clouds; the craft (blended lighting anchors with
+// surface accents) with its wind vane, anemometer, lamps and musical indicators, all moving
+// together with one barely visible bob; precipitation; fog and dust veils. Controls and text
+// are separate components, never drawn into the scene.
 //
-// Cost control: the background (sky + sun/moon + sea) and the island are cached at the
+// Cost control: the background (sky, sun/moon, backdrop) and the craft are cached at the
 // display's physical resolution and rebuilt only when their inputs change (at most 4 Hz
 // during a transition). Each frame draws the cached layers plus a bounded set of moving
-// shapes. The timer runs only while the editor is showing, at 30 / 15 / 0 fps.
+// shapes. The timer runs only while the editor is showing, at 24 / 12 / 0 fps.
 #include "Environment.h"
 #include "SceneAssets.h"
 #include "SceneModel.h"
@@ -42,6 +43,9 @@ public:
     void setSnapshot (const Snapshot&, bool immediate);
     void setTimeOverride (const TimeOfDay*); // fixtures only
     void setPrefs (const Prefs&);
+    // The user's scene style; nullptr follows the snapshot (neutral unless a fixture names one)
+    void setLandscapeOverride (const Landscape*);
+    Landscape landscape() const { return hasLandscapeOverride ? landscapeOverride : snap.landscape; }
     const Prefs& prefs() const { return prefs_; }
     std::function<Musical()> musicalSource;
 
@@ -74,12 +78,12 @@ private:
     juce::AffineTransform toComponent() const;
 
     void buildBackground (float physScale);
-    void buildIsland (float physScale);
+    void buildCraft (float physScale);
     void drawLightningAndTornado (juce::Graphics&);
     void drawClouds (juce::Graphics&);
-    void drawSea (juce::Graphics&);
     void drawMechanisms (juce::Graphics&);
     void drawLamps (juce::Graphics&);
+    juce::Point<float> craftOffset() const; // the whole craft's slow bob, in scene units
     void drawPrecipitation (juce::Graphics&);
     void drawVeils (juce::Graphics&);
 
@@ -92,9 +96,12 @@ private:
     double clock = 0; // monotonic animation time, seconds
 
     // Cached layers
-    juce::Image bgCache, islandCache;
-    juce::String bgKey, islandKey;
-    double lastBgBuild = -10, lastIslandBuild = -10;
+    juce::Image bgCache, craftCache;
+    juce::String bgKey, craftKey;
+    double lastBgBuild = -10, lastCraftBuild = -10;
+    bool hasLandscapeOverride = false;
+    Landscape landscapeOverride = Landscape::neutral;
+    double podPulse = 99; // seconds since a newly accepted snapshot (the pod's one pulse)
     float cachedScale = 0;
 
     // Clouds: faceted templates built from the visual seed
@@ -111,12 +118,6 @@ private:
     };
     std::vector<Cloud> clouds;
 
-    struct Wave
-    {
-        float x, y, len, phase;
-    };
-    std::vector<Wave> waves;
-
     struct Particle
     {
         float x, y, vx, vy, size, groundY, age;
@@ -124,13 +125,6 @@ private:
     };
     std::array<Particle, maxParticles> parts {};
     int activeCount = 0;
-    struct Splash
-    {
-        float x, y, age;
-    };
-    std::array<Splash, 48> splashes {};
-    int nextSplash = 0;
-
     juce::Random rng { 1 };
     double vaneAngle = 0, anemoPhase = 0;
     double nextBolt = 6, boltAge = 99;

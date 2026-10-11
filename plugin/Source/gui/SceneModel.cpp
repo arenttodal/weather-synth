@@ -149,6 +149,30 @@ const std::vector<Fixture>& fixtures()
         saved.source = Source::savedDay;
         saved.offline = true;
         v.push_back ({ "offline_saved", "Offline / saved day", saved });
+        // Scene-style demos (the climates sheet): a style is named here on purpose, it is
+        // never inferred from the weather
+        auto region = [&] (const char* name, const char* title, Landscape l, Snapshot s) {
+            s.landscape = l;
+            v.push_back ({ name, title, s });
+        };
+        region ("mumbai_monsoon", "City, monsoon", Landscape::city, base (28, { 501 }, 0.95, 0.6, 7));
+        region ("sahara_clear", "Desert, hot and clear", Landscape::desert, base (42, { 800 }, 0.05, 0, 4));
+        region ("trondheim_drizzle", "Coast, drizzle", Landscape::coast, base (6, { 300 }, 0.9, 0.2, 5));
+        auto alp = base (-8, { 601 }, 1.0, 0.5, 3);
+        region ("alpine_snow", "Alpine, snow", Landscape::alpine, alp);
+        region ("tropical_humid", "Tropical, humid", Landscape::tropical, base (31, { 801 }, 0.25, 0, 2));
+        region ("plains_sunny", "Grassland, sunny", Landscape::grassland, base (27, { 800 }, 0.15, 0, 5));
+        auto cityHaze = base (25, { 721 }, 0.3, 0, 2);
+        cityHaze.visibilityM = 3000;
+        region ("city_haze", "City, haze", Landscape::city, cityHaze);
+        region ("polar_twilight", "Tundra, clear", Landscape::tundra, base (-15, { 800 }, 0.1, 0, 4));
+        region ("coastal_storm", "Coast, wind and storm", Landscape::coast, base (8, { 201, 502 }, 1.0, 0.7, 18, 250));
+        region ("temperate_partly", "Temperate, partly cloudy", Landscape::temperate, base (14, { 802 }, 0.4, 0, 4));
+        region ("boreal_overcast", "Boreal, overcast", Landscape::boreal, base (3, { 804 }, 1.0, 0, 5));
+        region ("savanna_golden", "Savanna, clear", Landscape::savanna, base (29, { 800 }, 0.2, 0, 4));
+        region ("mediterranean_clear", "Mediterranean, clear", Landscape::mediterranean, base (24, { 801 }, 0.2, 0, 3));
+        region ("wetland_rain", "Wetland, rain", Landscape::wetland, base (12, { 500 }, 0.95, 0.35, 5));
+        region ("open_water_wind", "Open water, wind", Landscape::openWater, base (11, { 803 }, 0.7, 0, 14, 260));
         return v;
     }();
     return f;
