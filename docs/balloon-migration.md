@@ -24,3 +24,9 @@ Brief: "Weather Synth — floating observatory GUI migration", 11 October 2026. 
 - The antenna/dish and pod are narrative. The header keeps saying where data comes from (LIVE / STALE / SAVED DAY / ESTIMATED); nothing says "measured by the pod".
 - Landscape never follows current weather (a hot day is not a desert). Without a data source, neutral is the honest default.
 - Proportions follow the hero image within the existing 3:2 layout (header and macro band unchanged); the envelope is never cropped.
+
+## Status
+
+- Done: craft, export, renderer, twelve landscape families plus neutral and open water (World Atlas addendum), geography-only resolver, Scene style override, region fixtures, Explore Locations browser (`world-atlas.md`). Screenshots: `gui/balloon-families-noon.png`, `gui/balloon-families-dusk.png`, `gui/explore-locations.png`.
+- The art is 3.8 MB (was 8.7 MB). The ground band is 20 % of the scene (horizon at 0.80).
+- Pending: Apple Silicon benchmark of the new scene (CI), full atlas regeneration in `docs/gui/atlas/`, art sign-off.

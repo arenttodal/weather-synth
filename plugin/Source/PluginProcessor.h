@@ -51,6 +51,31 @@ public:
     atmos::Climate currentClimate() const { return currentDay().climate(); }
     atmos::CoreSound currentSound() const;
     atmos::Patch currentPatch() const; // what the engine is playing (core sound + weather + macros)
+
+    // ---- Location browser (message thread). Candidates never touch the playing instrument.
+    // The Day as it would be loaded: a Day that has been heard keeps its core sound, a new one
+    // draws it here, exactly as loading would (the same function serves both).
+    atmos::Day prepareDay (const atmos::Day&) const;
+    // The patch a prepared Day would play with the current macros
+    atmos::Patch patchFor (const atmos::Day& prepared) const;
+    // Load: the exact auditioned Day becomes the instrument's Day and the place's sky
+    // becomes "today" for later refreshes. Stops any audition first.
+    void commitLocation (const atmos::Day& prepared, bool live);
+
+    // Audition: a short pre-rendered phrase mixed into the output. The buffer is rendered off
+    // the audio thread; processBlock only reads it. Never saved, never in offline renders.
+    struct AuditionClip
+    {
+        juce::AudioBuffer<float> audio; // stereo
+        double sampleRate = 0;
+    };
+    void playAudition (std::shared_ptr<const AuditionClip>);
+    void stopAudition();
+    void tidyAuditions() { collectAuditions(); } // frees finished clips (message thread)
+    bool auditionPlaying() const { return auditionInUse.load() != nullptr; }
+    float auditionProgress() const { return auditionProgress_.load (std::memory_order_relaxed); }
+    bool auditionBlockedByOfflineRender() const { return auditionOffline.load (std::memory_order_relaxed); }
+    double hostSampleRate() const { return hostRate.load (std::memory_order_relaxed); }
     Status status() const { return statusNow; }
     juce::String statusMessage() const { return statusText; }
 
@@ -106,6 +131,22 @@ private:
     juce::AudioBuffer<float> scratch;
     std::atomic<float> activity { 0.0f };
     float activityEnv = 0;
+
+    // Audition hand-off (hazard-pointer style): the message thread publishes 'auditionNext'
+    // and keeps ownership; the audio thread marks what it reads in 'auditionInUse', so a clip
+    // is freed only when neither points at it
+    void mixAudition (juce::AudioBuffer<float>&, int n);
+    void collectAuditions();
+    std::atomic<const AuditionClip*> auditionNext { nullptr }, auditionInUse { nullptr };
+    std::atomic<int> auditionSerial { 0 };
+    std::atomic<float> auditionProgress_ { 0.0f };
+    std::atomic<bool> auditionOffline { false };
+    std::atomic<double> hostRate { 0.0 };
+    std::vector<std::shared_ptr<const AuditionClip>> auditionKeep; // message thread
+    // audio thread only
+    const AuditionClip* auditionCur = nullptr;
+    int auditionSeen = 0, auditionPos = 0;
+    float auditionGain = 0, auditionTarget = 0;
 
     std::atomic<float>* pTone = nullptr;
     std::atomic<float>* pBloom = nullptr;

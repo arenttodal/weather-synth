@@ -91,7 +91,7 @@ public:
     void resized() override;
     void setUiScale (float s);
     IconButton refresh { IconButton::Icon::refresh, "Refresh sky", "Read today's sky again (the sound changes to today's Day)" };
-    IconButton place { IconButton::Icon::place, "Place", "Choose where your sky comes from" };
+    IconButton place { IconButton::Icon::place, "Explore locations", "Explore locations: search or pin a place, hear it, then load it" };
     IconButton keep { IconButton::Icon::keep, "Keep this Day", "Save this Day, with its sound, to your kept Days" };
     IconButton days { IconButton::Icon::days, "Kept Days", "Open a Day you kept" };
     IconButton settings { IconButton::Icon::settings, "Display settings", "Animation and accessibility settings" };

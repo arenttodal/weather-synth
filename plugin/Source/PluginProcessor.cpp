@@ -69,6 +69,11 @@ void AtmosProcessor::prepareToPlay (double sr, int block)
     core.prepare (sr, juce::jmax (block, 32));
     scratch.setSize (2, juce::jmax (block, 512));
     audioVersion = -1;
+    // Not processing now: a clip rendered for another rate must not play
+    auditionCur = nullptr;
+    auditionInUse.store (nullptr);
+    auditionSeen = auditionSerial.load();
+    hostRate.store (sr);
 }
 
 Macros AtmosProcessor::readMacros() const
@@ -178,6 +183,7 @@ void AtmosProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
         handleMidi (meta.getMessage());
     }
     if (pos < n) render (pos, n - pos);
+    mixAudition (buffer, n);
 
     // Activity for the editor: block peak with a ~0.4 s release, one atomic store per block
     const float peak = n > 0 && chans > 0 ? buffer.getMagnitude (0, 0, n) : 0.0f;
@@ -186,21 +192,133 @@ void AtmosProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
     activity.store (activityEnv, std::memory_order_relaxed);
 }
 
-void AtmosProcessor::applyDay (const Day& in)
+Day AtmosProcessor::prepareDay (const Day& in) const
 {
     Day d = in;
-    CoreSound s;
     bool ok = false;
     // Sounds made for an older engine don't carry over; such a Day draws a fresh one
-    if (d.sound.isObject() && d.mappingVersion >= kMappingVersion) s = soundFromVar (d.sound, ok);
+    if (d.sound.isObject() && d.mappingVersion >= kMappingVersion) soundFromVar (d.sound, ok);
     if (! ok)
     {
         // A new Day: today's lottery draws a core sound from the bible, and the Day keeps it
         const int i = chooseCoreSound (bible, d.climate(), d.precip);
-        s = bible[(size_t) juce::jmax (0, i)];
-        d.sound = soundToVar (s);
+        d.sound = soundToVar (bible[(size_t) juce::jmax (0, i)]);
         d.mappingVersion = kMappingVersion;
     }
+    return d;
+}
+
+Patch AtmosProcessor::patchFor (const Day& prepared) const
+{
+    bool ok = false;
+    const auto s = soundFromVar (prepared.sound, ok);
+    return resolvePatch (ok ? s : fallbackSound(), prepared.climate(), prepared.precip, readMacros());
+}
+
+void AtmosProcessor::commitLocation (const Day& prepared, bool live)
+{
+    stopAudition();
+    previewing = false;
+    ++dayGeneration; // replies still in flight for the old place can't overwrite this
+    Storage::Home h;
+    h.name = prepared.placeName;
+    h.lat = prepared.lat;
+    h.lon = prepared.lon;
+    h.set = true;
+    Storage::setHome (h);
+    if (live) Storage::setLastSky (prepared);
+    applyDay (prepared);
+    setStatus (live ? Status::live : Status::estimate,
+               live ? ATMOS_U8 ("Live sky · ") + prepared.placeName : ATMOS_U8 ("Estimated sky · ") + prepared.placeName + ATMOS_U8 (" (offline)"));
+}
+
+// ---------------------------------------------------------------- audition
+void AtmosProcessor::playAudition (std::shared_ptr<const AuditionClip> clip)
+{
+    if (clip == nullptr) return stopAudition();
+    auditionKeep.push_back (clip);
+    auditionNext.store (clip.get());
+    auditionSerial.fetch_add (1);
+    collectAuditions();
+}
+
+void AtmosProcessor::stopAudition()
+{
+    auditionNext.store (nullptr);
+    auditionSerial.fetch_add (1);
+    collectAuditions();
+}
+
+void AtmosProcessor::collectAuditions()
+{
+    const auto* next = auditionNext.load();
+    const auto* used = auditionInUse.load();
+    auditionKeep.erase (std::remove_if (auditionKeep.begin(), auditionKeep.end(), [&] (const auto& c) { return c.get() != next && c.get() != used; }),
+                        auditionKeep.end());
+}
+
+void AtmosProcessor::mixAudition (juce::AudioBuffer<float>& buffer, int n)
+{
+    const int serial = auditionSerial.load();
+    if (serial != auditionSeen)
+    {
+        const auto* next = auditionNext.load();
+        auditionInUse.store (next != nullptr ? next : auditionCur); // keep the old one alive while it fades
+        if (auditionNext.load() != next) return;                     // republished meanwhile: next block
+        auditionSeen = serial;
+        if (next != nullptr)
+        {
+            auditionCur = next;
+            auditionPos = 0;
+            auditionGain = 0;
+            auditionTarget = 1;
+        }
+        else
+            auditionTarget = 0; // stop: a short fade
+    }
+    if (auditionCur == nullptr) return;
+    // Hosts rendering offline never get the audition in their bounce
+    const double rate = hostRate.load (std::memory_order_relaxed);
+    if (isNonRealtime() || auditionCur->sampleRate != rate)
+    {
+        auditionOffline.store (isNonRealtime(), std::memory_order_relaxed);
+        auditionCur = nullptr;
+        auditionInUse.store (nullptr);
+        return;
+    }
+    auditionOffline.store (false, std::memory_order_relaxed);
+    const auto& a = auditionCur->audio;
+    const int len = a.getNumSamples();
+    const int chans = buffer.getNumChannels();
+    const float level = 0.5f;                                       // headroom next to the instrument
+    const float step = 1.0f / (0.012f * (float) rate + 1); // ~12 ms fades
+    for (int i = 0; i < n && auditionPos < len; ++i, ++auditionPos)
+    {
+        auditionGain += juce::jlimit (-step, step, auditionTarget - auditionGain);
+        const float l = a.getSample (0, auditionPos) * auditionGain * level, r = a.getSample (1, auditionPos) * auditionGain * level;
+        if (chans >= 2)
+        {
+            buffer.addSample (0, i, l);
+            buffer.addSample (1, i, r);
+        }
+        else if (chans == 1)
+            buffer.addSample (0, i, 0.5f * (l + r));
+        if (auditionTarget == 0 && auditionGain <= 0) auditionPos = len;
+    }
+    auditionProgress_.store (len > 0 ? (float) auditionPos / (float) len : 1.0f, std::memory_order_relaxed);
+    if (auditionPos >= len)
+    {
+        auditionCur = nullptr;
+        auditionInUse.store (nullptr);
+    }
+}
+
+void AtmosProcessor::applyDay (const Day& in)
+{
+    const Day d = prepareDay (in);
+    bool ok = false;
+    CoreSound s = soundFromVar (d.sound, ok);
+    if (! ok) s = fallbackSound();
     {
         // Hosts may save the project from another thread at any moment
         const juce::ScopedLock sl (dayLock);

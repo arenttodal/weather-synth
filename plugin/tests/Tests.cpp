@@ -12,6 +12,8 @@
 #include "../Source/Storage.h"
 #include "../Source/WeatherClient.h"
 #include "../Source/gui/SceneModel.h"
+#include "../Source/gui/LandscapeResolver.h"
+#include "../Source/Audition.h"
 #include "Sky.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <cmath>
@@ -575,6 +577,18 @@ static void snapshot (const juce::File& out)
         juce::FileOutputStream os2 (out.getSiblingFile (out.getFileNameWithoutExtension() + "-globe.png"));
         os2.setPosition (0);
         png.writeImageToStream (img2, os2);
+        e->toggleGlobe();
+        // The location browser with a resolved candidate (offline estimate, so no network)
+        Storage::setRelayUrl ("http://127.0.0.1:9");
+        e->showExplore();
+        e->exploreBrowser().select (19.08, 72.88, "Mumbai, IN", true);
+        for (int t = 0; t < 9000 && e->exploreBrowser().candidate().state != ExploreBrowser::State::ready; t += 20)
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+        auto img3 = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+        juce::FileOutputStream os3 (out.getSiblingFile (out.getFileNameWithoutExtension() + "-explore.png"));
+        os3.setPosition (0);
+        png.writeImageToStream (img3, os3);
+        e->exploreBrowser().close();
     }
     std::printf ("Editor snapshot written to %s\n", out.getFullPathName().toRawUTF8());
 }
@@ -719,6 +733,172 @@ static void testGuiEnvironment()
     const auto est = G::makeSnapshot (d, G::FeedStatus::estimate, true, now);
     CHECK (est.source == G::Source::estimated && est.offline, "network failure: OFFLINE, ESTIMATED (never LIVE)");
     CHECK (juce::String (G::sourceLabel (G::Source::live)) == "LIVE" && juce::String (G::sourceLabel (G::Source::savedDay)) == "SAVED DAY", "label text");
+}
+
+
+// ---------------------------------------------------------------- Explore Locations
+static void testExplore()
+{
+    std::printf ("Explore Locations: candidates, audition, Load, atlas resolution\n");
+    namespace G = atmos::gui;
+    // Coordinates in text
+    double la = 0, lo = 0;
+    CHECK (ExploreBrowser::parseCoordinates ("59.91, 10.75", la, lo) && std::abs (la - 59.91) < 1e-9 && std::abs (lo - 10.75) < 1e-9, "coordinates: decimal pair");
+    CHECK (ExploreBrowser::parseCoordinates ("33.9 S 18.4 E", la, lo) && la < -33 && lo > 18, "coordinates: hemispheres");
+    CHECK (ExploreBrowser::parseCoordinates ("72.88E, 19.08N", la, lo) && std::abs (la - 19.08) < 1e-9 && std::abs (lo - 72.88) < 1e-9, "coordinates: lon first with letters");
+    CHECK (! ExploreBrowser::parseCoordinates ("Paris", la, lo) && ! ExploreBrowser::parseCoordinates ("95, 10", la, lo), "coordinates: names and out-of-range rejected");
+
+    // Land outline and atlas resolution: geography only
+    CHECK (atmos::Globe::isLandAt (59.91, 10.75) && atmos::Globe::isLandAt (-80, 0) && atmos::Globe::isLandAt (0, 20) && atmos::Globe::isLandAt (66, 175),
+           "land: Oslo, Antarctica, Congo, Chukotka by the dateline");
+    CHECK (! atmos::Globe::isLandAt (0, -30) && ! atmos::Globe::isLandAt (30, -40) && ! atmos::Globe::isLandAt (-40, -150), "ocean: Atlantic, Pacific");
+    CHECK (G::resolveLandscape (19.08, 72.88).profile == G::Landscape::city && G::resolveLandscape (25.2, 55.27).profile == G::Landscape::desert, "curated: Mumbai city, Dubai desert");
+    const auto sea = G::resolveLandscape (30, -40);
+    CHECK (sea.profile == G::Landscape::openWater && std::string (sea.source) == "ocean", "mid-Atlantic resolves to open water");
+    const auto inland = G::resolveLandscape (51.0, 20.0);
+    CHECK (inland.profile == G::Landscape::neutral && inland.confidence == 0, "an uncatalogued inland place stays neutral (no guessing)");
+    CHECK (G::resolveLandscape (59.0, 4.9).profile != G::Landscape::openWater, "near a coast never claims open water");
+
+    // Globe picking: click -> lat/lon -> pin agree, including across the dateline and near poles
+    {
+        atmos::Globe gl;
+        gl.setSize (400, 400);
+        int agree = 0, total = 0;
+        for (double c0 : { 0.0, 179.0, -179.0 })
+            for (double lat0 : { 0.0, 60.0, -85.0 })
+            {
+                gl.centreOn (lat0, c0);
+                for (int k = 0; k < 40; ++k)
+                {
+                    juce::Point<float> sp { 200 + 150 * std::cos (k * 0.7f) * (k / 40.0f), 200 + 150 * std::sin (k * 0.7f) * (k / 40.0f) };
+                    double lat, lon;
+                    if (! gl.unproject (sp, lat, lon)) continue;
+                    juce::Point<float> back;
+                    ++total;
+                    if (gl.project (lat, lon, back) && back.getDistanceFrom (sp) < 0.05f && lon >= -180 && lon <= 180) ++agree;
+                }
+            }
+        CHECK (total > 300 && agree == total, "globe click and pin agree (%d of %d, dateline and poles)", agree, total);
+    }
+
+    // The phrase: deterministic, clean, bounded
+    {
+        AtmosProcessor ref;
+        const auto patch = ref.currentPatch();
+        auto a = atmos::AuditionRenderer::renderPhrase (patch, 48000), b = atmos::AuditionRenderer::renderPhrase (patch, 48000);
+        bool same = a->audio.getNumSamples() == b->audio.getNumSamples(), finite = true;
+        for (int c = 0; c < 2; ++c)
+            for (int i = 0; i < a->audio.getNumSamples(); ++i)
+            {
+                same &= a->audio.getSample (c, i) == b->audio.getSample (c, i);
+                finite &= std::isfinite (a->audio.getSample (c, i));
+            }
+        const float peak = a->audio.getMagnitude (0, a->audio.getNumSamples());
+        CHECK (same && finite && peak > 0.01f && peak < 1.0f, "audition phrase deterministic and clean (peak %.2f)", peak);
+        CHECK (a->audio.getNumSamples() == 144000 && a->audio.getMagnitude (a->audio.getNumSamples() - 64, 64) < 0.01f, "3 s at 48 kHz, ends faded");
+    }
+
+    Storage::setRelayUrl ("http://127.0.0.1:9"); // offline: candidates are estimates, quickly
+    AtmosProcessor p;
+    p.prepareToPlay (48000, 256);
+    std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
+    auto* e = dynamic_cast<AtmosEditor*> (ed.get());
+    auto& b = e->exploreBrowser();
+    auto mm = juce::MessageManager::getInstance();
+    auto waitFor = [&] (std::function<bool()> cond, int ms) {
+        for (int t = 0; t < ms && ! cond(); t += 20)
+            mm->runDispatchLoopUntil (20);
+        return cond();
+    };
+    // Let the instrument's own start-up reading settle first (it is not the browser's doing)
+    waitFor ([&] { return p.status() != AtmosProcessor::Status::dealing; }, 9000);
+    mm->runDispatchLoopUntil (200);
+    juce::MemoryBlock before;
+    p.getStateInformation (before);
+    const auto day0 = p.currentDay();
+    const auto header0 = e->headerBar().getDescription();
+
+    b.open();
+    CHECK (b.isVisible(), "browser opens");
+    b.select (48.86, 2.35, "Paris, FR", true);
+    b.select (19.08, 72.88, "Mumbai, IN", true); // A then B: only B may land
+    CHECK (waitFor ([&] { return b.candidate().state == ExploreBrowser::State::ready; }, 9000), "candidate resolves (offline estimate)");
+    mm->runDispatchLoopUntil (300);
+    CHECK (std::abs (b.candidate().lat - 19.08) < 1e-9 && b.candidate().day.placeName == "Mumbai, IN" && ! b.candidate().live,
+           "rapid A/B: the latest pin wins, labelled as an estimate");
+    CHECK (b.candidate().thumbnail.isValid() && b.candidate().thumbnail.getWidth() >= 320, "static thumbnail, at least 320 px");
+    CHECK (b.candidate().day.lat == 19.08 && b.candidate().day.lon == 72.88, "exact chosen coordinates kept");
+
+    auto committedUnchanged = [&] (const char* what) {
+        const auto d = p.currentDay();
+        juce::MemoryBlock now;
+        p.getStateInformation (now);
+        CHECK (d.lat == day0.lat && d.lon == day0.lon && d.observedAt == day0.observedAt && juce::JSON::toString (d.sound) == juce::JSON::toString (day0.sound)
+                   && now == before && e->headerBar().getDescription() == header0,
+               "%s leaves the instrument, saved state and header untouched", what);
+    };
+    committedUnchanged ("selecting a candidate");
+
+    // Preview: an isolated render, played through the audition slot only
+    b.preview();
+    CHECK (b.previewPreparing(), "preview prepares off the audio thread");
+    CHECK (waitFor ([&] { return b.candidate().clip != nullptr; }, 8000), "preview rendered");
+    juce::AudioBuffer<float> buf (2, 256);
+    juce::MidiBuffer midi;
+    float heard = 0;
+    for (int i = 0; i < 60; ++i)
+    {
+        p.processBlock (buf, midi);
+        heard = juce::jmax (heard, buf.getMagnitude (0, 256));
+    }
+    CHECK (heard > 0.005f && p.auditionPlaying(), "the audition is heard through the host output (peak %.3f)", heard);
+    committedUnchanged ("previewing");
+    juce::MemoryBlock during;
+    p.getStateInformation (during);
+    CHECK (during == before, "saving during a preview saves the committed instrument");
+    // Offline bounce: never contains the audition
+    p.setNonRealtime (true);
+    p.processBlock (buf, midi);
+    CHECK (! p.auditionPlaying() && p.auditionBlockedByOfflineRender(), "offline rendering drops the audition");
+    p.setNonRealtime (false);
+    b.preview(); // cached clip: plays again at once
+    for (int i = 0; i < 4; ++i)
+        p.processBlock (buf, midi);
+    CHECK (p.auditionPlaying(), "a cached preview replays without re-rendering");
+    b.stopPreview();
+    for (int i = 0; i < 10; ++i)
+        p.processBlock (buf, midi);
+    CHECK (! p.auditionPlaying(), "Stop fades the audition out");
+
+    // Cancel: candidate gone, instrument as it was
+    b.close();
+    CHECK (! b.isVisible() && b.candidate().state == ExploreBrowser::State::none, "Cancel drops the candidate");
+    committedUnchanged ("Cancel");
+
+    // A restore while a candidate request is pending: the candidate never writes to the instrument
+    b.open();
+    b.select (35.68, 139.69, "Tokyo, JP", true);
+    p.setStateInformation (before.getData(), (int) before.getSize());
+    CHECK (waitFor ([&] { return b.candidate().state == ExploreBrowser::State::ready; }, 9000), "candidate resolves after a restore");
+    CHECK (p.currentDay().lat == day0.lat && p.currentDay().observedAt == day0.observedAt, "a pending candidate cannot overwrite a restored project");
+
+    // Load: exactly the shown and auditioned Day, and the patch it promised
+    const auto shown = b.candidate().day;
+    const auto promised = p.patchFor (shown);
+    CHECK (b.load(), "Load commits a ready candidate");
+    const auto loaded = p.currentDay();
+    const auto playing = p.currentPatch();
+    bool samePatch = true;
+    for (int i = 0; i < atmos::kNumParams; ++i)
+        samePatch &= std::abs (playing[i] - promised[i]) < 1e-9;
+    CHECK (loaded.lat == 35.68 && loaded.observedAt == shown.observedAt && juce::JSON::toString (loaded.sound) == juce::JSON::toString (shown.sound) && samePatch,
+           "Load applies the auditioned snapshot, sound and patch");
+    CHECK (! b.isVisible() && Storage::home().set && Storage::home().name == "Tokyo, JP", "Load closes the browser and makes the place today's sky");
+    e->applyBenchOptions ("live", {});
+    CHECK (e->headerBar().getDescription().contains ("Tokyo"), "the header shows the loaded place only after Load");
+    Storage::setHome ({});
+    b.close();
+    ed.reset();
 }
 
 static void testGuiEditor()
@@ -913,6 +1093,7 @@ int main (int argc, char** argv)
     testGlobe();
     testGuiEnvironment();
     testGuiEditor();
+    testExplore();
     if (argc > 2 && juce::String (argv[1]) == "--snapshot") snapshot (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
     std::printf ("\n%d checks, %d failed\n", checks, failures);
     return failures == 0 ? 0 : 1;

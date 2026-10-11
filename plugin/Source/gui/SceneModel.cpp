@@ -1,4 +1,5 @@
 #include "SceneModel.h"
+#include "LandscapeResolver.h"
 #include <cmath>
 
 namespace atmos::gui
@@ -9,6 +10,7 @@ Snapshot makeSnapshot (const Day& d, FeedStatus st, bool dayIsCurrent, int64_t n
     s.place = d.placeName.isNotEmpty() ? d.placeName.toStdString() : (juce::String (d.lat, 2) + ", " + juce::String (d.lon, 2)).toStdString();
     s.lat = std::isfinite (d.lat) ? juce::jlimit (-90.0, 90.0, d.lat) : 0.0;
     s.lon = std::isfinite (d.lon) ? juce::jlimit (-180.0, 180.0, d.lon) : 0.0;
+    s.landscape = resolveLandscape (s.lat, s.lon).profile; // geography only, never the weather
     s.observedAt = d.observedAt > 0 ? d.observedAt : now;
     s.utcOffset = d.utcOffset;
     s.offsetKnown = d.utcOffsetKnown;

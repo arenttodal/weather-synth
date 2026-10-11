@@ -89,11 +89,14 @@ set(ATMOS_CORE_SOURCES
     Source/Globe.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
+    Source/ExploreBrowser.cpp
+    Source/Audition.cpp
     Source/gui/Environment.cpp
     Source/gui/SceneModel.cpp
     Source/gui/SceneAssets.cpp
     Source/gui/SceneView.cpp
     Source/gui/Landscape.cpp
+    Source/gui/LandscapeResolver.cpp
     Source/gui/Controls.cpp
     $<IF:$<PLATFORM_ID:Darwin>,${CMAKE_CURRENT_SOURCE_DIR}/Source/gui/Platform.mm,${CMAKE_CURRENT_SOURCE_DIR}/Source/gui/Platform.cpp>)
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "Globe.h"
 #include "PluginProcessor.h"
+#include "ExploreBrowser.h"
 #include "gui/Controls.h"
 #include "gui/SceneView.h"
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -56,6 +57,8 @@ public:
     atmos::gui::SceneView& sceneView() { return scene; }
     juce::OwnedArray<atmos::gui::MacroTrack>& macroTracks() { return tracks; }
     atmos::gui::HeaderBar& headerBar() { return header; }
+    ExploreBrowser& exploreBrowser() { return explore; }
+    void showExplore();
 
     static constexpr int logicalWidth = 1024, logicalHeight = 682, headerH = 44, sceneH = 460;
 
@@ -81,6 +84,9 @@ private:
     juce::uint32 toastUntil = 0;
     atmos::InlinePanel panel;
     std::unique_ptr<juce::TooltipWindow> tooltips;
+    ExploreBrowser explore { proc };
+    atmos::gui::Landscape styleChoice = atmos::gui::Landscape::neutral;
+    bool hasStyleChoice = false;
 
     juce::String sceneKey;
     bool fixtureMode = false;

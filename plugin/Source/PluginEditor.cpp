@@ -112,7 +112,10 @@ AtmosEditor::AtmosEditor (AtmosProcessor& p) : AudioProcessorEditor (p), proc (p
     addAndMakeVisible (header);
     addAndMakeVisible (scene);
     header.refresh.onClick = [this] { proc.dealToday(); };
-    header.place.onClick = [this] { showPlacePanel(); };
+    header.place.onClick = [this] { showExplore(); };
+    addChildComponent (explore);
+    explore.landscapeOverride = [this]() -> const G::Landscape* { return hasStyleChoice ? &styleChoice : nullptr; };
+    explore.onClosed = [this] { header.place.grabKeyboardFocus(); };
     header.keep.onClick = [this] { showKeepPanel(); };
     header.days.onClick = [this] { showDaysMenu(); };
     header.settings.onClick = [this] { showSettingsMenu(); };
@@ -228,6 +231,14 @@ void AtmosEditor::resized()
     panel.setBounds (getLocalBounds());
     globeLayer.setBounds (getLocalBounds());
     layoutGlobe();
+    explore.setBounds (R (40, headerH + 8, logicalWidth - 80, logicalHeight - headerH - 8 - 64));
+    explore.setUiScale (s);
+}
+
+void AtmosEditor::showExplore()
+{
+    // The instrument keeps playing and the header keeps showing what is loaded
+    explore.open();
 }
 
 void AtmosEditor::layoutGlobe()
@@ -406,6 +417,8 @@ void AtmosEditor::applyVisualPrefs()
     G::Landscape l;
     const bool chosen = G::parseLandscape (v.landscape.toStdString(), l) && l != G::Landscape::neutral;
     scene.setLandscapeOverride (chosen ? &l : nullptr);
+    hasStyleChoice = chosen;
+    styleChoice = l;
 }
 
 void AtmosEditor::showSettingsMenu()

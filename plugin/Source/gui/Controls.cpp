@@ -183,7 +183,13 @@ void LookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int w, int 
 void LookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&, bool over, bool down)
 {
     auto r = b.getLocalBounds().toFloat().reduced (0.5f);
-    g.setColour (down ? Theme::focus.withAlpha (0.25f) : over ? Theme::line : Theme::band);
+    if (b.isColourSpecified (juce::TextButton::buttonColourId)) // the location browser's orange actions
+    {
+        const auto own = b.findColour (juce::TextButton::buttonColourId);
+        g.setColour (! b.isEnabled() ? own.withSaturation (0.15f).withMultipliedBrightness (0.45f) : own.brighter (down ? 0.2f : over ? 0.1f : 0.0f));
+    }
+    else
+        g.setColour (down ? Theme::focus.withAlpha (0.25f) : over ? Theme::line : Theme::band);
     g.fillRoundedRectangle (r, 4);
     g.setColour (b.hasKeyboardFocus (true) ? Theme::focus : Theme::line);
     g.drawRoundedRectangle (r, 4, 1);
