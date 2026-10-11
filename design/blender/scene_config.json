@@ -9,27 +9,28 @@
     "horizonY": 0.8
   },
   "camera": {
-    "yawDeg": 14,
-    "pitchDeg": 4,
+    "yawDeg": 26,
+    "pitchDeg": 0,
     "orthoScale": 15.2,
     "target": [
       0.25,
       0,
-      1.55
+      2.3
     ],
     "shiftX": 0.0,
-    "shiftY": 0.0
+    "shiftY": 0.0,
+    "lensMM": 50
   },
   "palette": {
-    "cabinetFace": "#242B31",
+    "cabinetFace": "#262B30",
     "cabinetFaceDeep": "#1A2025",
     "cream": "#DDCFB2",
     "creamShade": "#BDB096",
     "trim": "#C76F35",
     "cableCream": "#E3D7BD",
     "fader": "#D9CDB3",
-    "socket": "#9EA3A2",
-    "speaker": "#151A1E",
+    "socket": "#E2D6BC",
+    "speaker": "#111417",
     "lamp": "#F0AE4C",
     "doorDark": "#0F1316",
     "grass": "#7F9A52",
@@ -40,15 +41,19 @@
     "dish": "#D9D6CE",
     "vane": "#D86A33",
     "accent": "#F4F7FA",
-    "envelopeCream": "#E4D6BA",
-    "envelopeRed": "#C4603F",
+    "envelopeCream": "#EDD5B0",
+    "envelopeRed": "#C95E3A",
     "frame": "#2C3136",
-    "pod": "#E7DECB"
+    "pod": "#E7DECB",
+    "burnerLamp": "#FF9A2E",
+    "socketGrey": "#8E9396",
+    "faderSlot": "#0B0E10",
+    "grille": "#30353A"
   },
   "cabinet": {
     "width": 4.6,
-    "height": 2.75,
-    "depth": 1.15,
+    "height": 2.55,
+    "depth": 1.4,
     "cheek": 0.2,
     "cheekRise": 0.12,
     "faceInset": 0.06,
@@ -110,16 +115,16 @@
       "color": "trim",
       "points": [
         [
-          -0.05,
-          2.35
+          -0.29,
+          1.98
         ],
         [
-          0.35,
-          1.95
+          0.25,
+          1.58
         ],
         [
-          0.95,
-          1.85
+          0.88,
+          1.52
         ]
       ]
     },
@@ -127,16 +132,16 @@
       "color": "cableCream",
       "points": [
         [
-          0.45,
-          1.85
+          0.42,
+          1.35
         ],
         [
-          0.6,
-          1.45
+          0.47,
+          0.95
         ],
         [
-          0.85,
-          1.25
+          0.62,
+          0.52
         ]
       ]
     },
@@ -144,72 +149,84 @@
       "color": "trim",
       "points": [
         [
+          1.22,
+          1.3
+        ],
+        [
           0.95,
-          1.25
+          0.85
         ],
         [
-          1.25,
-          1.5
-        ],
-        [
-          1.55,
-          1.85
+          0.67,
+          0.52
         ]
       ]
     }
   ],
   "variant": "balloon",
   "fit": {
-    "top": -0.24,
-    "bottom": 0.9,
+    "top": -0.26,
+    "bottom": 0.913,
     "centerX": 0.5
   },
   "balloon": {
     "segments": 16,
     "profile": [
       [
-        0.55,
-        0.0
+        1.0,
+        0
       ],
       [
-        1.454,
-        0.35
+        1.798,
+        0.18
       ],
       [
-        2.719,
-        1.0
+        2.568,
+        0.42
       ],
       [
-        3.732,
-        1.9
+        3.082,
+        0.78
       ],
       [
-        4.237,
-        2.85
+        3.698,
+        1.38
       ],
       [
-        4.175,
-        3.7
+        3.955,
+        2.0
       ],
       [
-        3.542,
-        4.45
+        4.037,
+        2.6
       ],
       [
-        2.213,
-        4.95
+        3.986,
+        3.3
+      ],
+      [
+        3.595,
+        4.1
+      ],
+      [
+        2.671,
+        4.85
+      ],
+      [
+        1.335,
+        5.25
       ],
       [
         0.0,
-        5.12
+        5.35
       ]
     ],
-    "collarRadius": 0.62,
-    "collarHeight": 0.22,
-    "gap": 1.35,
+    "collarRadius": 0.94,
+    "collarHeight": 0.18,
+    "gap": 1.1,
     "frameInset": -0.12,
     "frameBar": 0.07,
-    "outrigger": 1.0,
+    "outrigger": 0.55,
     "podSize": 0.5,
     "podDrop": 0.55,
     "cradle": false

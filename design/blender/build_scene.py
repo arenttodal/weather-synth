@@ -234,7 +234,8 @@ def build_cabinet(coll, mech, markers):
 
     # Face: module frames (orange trim), faders, sockets, speakers, labels
     fz = front - 0.045  # just proud of the face
-    rows = [(0.12, 0.9), (1.0, 1.78), (1.88, 2.62)]
+    k_ = H / 2.75  # the face layout was drawn for a 2.75-tall cabinet
+    rows = [(0.12 * k_, 0.9 * k_), (1.0 * k_, 1.78 * k_), (1.88 * k_, 2.62 * k_)]
     inner_l, inner_r = x0 - W / 2 + ch + 0.08, x0 + W / 2 - ch - 0.08
     modules = [
         (inner_l, x0 + 0.05, rows[2]), (x0 + 0.05, inner_r, rows[2]),
@@ -259,39 +260,59 @@ def build_cabinet(coll, mech, markers):
     rng = random.Random(CFG["seed"] + 7)
 
     def fader_bank(l, r, b, t, count):
+        """Slim cream caps riding in black slots (the hero's faders)."""
         span = r - l
         for i in range(count):
             u = l + span * (i + 0.5) / count
-            box(faders, u, fz + 0.005, z0 + b + 0.1, 0.03, 0.02, (t - b) - 0.2, 1)  # slot
-            cap = z0 + b + 0.14 + rng.random() * ((t - b) - 0.36)
-            box(faders, u, fz - 0.035, cap, 0.1, 0.08, 0.13, 0)  # cap: chunky, readable at plugin size
+            box(faders, u, fz + 0.002, z0 + b + 0.12, 0.028, 0.02, (t - b) - 0.24, 1)  # slot
+            cap = z0 + b + 0.14 + rng.random() * ((t - b) - 0.4)
+            box(faders, u, fz - 0.03, cap, 0.08, 0.07, 0.11, 0)
 
-    def socket_grid(l, b, cols, rows_, step, orange=()):
-        for i in range(cols):
-            for j in range(rows_):
-                u, v = l + i * step, b + j * step
-                m = 1 if (i, j) in orange else 0
-                cylinder(sockets, u, fz - 0.02, z0 + v, 0.05, 0.05, segs=8, axis="Y", mat_index=m)
-                cylinder(sockets, u, fz - 0.045, z0 + v, 0.024, 0.02, segs=6, axis="Y", mat_index=2)
+    def knob(u, v, m=0):
+        """A ring jack/knob: cream, orange or grey rim around a dark centre."""
+        cylinder(sockets, u, fz - 0.02, z0 + v, 0.068, 0.05, segs=10, axis="Y", mat_index=m)
+        cylinder(sockets, u, fz - 0.047, z0 + v, 0.036, 0.02, segs=8, axis="Y", mat_index=2)
 
-    # Top row: two fader banks with a pair of sockets on the left
-    fader_bank(inner_l + 0.3, x0 - 0.25, *rows[2], 6)
-    fader_bank(x0 + 0.25, inner_r - 0.1, *rows[2], 7)
-    socket_grid(inner_l + 0.16, rows[2][0] + 0.25, 1, 2, 0.25)
-    # Middle row: fader bank, then a patch field
-    fader_bank(inner_l + 0.3, x0 + 0.4, *rows[1], 6)
-    socket_grid(x0 + 0.85, rows[1][0] + 0.18, 6, 3, 0.2, orange={(1, 0), (2, 0), (1, 1), (2, 1), (4, 2)})
-    socket_grid(inner_l + 0.16, rows[1][0] + 0.38, 1, 1, 0.25)
-    # Bottom row: speakers left and right, small fader bank and sockets in the middle
+    # Top row: [label, 2 knobs, 6 faders, a dark recess] [9 faders]
+    knob(inner_l + 0.2, rows[2][0] + 0.48)
+    knob(inner_l + 0.2, rows[2][0] + 0.22)
+    fader_bank(inner_l + 0.36, x0 - 0.42, *rows[2], 6)
+    rec = bmesh.new()
+    box(rec, x0 - 0.22, fz + 0.004, z0 + rows[2][0] + 0.32, 0.3, 0.02, 0.36)
+    mesh_object("Recess", rec, coll, [mat("cabinetFaceDeep")])
+    fader_bank(x0 + 0.08, inner_r - 0.06, *rows[2], 9)
+    # Middle row: [label, 2 knobs, 6 faders] [patch field: cream, orange and grey rings]
+    knob(inner_l + 0.2, rows[1][0] + 0.48)
+    knob(inner_l + 0.2, rows[1][0] + 0.22)
+    fader_bank(inner_l + 0.36, x0 + 0.42, *rows[1], 6)
+    for ci in range(5):
+        for rj in range(3):
+            u = x0 + 0.78 + ci * 0.25
+            v = rows[1][0] + 0.17 + rj * 0.23
+            m = 0 if ci < 2 else (1 if ci < 4 and rj < 2 else 3)
+            if ci == 2 and rj == 2:
+                m = 1
+            knob(u, v, m)
+    # Bottom row: speakers with grilles, [2 knobs, 5 faders, 1 knob] between them
     sp = bmesh.new()
-    for (l, r) in ((inner_l + 0.12, inner_l + 0.83), (inner_r - 0.83, inner_r - 0.12)):
-        box(sp, (l + r) / 2, fz + 0.01, z0 + rows[0][0] + 0.1, r - l, 0.02, rows[0][1] - rows[0][0] - 0.2)
+    gr = bmesh.new()
+    for (l, r) in ((inner_l + 0.1, inner_l + 0.8), (inner_r - 0.8, inner_r - 0.1)):
+        zb_, zt_ = z0 + rows[0][0] + 0.1, z0 + rows[0][1] - 0.1
+        box(sp, (l + r) / 2, fz + 0.01, zb_, r - l, 0.02, zt_ - zb_)
+        nx, nz = 8, 6
+        for a_ in range(nx):
+            for b_ in range(nz):
+                gx = l + 0.06 + (r - l - 0.12) * (a_ + 0.5) / nx
+                gz = zb_ + 0.06 + (zt_ - zb_ - 0.12) * (b_ + 0.5) / nz
+                box(gr, gx, fz - 0.003, gz - 0.016, 0.032, 0.01, 0.032)
     mesh_object("Speakers", sp, coll, [mat("speaker")])
-    fader_bank(inner_l + 1.35, inner_r - 1.35, *rows[0], 5)
-    socket_grid(inner_l + 1.12, rows[0][0] + 0.25, 1, 2, 0.32, orange={(0, 0)})
-    socket_grid(inner_r - 1.12, rows[0][0] + 0.25, 1, 2, 0.32, orange={(0, 0)})
-    mesh_object("Faders", faders, coll, [mat("fader"), mat("cabinetFaceDeep")])
-    mesh_object("Sockets", sockets, coll, [mat("socket"), mat("trim"), mat("doorDark")])
+    mesh_object("Grilles", gr, coll, [mat("grille")])
+    knob(inner_l + 1.08, rows[0][0] + 0.5)
+    knob(inner_l + 1.08, rows[0][0] + 0.22, 1)
+    fader_bank(inner_l + 1.25, inner_r - 1.25, *rows[0], 5)
+    knob(inner_r - 1.08, rows[0][0] + 0.3, 1)
+    mesh_object("Faders", faders, coll, [mat("fader"), mat("faderSlot")])
+    mesh_object("Sockets", sockets, coll, [mat("socket"), mat("trim"), mat("doorDark"), mat("socketGrey")])
 
     # Cables: low-sided bevelled curves sagging off the face
     for k, c in enumerate(CFG["cables"]):
@@ -306,7 +327,7 @@ def build_cabinet(coll, mech, markers):
         for i, (u, v) in enumerate(pts):
             sag = 0.12 if 0 < i < len(pts) - 1 else 0.0
             bp = sp_.bezier_points[i]
-            bp.co = (x0 + u, fz - 0.06 - sag, z0 + v)
+            bp.co = (x0 + u, fz - 0.06 - sag, z0 + v * H / 2.75)
             bp.handle_left_type = bp.handle_right_type = "AUTO"
         cu.materials.append(mat(c["color"]))
         ob = bpy.data.objects.new("WS_Cable%d" % k, cu)
@@ -319,10 +340,10 @@ def build_cabinet(coll, mech, markers):
     door_y = front + 0.32
     dbm = bmesh.new()
     if BALLOON:
-        box(dbm, side - 0.012, door_y, z0 + H * 0.38, 0.02, Dd["width"] * 0.8, Dd["height"] * 0.55, 0)
-        box(dbm, side - 0.03, door_y, z0 + H * 0.38 + Dd["height"] * 0.1, 0.02, Dd["width"] * 0.5, Dd["height"] * 0.35, 1)  # lit window
-        mesh_object("ServiceWindow", dbm, coll, [mat("doorDark"), mat("lamp", "lamp", 4.0)])
-        empty("MarkerServiceLight", markers, (side - 0.04, door_y, z0 + H * 0.38 + Dd["height"] * 0.28))
+        box(dbm, side - 0.012, door_y, z0 + H * 0.22, 0.02, Dd["width"] * 0.85, Dd["height"] * 0.85, 0)
+        box(dbm, side - 0.03, door_y, z0 + H * 0.22 + Dd["height"] * 0.12, 0.02, Dd["width"] * 0.5, Dd["height"] * 0.6, 1)  # lit window
+        mesh_object("ServiceWindow", dbm, coll, [mat("doorDark"), mat("burnerLamp", "burnerLamp", 2.2)])
+        empty("MarkerServiceLight", markers, (side - 0.04, door_y, z0 + H * 0.22 + Dd["height"] * 0.42))
     else:
         box(dbm, side - 0.012, door_y, z0, 0.02, Dd["width"], Dd["height"], 0)
         box(dbm, side - 0.03, door_y + 0.02, z0 + Dd["height"] * 0.45, 0.02, Dd["width"] * 0.38, Dd["height"] * 0.42, 1)  # lit window
@@ -481,36 +502,47 @@ def build_craft(coll, mech, markers, roof_z):
     cylinder(cbm, x0, y0, zc + Bc["collarHeight"] / 2, Bc["collarRadius"], Bc["collarHeight"], segs=12)
     mesh_object("Collar", cbm, coll, [mat("frame")])
     bbm = bmesh.new()
-    box(bbm, x0, y0, zc - 0.2, 0.2, 0.2, 0.2, 0)
-    box(bbm, x0, y0, zc - 0.05, 0.12, 0.12, 0.06, 1)
-    mesh_object("Burner", bbm, coll, [mat("lamp", "lamp", 6.0), mat("frame")])
-    empty("MarkerBurner", markers, (x0, y0 - 0.12, zc - 0.1))
+    # The hero's burner: a glowing cube hung under the collar on a short stem, a dark cap below
+    box(bbm, x0, y0, zc - 0.12, 0.06, 0.06, 0.12, 1)
+    box(bbm, x0, y0, zc - 0.42, 0.27, 0.27, 0.3, 0)
+    box(bbm, x0, y0, zc - 0.56, 0.24, 0.24, 0.14, 1)
+    mesh_object("Burner", bbm, coll, [mat("burnerLamp", "burnerLamp", 2.2), mat("frame")])
+    empty("MarkerBurner", markers, (x0, y0 - 0.14, zc - 0.28))
     build_envelope(coll, Vector((x0, y0, zc + Bc["collarHeight"])))
 
-    # Four straight lines from the frame's top corners to the collar rim
+    # Lines as in the hero: from the collar rim down to the cabinet's top corners, burner spokes
     lbm = bmesh.new()
     cr = Bc["collarRadius"] * 0.92
     for sx, sy in corners:
         top = (x0 + sx * cr * 0.8, y0 + sy * cr * 0.55, zc + 0.02)
-        rod(lbm, (x0 + sx * hx, y0 + sy * hy, roof_z + 0.02 + (bar if cradle else 0.04)), top, 0.024)
-        rod(lbm, (x0, y0, zc - 0.02), top, 0.015)  # burner spokes
+        rod(lbm, (x0 + sx * hx, y0 + sy * hy, roof_z + 0.02 + (bar if cradle else 0.04)), top, 0.026)
+        rod(lbm, (x0, y0, zc - 0.02), top, 0.015)
     mesh_object("Lines", lbm, coll, [mat("frame")])
 
-    # Outriggers rise diagonally from the cabinet's top corners: the dish on the left (the
-    # link to the weather feed), the wind mast on the right
-    zo = roof_z - 0.25
+    # Short black brackets on the cabinet's upper sides (the hero's): the dish on the left (the
+    # link to the weather feed), the wind mast on the right; a line from the envelope to each
+    zo = roof_z - 0.3
     reach = Bc["outrigger"]
-    oy = y0 - 0.1
+    oy = y0 - D / 2 + 0.25
     obm = bmesh.new()
     lx = x0 - W / 2 - reach
-    rod(obm, (x0 - W / 2 + 0.05, oy, zo), (lx, oy, zo + reach * 0.55), 0.04)
-    rx = x0 + W / 2 + reach * 0.9
-    rod(obm, (x0 + W / 2 - 0.05, oy, zo), (rx, oy, zo + reach * 0.5), 0.04)
-    mast_top = zo + reach * 0.5 + R["mastHeight"] + 0.1
-    rod(obm, (rx, oy, zo + reach * 0.5), (rx, oy, mast_top), 0.032)
-    cylinder(obm, rx, oy, zo + reach * 0.5 + 0.04, 0.08, 0.1, segs=6)
+    rx = x0 + W / 2 + reach
+    for sgn, ex in ((-1, lx), (1, rx)):
+        sx_ = x0 + sgn * (W / 2 - 0.02)
+        box(obm, (sx_ + ex) / 2, oy, zo, abs(ex - sx_), 0.12, 0.12)            # arm
+        rod(obm, (sx_, oy, zo - 0.45), (ex - sgn * 0.08, oy, zo), 0.035)       # brace
+        box(obm, ex, oy, zo + 0.06, 0.16, 0.16, 0.14)                           # mount
+    mast_top = zo + 0.2 + R["mastHeight"]
+    rod(obm, (rx, oy, zo + 0.2), (rx, oy, mast_top), 0.032)
+    rod(obm, (lx, oy, zo + 0.12), (lx - 0.06, oy, zo + 0.74), 0.035)           # dish stalk
     mesh_object("Outriggers", obm, coll, [mat("metal")])
-    tip = dish_mesh(coll, (lx - 0.05, oy, zo + reach * 0.55 + 0.2), -75, 45)  # bowl up and out to the left, like the hero
+    env = Bc["profile"]
+    side_r, side_z = env[2][0] * 0.98, zc + Bc["collarHeight"] + env[2][1]
+    obl = bmesh.new()
+    for sgn, ex in ((-1, lx), (1, rx)):
+        rod(obl, (ex, oy, zo + 0.12), (x0 + sgn * side_r * 0.97, oy - 0.1, side_z), 0.024)
+    mesh_object("OuterLines", obl, coll, [mat("frame")])
+    tip = dish_mesh(coll, (lx - 0.08, oy, zo + 0.85), -70, 50)  # bowl up and out to the left, like the hero
     empty("MarkerAntennaTip", markers, tip)
 
     vane_pivot = empty("VanePivot", mech, (rx, oy, mast_top - 0.02))
@@ -541,7 +573,7 @@ def build_craft(coll, mech, markers, roof_z):
     rod(pbm, (x0, y0, z0 - bar), (x0, y0, pz), 0.018, mat_index=1)
     box(pbm, x0, y0, pz - ps, ps, ps, ps, 0)
     box(pbm, x0, y0 - ps / 2 - 0.01, pz - ps * 0.68, ps * 0.42, 0.02, ps * 0.36, 2)
-    mesh_object("Pod", pbm, coll, [mat("pod"), mat("frame"), mat("lamp", "lamp", 5.0)])
+    mesh_object("Pod", pbm, coll, [mat("pod"), mat("frame"), mat("burnerLamp", "burnerLamp", 2.2)])
     empty("MarkerPod", markers, (x0, y0 - ps / 2 - 0.03, pz - ps * 0.5))
     empty("MarkerPodBottom", markers, (x0, y0, pz - ps))
 
@@ -552,6 +584,8 @@ def fit_camera(cam):
     F, vp = CFG["fit"], CFG["viewport"]
     W, Hh = vp["logicalWidth"], vp["logicalHeight"]
     bpy.context.view_layer.update()
+    if cam.data.type == "PERSP":
+        return fit_perspective(cam, F, W, Hh)
     right = cam.matrix_world.to_3x3() @ Vector((1, 0, 0))
     up = cam.matrix_world.to_3x3() @ Vector((0, 1, 0))
     xs, ys = [], []
@@ -574,12 +608,45 @@ def fit_camera(cam):
     return ppu
 
 
+def fit_perspective(cam, F, W, Hh):
+    """Perspective framing (the hero is seen from about cabinet height, so the envelope's
+    underside shows): move along the view axis until the craft spans the asked height, then
+    shift the lens so it lands where asked. A few iterations; perspective is not linear."""
+    from bpy_extras.object_utils import world_to_camera_view
+
+    sc = bpy.context.scene
+    pts = [ob.matrix_world @ v.co for ob in bpy.data.collections[ROOT].all_objects if ob.type == "MESH" for v in ob.data.vertices]
+    target = Vector(CFG["camera"]["target"])
+    for _ in range(8):
+        bpy.context.view_layer.update()
+        ys = [world_to_camera_view(sc, cam, p).y for p in pts]
+        span = max(ys) - min(ys)
+        want = F["bottom"] - F["top"]
+        d = cam.location - target
+        cam.location = target + d * (span / want)
+    bpy.context.view_layer.update()
+    vs = [world_to_camera_view(sc, cam, p) for p in pts]
+    xs, ys = [v.x for v in vs], [v.y for v in vs]
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    want_cx, want_cy = F["centerX"], 1.0 - (F["top"] + F["bottom"]) / 2
+    # shift is in units of the larger frame dimension (the width)
+    cam.data.shift_x += (cx - want_cx)
+    cam.data.shift_y += (cy - want_cy) * Hh / W
+    return None
+
+
 # ------------------------------------------------------------------ camera
 def build_camera(root):
     K = CFG["camera"]
     cam_data = bpy.data.cameras.new("WS_Camera")
-    cam_data.type = "ORTHO"
-    cam_data.ortho_scale = K["orthoScale"]
+    if K.get("lensMM"):
+        cam_data.type = "PERSP"
+        cam_data.lens = K["lensMM"]
+        cam_data.sensor_fit = "HORIZONTAL"
+        cam_data.sensor_width = 36
+    else:
+        cam_data.type = "ORTHO"
+        cam_data.ortho_scale = K["orthoScale"]
     cam_data.shift_x = K["shiftX"]
     cam_data.shift_y = K["shiftY"]
     cam_data.clip_start = 0.1

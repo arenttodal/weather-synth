@@ -44,7 +44,7 @@ ANCHORS = {
     "noon": {"sunAz": -15, "sunEl": 62, "sun": "#FFFFFF", "sunW": 2.7, "world": "#C3D3E0", "worldW": 0.8, "lamps": 1.0, "tint": "#FFFFFF"},
     "late_afternoon": {"sunAz": 45, "sunEl": 13, "sun": "#FFC27A", "sunW": 3.3, "world": "#C79C7C", "worldW": 0.75, "lamps": 1.4, "tint": "#F6E2C8"},
     "sunset": {"sunAz": 50, "sunEl": 5, "sun": "#FF8E5E", "sunW": 3.0, "world": "#A06A8A", "worldW": 0.7, "lamps": 2.5, "tint": "#E8B49A"},
-    "dusk": {"sunAz": 40, "sunEl": 9, "sun": "#FFA990", "sunW": 2.9, "world": "#7A6BA6", "worldW": 1.25, "lamps": 4.0, "tint": "#9C98C8"},
+    "dusk": {"sunAz": -35, "sunEl": 28, "sun": "#FFE6D2", "sunW": 2.7, "world": "#7078A8", "worldW": 0.95, "lamps": 4.0, "tint": "#9C98C8"},
     "night": {"sunAz": -35, "sunEl": 40, "sun": "#8FA6E0", "sunW": 1.2, "world": "#2C3A70", "worldW": 1.0, "lamps": 6.0, "tint": "#6F7FA8"},
     "overcast": {"sunAz": 0, "sunEl": 80, "sun": "#FFFFFF", "sunW": 0.0, "world": "#B9C2CB", "worldW": 1.25, "lamps": 1.6, "tint": "#D8DCE0"},
 }
@@ -144,6 +144,9 @@ def apply_anchor(a):
     m = bpy.data.materials.get("WS_lamp")
     if m:
         m.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = a["lamps"]
+    m = bpy.data.materials.get("WS_burnerLamp")  # the burner glows orange, not white-hot
+    if m:
+        m.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = a["lamps"] * 0.3
 
 
 def render(path):
