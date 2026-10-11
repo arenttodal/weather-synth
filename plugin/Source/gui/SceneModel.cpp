@@ -157,7 +157,7 @@ const std::vector<Fixture>& fixtures()
             s.landscape = l;
             v.push_back ({ name, title, s });
         };
-        region ("mumbai_monsoon", "City, monsoon", Landscape::city, base (28, { 501 }, 0.95, 0.6, 7));
+        region ("mumbai_monsoon", "City, monsoon", Landscape::city, base (28, { 501 }, 0.6, 0.6, 7));
         region ("sahara_clear", "Desert, hot and clear", Landscape::desert, base (42, { 800 }, 0.05, 0, 4));
         region ("trondheim_drizzle", "Coast, drizzle", Landscape::coast, base (6, { 300 }, 0.9, 0.2, 5));
         auto alp = base (-8, { 601 }, 1.0, 0.5, 3);

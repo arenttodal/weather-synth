@@ -48,8 +48,14 @@ Goal: match `design/references/balloon-hero.png`, not approximate it.
 
 - **Framing:** the scene runs under a transparent header (1024 x 504 logical, the macro band below); the envelope is cropped at the top as in the hero and the cabinet is about a quarter of the width.
 - **Sky:** three-stop gradient (zenith holds most of the sky), a wide warm glow along the horizon around a low sun (sun altitude -10 to 18 degrees), larger low sun disc, retuned dusk/sunset keys.
-- **Clouds:** `design/blender/export_backdrops.py` renders six faceted cumulus and two low stratus decks, lit by the same eight lighting anchors as the craft. The runtime mixes them by anchor weight (like the craft), darkens storm cells, and caches each cloud at screen size; it re-lights them only when the light changes. Without the art it falls back to the path clouds.
+- **Clouds:** `design/blender/export_backdrops.py` renders six faceted cumulus, lit by the same eight lighting anchors as the craft. The runtime mixes them by anchor weight (like the craft), darkens storm cells, and caches each cloud at screen size; it re-lights them only when the light changes. Without the art it falls back to the path clouds.
 - **City:** two Blender layers per anchor: far (faceted ridges and a low skyline, hazed into the horizon colour at runtime) and near (slim towers with sparse lit windows, a cable-stayed bridge on the right, a dense near band). Windows light up from the anchor's lamp level. Drawn into the cached background, so it costs nothing per frame.
+
+Rain alone now counts for less overcast (cloud cover decides), rain skies grey towards a cool slate instead of brown, and the overcast wash comes from the zenith colour, so a rainy dusk stays blue above and warm low down. The `mumbai_monsoon` demo fixture now has broken cloud, as in the hero.
+
+Side by side: `gui/hero-vs-app-dusk.png` (app left, hero right), `gui/city-times.png` (monsoon and haze at dawn, noon, dusk and night).
+
+Still different from the hero: the clouds are lavender and evenly lit (the hero's are slate with warm lit undersides); the horizon glow is weaker at the atlas's dusk (sun 6 degrees below the horizon; the hero shows it on the horizon); the envelope stripes and cabinet are the existing craft art.
 
 Re-render: `xvfb-run -a blender -b --factory-startup --python design/blender/export_backdrops.py -- [--parts clouds,city] [--anchors dusk] [--fast] [--out dir]`, then reconfigure CMake (the art is compiled in).
 

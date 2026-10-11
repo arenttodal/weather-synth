@@ -298,10 +298,10 @@ Environment computeEnvironment (const Snapshot& s)
     e.ash = c.ash;
 
     const double wet = std::max ({ e.rain, e.drizzle * 0.6, e.freezing, e.sleet, e.snow * 0.7, e.hail });
-    e.overcast = std::max ({ smooth (0.5, 0.95, e.cloud), wet * 0.8, e.mist * 0.7, e.thunder * 0.9 });
+    e.overcast = std::max ({ smooth (0.5, 0.95, e.cloud), wet * 0.55, e.mist * 0.7, e.thunder * 0.9 });
 
     // Visibility: the provider's figure when known (10 km+ clear, 200 m very short), else the veils
-    double vis = 1 - std::max ({ e.mist, e.haze * 0.6, e.smoke * 0.7, e.dust * 0.7, e.ash * 0.7, wet * 0.35 });
+    double vis = 1 - std::max ({ e.mist, e.haze * 0.6, e.smoke * 0.7, e.dust * 0.7, e.ash * 0.7, wet * 0.2 });
     if (s.visibilityM >= 0) vis = std::min (vis, clamp01 (std::log10 (std::max (s.visibilityM, 200.0) / 200.0) / std::log10 (50.0)));
     e.visibility = clamp01 (vis);
 
@@ -417,17 +417,17 @@ SkyColours skyColours (const Environment& e)
     // Overcast and storms: towards a grey that keeps the time of day's brightness
     double grey = clamp01 (e.overcast * 0.85 + e.thunder * 0.1);
     const double dark = clamp01 (0.35 * std::max ({ e.rain, e.freezing, e.hail, e.sleet * 0.8 }) + 0.25 * e.thunder);
-    auto toGrey = [&] (float* c, double tone) {
+    auto toGrey = [&] (float* c, double tone, double darkShare = 1.0) {
         const double l = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
-        const double g[3] = { l * 0.94, l * 0.98, l * 1.06 }; // slightly cool grey
+        const double g[3] = { l * 0.84, l * 0.94, l * 1.22 }; // a cool slate (rain skies read blue, not brown)
         for (int j = 0; j < 3; ++j)
-            c[j] = (float) (lerp (c[j], g[j] * tone, grey) * (1 - dark));
+            c[j] = (float) (lerp (c[j], g[j] * tone, grey) * (1 - dark * darkShare));
     };
     toGrey (s.zenith, 0.95);
     // The horizon keeps part of its colour under cloud and rain (the hero's monsoon dusk stays warm low down)
     const double fullGrey = grey;
-    grey = fullGrey * 0.55;
-    toGrey (s.horizon, 0.92);
+    grey = fullGrey * 0.3;
+    toGrey (s.horizon, 0.92, 0.5);
     grey = fullGrey;
     // The sea keeps some of its colour under grey skies
     const double keepGrey = grey;

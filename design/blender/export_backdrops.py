@@ -5,7 +5,7 @@
 Same art direction as the craft (export_layers.ANCHORS), so the whole picture shares one light.
 Outputs in assets/weather_scene/backdrops/ (file names are unique: the plugin indexes its art by
 file name):
-  cloud_<k>_<anchor>.png       faceted cumulus and low stratus, lit, transparent
+  cloud_<k>_<anchor>.png       faceted cumulus, lit, transparent
   city_far_<anchor>.png        distant mountains and skyline (the runtime hazes it with the sky)
   city_near_<anchor>.png       towers with lit windows, a cable-stayed bridge, the near blocks
   backdrops.json               files, boxes in scene coordinates, kinds
@@ -46,8 +46,8 @@ HZ = VP["horizonY"] * SH          # horizon, logical px from the top
 PPU = SW / 100.0                  # backdrop world: 100 units across the scene
 
 B.CFG["palette"].update({
-    "cloud": "#7F93B0", "towerA": "#56607E", "towerB": "#4A536F", "towerC": "#6E7590", "towerD": "#5F6884",
-    "blockNear": "#3A4258", "blockNear2": "#424A60", "mountain": "#857CA3", "mountain2": "#9B90B4",
+    "cloud": "#6D84A8", "towerA": "#434C68", "towerB": "#3A4360", "towerC": "#6E7590", "towerD": "#48516C",
+    "blockNear": "#262C3E", "blockNear2": "#2C3245", "mountain": "#857CA3", "mountain2": "#9B90B4",
     "window": "#F4B65A", "windowDark": "#2A2F3E", "bridge": "#5E6480", "roof": "#3A3F50",
 })
 B.CFG["camera"]["yawDeg"] = 0  # backdrops face the camera square-on; anchors stay relative to it
@@ -99,8 +99,6 @@ CLOUDS = [
     ("cumulus", 14, 4, 2.0, (0.9, 1.4), 1.0),
     ("cumulus", 15, 6, 3.4, (0.7, 1.3), 0.85),
     ("cumulus", 16, 8, 4.4, (0.8, 1.7), 0.9),
-    ("stratus", 21, 9, 6.0, (0.45, 0.8), 0.45),
-    ("stratus", 22, 7, 5.0, (0.4, 0.7), 0.4),
 ]
 
 
@@ -268,7 +266,7 @@ def render_city(layer, anchor):
     if lit:  # windows light up as the day goes
         bsdf = lit.node_tree.nodes["Principled BSDF"]
         bsdf.inputs["Emission Color" if "Emission Color" in bsdf.inputs else "Emission"].default_value = B.hex_rgba(B.CFG["palette"]["window"])
-        bsdf.inputs["Emission Strength"].default_value = max(0.0, a["lamps"] - 1.2) * 1.1
+        bsdf.inputs["Emission Strength"].default_value = max(0.0, a["lamps"] - 1.2) * 1.8
     name = "city_%s_%s.png" % (layer, anchor)
     path = os.path.join(OUT, name)
     E.render(path)
@@ -335,6 +333,11 @@ def orchestrate():
                 lay["frames"][e["anchor"]] = e["file"]
                 lay["box"] = e["box"]
         os.remove(os.path.join(OUT, f))
+    # The city layers are flat facets: a 256-colour palette is visually identical and much smaller
+    # (clouds keep full colour; their soft shading speckles when quantized)
+    city = [os.path.join(OUT, f) for f in sorted(os.listdir(OUT)) if f.startswith("city_") and f.endswith(".png")]
+    if city and subprocess.run(["python3", os.path.join(HERE, "..", "..", "tools", "quantize_png.py")] + city).returncode != 0:
+        print("WS_WARN city layers left unquantized (needs python3 with Pillow)")
     man["clouds"] = {str(k): clouds[k] for k in sorted(clouds)}
     man["families"] = families
     json.dump(man, open(mpath, "w"), indent=1)

@@ -19,6 +19,8 @@ namespace
     juce::Colour veilColour (const Environment& e, const SkyColours& c)
     {
         auto col = rgb (c.horizon).interpolatedWith (juce::Colours::white, 0.35f);
+        // Rain and mist veil in cool slate, not the horizon's warmth
+        col = col.interpolatedWith (juce::Colour (0xff7d8aa6), (float) juce::jlimit (0.0, 1.0, std::max ({ e.rain, e.drizzle, e.mist, e.snow, e.sleet })));
         const float warm = (float) juce::jlimit (0.0, 1.0, e.haze * 0.6 + e.smoke);
         col = col.interpolatedWith (juce::Colour (0xffa69a86), warm * 0.6f);
         col = col.interpolatedWith (juce::Colour (0xffc9925a), (float) juce::jlimit (0.0, 1.0, e.dust * 1.2));
@@ -136,19 +138,19 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
     for (auto& p : parts)
         p.age = -1;
     activeCount = 0;
-    // Cloud layout follows cover: a few broad shapes, more under an overcast sky; with the
-    // Blender clouds, two low stratus bands sit near the horizon once the sky has some cloud
+    // Cloud layout follows cover: a few broad shapes, more under an overcast sky. The Blender
+    // clouds are bigger, so fewer of them (the hero shows about six with sky between them); the
+    // overcast deck in the cached sky carries the rest
     const bool sprites = assets->cloudCount() > 0;
-    const int cumulus = juce::jlimit (0, 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
-    const int stratus = sprites && target.cloud >= 0.2 ? 2 : 0;
-    const int count = cumulus + stratus;
+    const int cumulus = juce::jlimit (0, sprites ? 6 : 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
+    const int count = cumulus;
     if ((int) clouds.size() != count || (count > 0 && (clouds.front().shape >= 0) != sprites))
     {
         juce::Random r ((juce::int64) snap.visualSeed + 99);
         const float W = assets->viewportWidth(), H = assets->viewportHeight(), hz = H * assets->horizon();
-        std::vector<int> puffs, decks;
+        std::vector<int> puffs;
         for (int k = 0; k < assets->cloudCount(); ++k)
-            (assets->cloudIsStratus (k) ? decks : puffs).push_back (k);
+            if (! assets->cloudIsStratus (k)) puffs.push_back (k);
         clouds.clear();
         for (int i = 0; i < cumulus; ++i)
         {
@@ -167,13 +169,6 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
                 const float y = 0.05f * H + r.nextFloat() * (hz * 0.62f - 0.05f * H);
                 clouds.push_back ({ x0 * (W + w) - w / 2, y, w, w * 0.4f, -1 - r.nextInt (5), 0.6f + 0.6f * r.nextFloat() });
             }
-        }
-        for (int i = 0; i < stratus && ! decks.empty(); ++i)
-        {
-            const int k = decks[(size_t) i % decks.size()];
-            const float w = 420 + 120 * r.nextFloat();
-            const float h = w / assets->cloudAspect (k);
-            clouds.push_back ({ (0.05f + 0.55f * i + 0.15f * r.nextFloat()) * W, hz - h * 0.55f - 14 * r.nextFloat(), w, h, k, 0.25f + 0.2f * r.nextFloat() });
         }
     }
     if (immediate || prefs_.quality == Quality::still)
@@ -389,7 +384,7 @@ void SceneView::buildBackground (float ps)
     {
         // Three stops: the zenith holds most of the sky, the horizon colour rises late
         juce::ColourGradient sky (rgb (c.zenith), 0, 0, rgb (c.horizon), 0, hz, false);
-        sky.addColour (0.55, rgb (c.zenith).interpolatedWith (rgb (c.horizon), 0.38f));
+        sky.addColour (0.55, rgb (c.zenith).withMultipliedBrightness (1.9f).interpolatedWith (rgb (c.horizon), 0.22f)); // slate, not a muddy mix
         g.setGradientFill (sky);
         g.fillRect (0.0f, 0.0f, W, H);
     }
@@ -480,6 +475,7 @@ void SceneView::buildBackground (float ps)
             fg.setColour (rgb (c.horizon).withAlpha (0.32f));
             fg.drawImage (copy, far.getBounds().toFloat(), juce::RectanglePlacement::stretchToFit, true);
         }
+        g.setOpacity (1.0f); // drawImage uses the current colour's alpha (the sun's glow was last)
         g.drawImage (far, assets->backdropBox ("city", "far"));
         g.drawImage (blendBackdrop ("near", ps), assets->backdropBox ("city", "near"));
     }
@@ -490,8 +486,9 @@ void SceneView::buildBackground (float ps)
     if (e.overcast > 0.3)
     {
         const float l = juce::jmax (0.18f, lum (c.ambient));
-        const auto deck = juce::Colour (0xffdfe3e7).interpolatedWith (rgb (c.horizon), 0.3f).withMultipliedBrightness (l * 0.86f);
-        g.setGradientFill (juce::ColourGradient (deck.withAlpha ((float) (0.55 * e.overcast)), 0, 0, deck.withAlpha (0.0f), 0, hz * 0.9f, false));
+        // Cool slate taken from the zenith, so a rainy dusk stays blue above and warm low down
+        const auto deck = juce::Colour (0xffb4bfd4).interpolatedWith (rgb (c.zenith), 0.35f).withMultipliedBrightness (l * 0.8f);
+        g.setGradientFill (juce::ColourGradient (deck.withAlpha ((float) (0.42 * e.overcast)), 0, 0, deck.withAlpha (0.0f), 0, hz * 0.75f, false));
         g.fillRect (0.0f, 0.0f, W, hz);
     }
     // Visibility veil: a clamped wash plus soft bands thickest at the horizon
