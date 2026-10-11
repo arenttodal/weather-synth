@@ -42,11 +42,22 @@ Twelve families plus neutral and open water (`gui/Landscape.cpp`): city, tempera
 
 Never from temperature, humidity or precipitation. The user's **Scene style** (display settings) overrides the picture only.
 
+## Hero fidelity (sky, clouds, city)
+
+Goal: match `design/references/balloon-hero.png`, not approximate it.
+
+- **Framing:** the scene runs under a transparent header (1024 x 504 logical, the macro band below); the envelope is cropped at the top as in the hero and the cabinet is about a quarter of the width.
+- **Sky:** three-stop gradient (zenith holds most of the sky), a wide warm glow along the horizon around a low sun (sun altitude -10 to 18 degrees), larger low sun disc, retuned dusk/sunset keys.
+- **Clouds:** `design/blender/export_backdrops.py` renders six faceted cumulus and two low stratus decks, lit by the same eight lighting anchors as the craft. The runtime mixes them by anchor weight (like the craft), darkens storm cells, and caches each cloud at screen size; it re-lights them only when the light changes. Without the art it falls back to the path clouds.
+- **City:** two Blender layers per anchor: far (faceted ridges and a low skyline, hazed into the horizon colour at runtime) and near (slim towers with sparse lit windows, a cable-stayed bridge on the right, a dense near band). Windows light up from the anchor's lamp level. Drawn into the cached background, so it costs nothing per frame.
+
+Re-render: `xvfb-run -a blender -b --factory-startup --python design/blender/export_backdrops.py -- [--parts clouds,city] [--anchors dusk] [--fast] [--out dir]`, then reconfigure CMake (the art is compiled in).
+
 ## Not done yet (honest list)
 
 - Composable overlays (city + coast + terrain together) and season/ground-cover inputs; today one family per place.
 - A worldwide classifier: needs a validated source (for example a build-time, size-measured class grid from land cover plus elevation), a licence review and a version; not shipped.
 - Globe/Search tabs at the smallest sizes (the panel scales instead), a 2D map fallback, keyboard arrow navigation through results (Tab works).
 - Pausing the hidden scene's animation while the browser is open.
-- Blender-authored family layers: the families are procedural in the renderer for now; the brief's FAMILY_* collections and exported layers are the next art step if the procedural look is not enough.
+- Blender-authored family layers: **city is done** (see below); the other eleven families are still procedural and follow one at a time, each checked side by side against the reference.
 - Host checks of the audition (realtime playback, stopped transport, offline bounce) in real DAWs.

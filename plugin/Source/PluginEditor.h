@@ -60,7 +60,8 @@ public:
     ExploreBrowser& exploreBrowser() { return explore; }
     void showExplore();
 
-    static constexpr int logicalWidth = 1024, logicalHeight = 682, headerH = 44, sceneH = 460;
+    // Hero framing: the scene runs from the top edge, under a transparent header
+    static constexpr int logicalWidth = 1024, logicalHeight = 682, headerH = 44, sceneTop = 0, sceneH = 504;
 
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;

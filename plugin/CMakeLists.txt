@@ -60,6 +60,7 @@ set_target_properties(AtmosData PROPERTIES POSITION_INDEPENDENT_CODE ON)
 file(GLOB_RECURSE ATMOS_SCENE_ART CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/weather_scene/*.png"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/weather_scene/manifest.json"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/weather_scene/backdrops.json"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/fonts/*.ttf")
 juce_add_binary_data(SceneArt HEADER_NAME SceneArt.h NAMESPACE SceneArt SOURCES ${ATMOS_SCENE_ART})
 set_target_properties(SceneArt PROPERTIES POSITION_INDEPENDENT_CODE ON)

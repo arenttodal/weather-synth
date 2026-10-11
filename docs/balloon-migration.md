@@ -23,7 +23,7 @@ Brief: "Weather Synth — floating observatory GUI migration", 11 October 2026. 
 
 - The antenna/dish and pod are narrative. The header keeps saying where data comes from (LIVE / STALE / SAVED DAY / ESTIMATED); nothing says "measured by the pod".
 - Landscape never follows current weather (a hot day is not a desert). Without a data source, neutral is the honest default.
-- Proportions follow the hero image within the existing 3:2 layout (header and macro band unchanged); the envelope is never cropped.
+- Proportions follow the hero image: the scene runs under a transparent header and the envelope is cropped at the top, as in the hero (see `world-atlas.md`, Hero fidelity).
 
 ## Status
 

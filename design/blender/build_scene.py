@@ -262,9 +262,9 @@ def build_cabinet(coll, mech, markers):
         span = r - l
         for i in range(count):
             u = l + span * (i + 0.5) / count
-            box(faders, u, fz + 0.005, z0 + b + 0.1, 0.022, 0.02, (t - b) - 0.22, 1)  # slot
+            box(faders, u, fz + 0.005, z0 + b + 0.1, 0.03, 0.02, (t - b) - 0.2, 1)  # slot
             cap = z0 + b + 0.14 + rng.random() * ((t - b) - 0.36)
-            box(faders, u, fz - 0.03, cap, 0.07, 0.07, 0.085, 0)  # cap
+            box(faders, u, fz - 0.035, cap, 0.1, 0.08, 0.13, 0)  # cap: chunky, readable at plugin size
 
     def socket_grid(l, b, cols, rows_, step, orange=()):
         for i in range(cols):
@@ -297,7 +297,7 @@ def build_cabinet(coll, mech, markers):
     for k, c in enumerate(CFG["cables"]):
         cu = bpy.data.curves.new("WS_Cable%d" % k, "CURVE")
         cu.dimensions = "3D"
-        cu.bevel_depth = 0.035
+        cu.bevel_depth = 0.05
         cu.bevel_resolution = 0
         cu.resolution_u = 6
         sp_ = cu.splines.new("BEZIER")
@@ -455,17 +455,24 @@ def build_craft(coll, mech, markers, roof_z):
     bar = Bc["frameBar"]
     m = -Bc["frameInset"]  # frame margin around the cabinet
 
-    # Cradle: a rectangle of bars under the base and over the roof, joined at the corners
-    fbm = bmesh.new()
     corners = [(sx, sy) for sx in (-1, 1) for sy in (-1, 1)]
-    hx, hy = W / 2 + m, D / 2 + m
-    for z in (z0 - bar, roof_z + 0.02):
-        box(fbm, x0, y0 - hy, z, 2 * hx + bar, bar, bar)
-        box(fbm, x0, y0 + hy, z, 2 * hx + bar, bar, bar)
-        box(fbm, x0 - hx, y0, z, bar, 2 * hy, bar)
-        box(fbm, x0 + hx, y0, z, bar, 2 * hy, bar)
-    for sx, sy in corners:
-        box(fbm, x0 + sx * hx, y0 + sy * hy, z0 - bar, bar, bar, roof_z + 0.02 + bar - (z0 - bar))
+    cradle = Bc.get("cradle", True)
+    hx, hy = (W / 2 + m, D / 2 + m) if cradle else (W / 2 - ch / 2, D / 2 - 0.08)
+    fbm = bmesh.new()
+    if cradle:
+        # A rectangle of bars under the base and over the roof, joined at the corners
+        for z in (z0 - bar, roof_z + 0.02):
+            box(fbm, x0, y0 - hy, z, 2 * hx + bar, bar, bar)
+            box(fbm, x0, y0 + hy, z, 2 * hx + bar, bar, bar)
+            box(fbm, x0 - hx, y0, z, bar, 2 * hy, bar)
+            box(fbm, x0 + hx, y0, z, bar, 2 * hy, bar)
+        for sx, sy in corners:
+            box(fbm, x0 + sx * hx, y0 + sy * hy, z0 - bar, bar, bar, roof_z + 0.02 + bar - (z0 - bar))
+    else:
+        # The hero look: no cage, small anchor plates on the cheek tops and four short feet
+        for sx, sy in corners:
+            box(fbm, x0 + sx * hx, y0 + sy * hy, roof_z - 0.02, 0.16, 0.16, 0.06)
+            box(fbm, x0 + sx * (W / 2 - 0.25), y0 + sy * (D / 2 - 0.2), z0 - 0.08, 0.18, 0.18, 0.08)
     mesh_object("Frame", fbm, coll, [mat("frame")])
 
     # Collar, burner and envelope above the roof
@@ -485,28 +492,28 @@ def build_craft(coll, mech, markers, roof_z):
     cr = Bc["collarRadius"] * 0.92
     for sx, sy in corners:
         top = (x0 + sx * cr * 0.8, y0 + sy * cr * 0.55, zc + 0.02)
-        rod(lbm, (x0 + sx * hx, y0 + sy * hy, roof_z + 0.02 + bar), top, 0.022)
+        rod(lbm, (x0 + sx * hx, y0 + sy * hy, roof_z + 0.02 + (bar if cradle else 0.04)), top, 0.024)
         rod(lbm, (x0, y0, zc - 0.02), top, 0.015)  # burner spokes
     mesh_object("Lines", lbm, coll, [mat("frame")])
 
-    # Left outrigger with the dish (the link to the weather feed)
-    zo = z0 + H * 0.72
+    # Outriggers rise diagonally from the cabinet's top corners: the dish on the left (the
+    # link to the weather feed), the wind mast on the right
+    zo = roof_z - 0.25
     reach = Bc["outrigger"]
+    oy = y0 - 0.1
     obm = bmesh.new()
     lx = x0 - W / 2 - reach
-    rod(obm, (x0 - W / 2, y0, zo), (lx, y0, zo), 0.035)
-    rod(obm, (lx, y0, zo), (lx, y0, zo + 0.32), 0.03)
-    # Right outrigger with the wind mast
+    rod(obm, (x0 - W / 2 + 0.05, oy, zo), (lx, oy, zo + reach * 0.55), 0.04)
     rx = x0 + W / 2 + reach * 0.9
-    rod(obm, (x0 + W / 2, y0, zo), (rx, y0, zo), 0.035)
-    mast_top = zo + R["mastHeight"] + 0.25
-    rod(obm, (rx, y0, zo), (rx, y0, mast_top), 0.03)
-    cylinder(obm, rx, y0, zo + 0.05, 0.08, 0.1, segs=6)
+    rod(obm, (x0 + W / 2 - 0.05, oy, zo), (rx, oy, zo + reach * 0.5), 0.04)
+    mast_top = zo + reach * 0.5 + R["mastHeight"] + 0.1
+    rod(obm, (rx, oy, zo + reach * 0.5), (rx, oy, mast_top), 0.032)
+    cylinder(obm, rx, oy, zo + reach * 0.5 + 0.04, 0.08, 0.1, segs=6)
     mesh_object("Outriggers", obm, coll, [mat("metal")])
-    tip = dish_mesh(coll, (lx, y0, zo + 0.42), -35, -50)
+    tip = dish_mesh(coll, (lx - 0.05, oy, zo + reach * 0.55 + 0.2), -75, 45)  # bowl up and out to the left, like the hero
     empty("MarkerAntennaTip", markers, tip)
 
-    vane_pivot = empty("VanePivot", mech, (rx, y0, mast_top - 0.02))
+    vane_pivot = empty("VanePivot", mech, (rx, oy, mast_top - 0.02))
     vbm = bmesh.new()
     box(vbm, 0, 0, -0.012, 0.62, 0.025, 0.025, 0)
     head = [vbm.verts.new(p) for p in ((-0.42, 0, 0.0), (-0.26, 0, 0.13), (-0.26, 0, -0.13))]
@@ -515,7 +522,7 @@ def build_craft(coll, mech, markers, roof_z):
     vbm.faces.new(tail).material_index = 1
     bmesh.ops.solidify(vbm, geom=vbm.faces[:], thickness=0.02)
     mesh_object("Vane", vbm, mech, [mat("metal"), mat("vane")]).parent = vane_pivot
-    anemo_pivot = empty("AnemoPivot", mech, (rx, y0, mast_top - 0.3))
+    anemo_pivot = empty("AnemoPivot", mech, (rx, oy, mast_top - 0.3))
     abm = bmesh.new()
     for k in range(3):
         rot = Matrix.Rotation(2 * math.pi * k / 3, 3, "Z")

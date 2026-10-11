@@ -37,13 +37,15 @@ FAST = "--fast" in ARGV
 # Art direction for each lighting anchor: sun (direction relative to the camera, colour,
 # strength), ambient world light, and how bright the cabinet's own lamps are.
 ANCHORS = {
-    "dawn": {"sunAz": -55, "sunEl": 8, "sun": "#FFB592", "sunW": 2.2, "world": "#7A7AA6", "worldW": 0.75, "lamps": 3.0, "tint": "#D9B8C0"},
+    # Tuned against design/references/balloon-lighting.png and balloon-hero.png: low warm light
+    # from the front-right at golden hour, sunset and dusk; cool moonlight at night
+    "dawn": {"sunAz": -50, "sunEl": 7, "sun": "#FFB48C", "sunW": 2.4, "world": "#7C7DB0", "worldW": 0.8, "lamps": 3.0, "tint": "#D9B8C0"},
     "morning": {"sunAz": -40, "sunEl": 30, "sun": "#FFF0D8", "sunW": 2.8, "world": "#B8CCDD", "worldW": 0.75, "lamps": 1.2, "tint": "#F2F2F0"},
-    "noon": {"sunAz": -15, "sunEl": 62, "sun": "#FFFFFF", "sunW": 2.7, "world": "#C3D3E0", "worldW": 0.75, "lamps": 1.0, "tint": "#FFFFFF"},
-    "late_afternoon": {"sunAz": 40, "sunEl": 24, "sun": "#FFD7A0", "sunW": 3.2, "world": "#C4B39F", "worldW": 0.7, "lamps": 1.4, "tint": "#F6E2C8"},
-    "sunset": {"sunAz": 55, "sunEl": 6, "sun": "#FF8C55", "sunW": 2.8, "world": "#9C6E86", "worldW": 0.6, "lamps": 2.5, "tint": "#E8B49A"},
-    "dusk": {"sunAz": 50, "sunEl": 20, "sun": "#A497D8", "sunW": 1.2, "world": "#57568F", "worldW": 0.85, "lamps": 4.0, "tint": "#9C98C8"},
-    "night": {"sunAz": -35, "sunEl": 40, "sun": "#8DA4D8", "sunW": 1.0, "world": "#2A3866", "worldW": 0.95, "lamps": 6.0, "tint": "#6F7FA8"},
+    "noon": {"sunAz": -15, "sunEl": 62, "sun": "#FFFFFF", "sunW": 2.7, "world": "#C3D3E0", "worldW": 0.8, "lamps": 1.0, "tint": "#FFFFFF"},
+    "late_afternoon": {"sunAz": 45, "sunEl": 13, "sun": "#FFC27A", "sunW": 3.3, "world": "#C79C7C", "worldW": 0.75, "lamps": 1.4, "tint": "#F6E2C8"},
+    "sunset": {"sunAz": 50, "sunEl": 5, "sun": "#FF8E5E", "sunW": 3.0, "world": "#A06A8A", "worldW": 0.7, "lamps": 2.5, "tint": "#E8B49A"},
+    "dusk": {"sunAz": 40, "sunEl": 9, "sun": "#FFA990", "sunW": 2.9, "world": "#7A6BA6", "worldW": 1.25, "lamps": 4.0, "tint": "#9C98C8"},
+    "night": {"sunAz": -35, "sunEl": 40, "sun": "#8FA6E0", "sunW": 1.2, "world": "#2C3A70", "worldW": 1.0, "lamps": 6.0, "tint": "#6F7FA8"},
     "overcast": {"sunAz": 0, "sunEl": 80, "sun": "#FFFFFF", "sunW": 0.0, "world": "#B9C2CB", "worldW": 1.25, "lamps": 1.6, "tint": "#D8DCE0"},
 }
 

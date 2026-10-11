@@ -37,12 +37,26 @@ public:
     int anemometerFrames() const { return anemoN; }
     float anemometerDegreesPerFrame() const { return anemoStep; }
 
+    // Blender-rendered sky and backdrops (backdrops.json): lit clouds and family layers, one
+    // image per lighting anchor, decoded on demand into a small cache
+    int cloudCount() const { return (int) cloudDefs.size(); }
+    bool cloudIsStratus (int k) const;
+    float cloudAspect (int k) const;
+    juce::Image cloud (int k, const juce::String& anchor);
+    bool hasBackdrop (const juce::String& family) const;
+    juce::Rectangle<float> backdropBox (const juce::String& family, const juce::String& layer) const; // scene coordinates
+    juce::Image backdrop (const juce::String& family, const juce::String& layer, const juce::String& anchor);
+
     size_t decodedBytes() const;
 
 private:
     juce::Image load (const juce::String& file) const;
     const SpriteFrame& sprite (std::vector<SpriteFrame>&, const juce::Array<juce::var>&, int frame);
-    juce::var manifest;
+    juce::var manifest, backdrops;
+    juce::Array<juce::var> cloudDefs;
+    std::map<juce::String, juce::Image> extra; // clouds and backdrop layers, keyed by file
+    std::vector<juce::String> extraLru;
+    juce::Image cachedExtra (const juce::String& file, size_t keep);
     bool ok = false;
     float vpW = 1024, vpH = 460, horizonY = 0.555f, scale = 2;
     juce::Rectangle<float> art;

@@ -136,18 +136,44 @@ void SceneView::setSnapshot (const Snapshot& s, bool immediate)
     for (auto& p : parts)
         p.age = -1;
     activeCount = 0;
-    // Cloud layout follows cover: a few broad shapes, more under an overcast sky
-    const int count = juce::jlimit (0, 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
-    if ((int) clouds.size() != count)
+    // Cloud layout follows cover: a few broad shapes, more under an overcast sky; with the
+    // Blender clouds, two low stratus bands sit near the horizon once the sky has some cloud
+    const bool sprites = assets->cloudCount() > 0;
+    const int cumulus = juce::jlimit (0, 9, (int) std::round (target.cloud * 6 + (target.overcast > 0.5 ? 3 : 0)));
+    const int stratus = sprites && target.cloud >= 0.2 ? 2 : 0;
+    const int count = cumulus + stratus;
+    if ((int) clouds.size() != count || (count > 0 && (clouds.front().shape >= 0) != sprites))
     {
         juce::Random r ((juce::int64) snap.visualSeed + 99);
         const float W = assets->viewportWidth(), H = assets->viewportHeight(), hz = H * assets->horizon();
+        std::vector<int> puffs, decks;
+        for (int k = 0; k < assets->cloudCount(); ++k)
+            (assets->cloudIsStratus (k) ? decks : puffs).push_back (k);
         clouds.clear();
-        for (int i = 0; i < count; ++i)
+        for (int i = 0; i < cumulus; ++i)
         {
-            const float w = (130 + 130 * r.nextFloat()) * (float) (1 + 0.5 * target.overcast);
-            const float y = 0.05f * H + r.nextFloat() * (hz * 0.62f - 0.05f * H);
-            clouds.push_back ({ (i + r.nextFloat() * 0.6f) / juce::jmax (1, count) * (W + w) - w / 2, y, w, w * 0.4f, r.nextInt (5), 0.6f + 0.6f * r.nextFloat() });
+            const float x0 = (i + r.nextFloat() * 0.6f) / juce::jmax (1, cumulus);
+            if (sprites && ! puffs.empty())
+            {
+                const int k = puffs[(size_t) (i + (int) (snap.visualSeed % 7)) % puffs.size()];
+                const float w = (180 + 140 * r.nextFloat()) * (float) (1 + 0.35 * target.overcast);
+                const float h = w / assets->cloudAspect (k);
+                const float y = 0.04f * H + r.nextFloat() * (hz * 0.66f - 0.04f * H);
+                clouds.push_back ({ x0 * (W + w) - w / 2, y, w, h, k, 0.6f + 0.6f * r.nextFloat() });
+            }
+            else
+            {
+                const float w = (130 + 130 * r.nextFloat()) * (float) (1 + 0.5 * target.overcast);
+                const float y = 0.05f * H + r.nextFloat() * (hz * 0.62f - 0.05f * H);
+                clouds.push_back ({ x0 * (W + w) - w / 2, y, w, w * 0.4f, -1 - r.nextInt (5), 0.6f + 0.6f * r.nextFloat() });
+            }
+        }
+        for (int i = 0; i < stratus && ! decks.empty(); ++i)
+        {
+            const int k = decks[(size_t) i % decks.size()];
+            const float w = 420 + 120 * r.nextFloat();
+            const float h = w / assets->cloudAspect (k);
+            clouds.push_back ({ (0.05f + 0.55f * i + 0.15f * r.nextFloat()) * W, hz - h * 0.55f - 14 * r.nextFloat(), w, h, k, 0.25f + 0.2f * r.nextFloat() });
         }
     }
     if (immediate || prefs_.quality == Quality::still)
@@ -360,8 +386,13 @@ void SceneView::buildBackground (float ps)
     juce::Graphics g (img);
     g.addTransform (juce::AffineTransform::scale (ps));
 
-    g.setGradientFill (juce::ColourGradient (rgb (c.zenith), 0, 0, rgb (c.horizon), 0, hz, false));
-    g.fillRect (0.0f, 0.0f, W, hz + 1);
+    {
+        // Three stops: the zenith holds most of the sky, the horizon colour rises late
+        juce::ColourGradient sky (rgb (c.zenith), 0, 0, rgb (c.horizon), 0, hz, false);
+        sky.addColour (0.55, rgb (c.zenith).interpolatedWith (rgb (c.horizon), 0.38f));
+        g.setGradientFill (sky);
+        g.fillRect (0.0f, 0.0f, W, H);
+    }
 
     // Stars (deterministic), dimmed by cloud and moonlight
     if (e.stars > 0.02)
@@ -383,12 +414,24 @@ void SceneView::buildBackground (float ps)
     };
     const float veil = (float) (1 - 0.9 * e.overcast) * (float) (0.4 + 0.6 * e.visibility);
 
+    // Low sun: a wide warm glow along the horizon around it (before and after sunset too)
+    if (e.sunAlt > -10 && e.sunAlt < 18)
+    {
+        const float k = (float) (e.sunAlt < 4 ? (e.sunAlt + 10) / 14 : (18 - e.sunAlt) / 14);
+        const float x = skyXY (e.sunAz, juce::jmax (0.0, e.sunAlt)).x;
+        const auto warm = juce::Colour (0xffff9a5c).withAlpha (0.55f * k * (0.35f + 0.65f * veil));
+        juce::Graphics::ScopedSaveState ss (g);
+        g.addTransform (juce::AffineTransform::scale (1.0f, 0.42f, x, hz));
+        g.setGradientFill (juce::ColourGradient (warm, x, hz, warm.withAlpha (0.0f), x + W * 0.55f, hz, true));
+        g.fillEllipse (x - W * 0.55f, hz - W * 0.55f, W * 1.1f, W * 1.1f);
+    }
+
     // Sun: a simple faceted disc with a soft ring; larger and redder near the horizon
     if (e.sunAlt > -2 && veil > 0.03f)
     {
         const auto p = skyXY (e.sunAz, e.sunAlt);
         const float low = (float) juce::jlimit (0.0, 1.0, 1 - e.sunAlt / 20);
-        const float r = 15 + 5 * low;
+        const float r = 15 + 11 * low;
         const auto col = juce::Colour (0xffffd86b).interpolatedWith (juce::Colour (0xffff9a52), low);
         g.setColour (col.withAlpha (0.18f * veil));
         g.fillEllipse (p.x - r * 2, p.y - r * 2, r * 4, r * 4);
@@ -427,7 +470,21 @@ void SceneView::buildBackground (float ps)
     }
 
     // Ground far below: the regional backdrop (visual only, never from the weather)
-    drawLandscape (g, landscape(), W, H, hz, c, e);
+    if (landscape() == Landscape::city && assets->hasBackdrop ("city"))
+    {
+        // Blender city: far ridges and skyline hazed into the horizon colour, then the near city
+        auto far = blendBackdrop ("far", ps);
+        {
+            juce::Graphics fg (far);
+            const auto copy = far.createCopy();
+            fg.setColour (rgb (c.horizon).withAlpha (0.32f));
+            fg.drawImage (copy, far.getBounds().toFloat(), juce::RectanglePlacement::stretchToFit, true);
+        }
+        g.drawImage (far, assets->backdropBox ("city", "far"));
+        g.drawImage (blendBackdrop ("near", ps), assets->backdropBox ("city", "near"));
+    }
+    else
+        drawLandscape (g, landscape(), W, H, hz, c, e);
 
     // Overcast: a flat diffuse deck across the upper sky (static, so it lives in the cache)
     if (e.overcast > 0.3)
@@ -539,9 +596,10 @@ void SceneView::drawLightningAndTornado (juce::Graphics& g)
     }
 }
 
-void SceneView::drawClouds (juce::Graphics& g)
+void SceneView::drawClouds (juce::Graphics& g, float ps)
 {
     if (clouds.empty() || shown.cloud < 0.02) return;
+    if (clouds.front().shape >= 0) return drawSpriteClouds (g, ps);
     const auto c = skyColours (shown);
     const float l = juce::jmax (0.18f, lum (c.ambient));
     const float storm = (float) juce::jlimit (0.0, 1.0, 0.5 * shown.thunder + 0.4 * std::max ({ shown.rain, shown.hail, shown.freezing }));
@@ -552,7 +610,7 @@ void SceneView::drawClouds (juce::Graphics& g)
     juce::Path merged[3];
     for (auto& cl : clouds)
     {
-        const auto& shape = cloudShapes[(size_t) cl.shape % cloudShapes.size()];
+        const auto& shape = cloudShapes[(size_t) (-1 - cl.shape) % cloudShapes.size()];
         const auto t = juce::AffineTransform::scale (cl.w, cl.h).translated (cl.x, cl.y);
         for (int k = 0; k < 3; ++k)
             merged[k].addPath (shape.tones[k], t);
@@ -562,6 +620,79 @@ void SceneView::drawClouds (juce::Graphics& g)
         g.setColour (tones[k].withAlpha (alpha));
         g.fillPath (merged[k]);
     }
+}
+
+// Blender art for the current light: the anchors' renders mixed by weight, as for the craft
+juce::Image SceneView::blendCloud (int k, float w, float h, float ps)
+{
+    juce::Image img (juce::Image::ARGB, juce::jmax (1, (int) std::ceil (w * ps)), juce::jmax (1, (int) std::ceil (h * ps)), true);
+    juce::Graphics g (img);
+    g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+    const auto dest = img.getBounds().toFloat();
+    double acc = 0;
+    for (auto& a : anchorWeights (shown))
+    {
+        if (a.weight < 0.004) continue;
+        auto src = assets->cloud (k, a.name);
+        if (! src.isValid()) continue;
+        acc += a.weight;
+        g.setOpacity ((float) (a.weight / acc));
+        g.drawImage (src, dest, juce::RectanglePlacement::stretchToFit);
+    }
+    // Storm cells darken beyond what the overcast render does
+    const float storm = (float) juce::jlimit (0.0, 1.0, 0.5 * shown.thunder + 0.4 * std::max ({ shown.rain, shown.hail, shown.freezing }));
+    if (storm > 0.02f)
+    {
+        const auto copy = img.createCopy();
+        g.setOpacity (1);
+        g.setColour (juce::Colour (0xff3c4352).withAlpha (storm * 0.55f));
+        g.drawImage (copy, dest, juce::RectanglePlacement::stretchToFit, true);
+    }
+    return img;
+}
+
+juce::Image SceneView::blendBackdrop (const juce::String& layer, float ps)
+{
+    const auto box = assets->backdropBox ("city", layer);
+    juce::Image img (juce::Image::ARGB, juce::jmax (1, (int) std::ceil (box.getWidth() * ps)), juce::jmax (1, (int) std::ceil (box.getHeight() * ps)), true);
+    juce::Graphics g (img);
+    g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+    const auto dest = img.getBounds().toFloat();
+    double acc = 0;
+    for (auto& a : anchorWeights (shown))
+    {
+        if (a.weight < 0.004) continue;
+        auto src = assets->backdrop ("city", layer, a.name);
+        if (! src.isValid()) continue;
+        acc += a.weight;
+        g.setOpacity ((float) (a.weight / acc));
+        g.drawImage (src, dest, juce::RectanglePlacement::stretchToFit);
+    }
+    return img;
+}
+
+void SceneView::drawSpriteClouds (juce::Graphics& g, float ps)
+{
+    juce::String light = juce::String (ps, 3) + "|";
+    for (auto& a : anchorWeights (shown))
+        light << a.name << q (a.weight) << ",";
+    light << q (shown.thunder) << q (std::max ({ shown.rain, shown.hail, shown.freezing }));
+    const float alpha = (float) juce::jlimit (0.0, 1.0, (0.45 + shown.cloud) * (0.45 + 0.55 * shown.visibility));
+    const bool settled = transT >= 1;
+    for (auto& cl : clouds)
+    {
+        // Re-lit only when the light moves (throttled during transitions like the other caches)
+        if (cl.key != light && (settled || ! cl.img.isValid() || clock - lastCloudBuild > 0.5))
+        {
+            cl.img = blendCloud (cl.shape, cl.w, cl.h, ps);
+            cl.key = light;
+        }
+        if (! cl.img.isValid()) continue;
+        g.setOpacity (alpha);
+        g.drawImageTransformed (cl.img, juce::AffineTransform::scale (cl.w / (float) cl.img.getWidth(), cl.h / (float) cl.img.getHeight()).translated (cl.x, cl.y));
+    }
+    if (! settled && clock - lastCloudBuild > 0.5) lastCloudBuild = clock;
+    g.setOpacity (1);
 }
 
 void SceneView::drawMechanisms (juce::Graphics& g)
@@ -746,7 +877,7 @@ void SceneView::paint (juce::Graphics& g)
     g.drawImageTransformed (bgCache, juce::AffineTransform::scale (1.0f / ps));
     lap (0);
     drawLightningAndTornado (g);
-    drawClouds (g);
+    drawClouds (g, ps);
     lap (1);
     lap (2);
     {

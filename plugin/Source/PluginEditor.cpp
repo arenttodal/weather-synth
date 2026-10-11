@@ -204,7 +204,7 @@ void AtmosEditor::paint (juce::Graphics& g)
 {
     g.fillAll (G::Theme::ui);
     const float s = getWidth() / (float) logicalWidth;
-    const float bandTop = (headerH + sceneH) * s;
+    const float bandTop = (sceneTop + sceneH) * s;
     g.setColour (G::Theme::band);
     g.fillRect (0.0f, bandTop, (float) getWidth(), getHeight() - bandTop);
     g.setColour (G::Theme::line);
@@ -217,8 +217,9 @@ void AtmosEditor::resized()
     auto R = [s] (float x, float y, float w, float h) { return juce::Rectangle<float> (x * s, y * s, w * s, h * s).toNearestInt(); };
     header.setBounds (R (0, 0, logicalWidth, headerH));
     header.setUiScale (s);
-    scene.setBounds (R (0, headerH, logicalWidth, sceneH));
-    const float bandTop = headerH + sceneH, bandH = (float) logicalHeight - bandTop;
+    scene.setBounds (R (0, sceneTop, logicalWidth, sceneH));
+    header.toFront (false); // the header's text sits over the sky
+    const float bandTop = sceneTop + sceneH, bandH = (float) logicalHeight - bandTop;
     for (int i = 0; i < tracks.size(); ++i)
     {
         const float cx = logicalWidth / 2.0f + (i - 2) * 166.0f;
@@ -227,7 +228,7 @@ void AtmosEditor::resized()
         tracks[i]->setUiScale (s);
     }
     toastLabel.setFont (G::Theme::mono (14 * s));
-    toastLabel.setBounds (R (logicalWidth / 2 - 260, headerH + sceneH - 44, 520, 30));
+    toastLabel.setBounds (R (logicalWidth / 2 - 260, sceneTop + sceneH - 44, 520, 30));
     panel.setBounds (getLocalBounds());
     globeLayer.setBounds (getLocalBounds());
     layoutGlobe();

@@ -80,7 +80,7 @@ private:
     void buildBackground (float physScale);
     void buildCraft (float physScale);
     void drawLightningAndTornado (juce::Graphics&);
-    void drawClouds (juce::Graphics&);
+    void drawClouds (juce::Graphics&, float ps);
     void drawMechanisms (juce::Graphics&);
     void drawLamps (juce::Graphics&);
     juce::Point<float> craftOffset() const; // the whole craft's slow bob, in scene units
@@ -98,7 +98,7 @@ private:
     // Cached layers
     juce::Image bgCache, craftCache;
     juce::String bgKey, craftKey;
-    double lastBgBuild = -10, lastCraftBuild = -10;
+    double lastBgBuild = -10, lastCraftBuild = -10, lastCloudBuild = -10;
     bool hasLandscapeOverride = false;
     Landscape landscapeOverride = Landscape::neutral;
     double podPulse = 99; // seconds since a newly accepted snapshot (the pod's one pulse)
@@ -113,9 +113,14 @@ private:
     struct Cloud
     {
         float x, y, w, h;
-        int shape;
+        int shape; // a path template, or a Blender cloud (SceneAssets) when the art has them
         float speed;
+        juce::Image img; // the Blender cloud, lit for the current anchors, at screen size
+        juce::String key;
     };
+    void drawSpriteClouds (juce::Graphics&, float ps);
+    juce::Image blendBackdrop (const juce::String& layer, float ps);
+    juce::Image blendCloud (int k, float w, float h, float ps);
     std::vector<Cloud> clouds;
 
     struct Particle

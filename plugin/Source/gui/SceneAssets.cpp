@@ -37,6 +37,55 @@ SceneAssets::SceneAssets()
     vaneSprites.resize ((size_t) vaneN);
     anemoSprites.resize ((size_t) anemoN);
     ok = ! art.isEmpty() && manifest["lighting"].getDynamicObject() != nullptr;
+    if (const char* data = SceneArt::getNamedResource ("backdrops_json", size))
+        backdrops = juce::JSON::parse (juce::String::fromUTF8 (data, size));
+    if (auto* obj = backdrops["clouds"].getDynamicObject())
+        for (auto& p : obj->getProperties())
+            cloudDefs.add (p.value);
+}
+
+juce::Image SceneAssets::cachedExtra (const juce::String& file, size_t keep)
+{
+    if (file.isEmpty()) return {};
+    auto it = extra.find (file);
+    if (it == extra.end())
+    {
+        auto img = load (file);
+        if (! img.isValid()) return {};
+        it = extra.emplace (file, img).first;
+    }
+    extraLru.erase (std::remove (extraLru.begin(), extraLru.end(), file), extraLru.end());
+    extraLru.push_back (file);
+    while (extraLru.size() > keep)
+    {
+        extra.erase (extraLru.front());
+        extraLru.erase (extraLru.begin());
+    }
+    return it->second;
+}
+
+bool SceneAssets::cloudIsStratus (int k) const { return k >= 0 && k < cloudDefs.size() && cloudDefs[k]["kind"].toString() == "stratus"; }
+float SceneAssets::cloudAspect (int k) const { return k >= 0 && k < cloudDefs.size() ? (float) (double) cloudDefs[k].getProperty ("aspect", 3.0) : 3.0f; }
+
+juce::Image SceneAssets::cloud (int k, const juce::String& anchor)
+{
+    if (k < 0 || k >= cloudDefs.size()) return {};
+    // Eight shapes x the anchors in a blend (two or three) stay decoded; a few hundred KB
+    return cachedExtra (cloudDefs[k]["frames"][juce::Identifier (anchor)].toString(), 40);
+}
+
+bool SceneAssets::hasBackdrop (const juce::String& family) const { return backdrops["families"][juce::Identifier (family)].isObject(); }
+
+juce::Rectangle<float> SceneAssets::backdropBox (const juce::String& family, const juce::String& layer) const
+{
+    if (auto* b = backdrops["families"][juce::Identifier (family)]["layers"][juce::Identifier (layer)]["box"].getArray(); b != nullptr && b->size() == 4)
+        return { (float) (double) (*b)[0], (float) (double) (*b)[1], (float) (double) (*b)[2], (float) (double) (*b)[3] };
+    return {};
+}
+
+juce::Image SceneAssets::backdrop (const juce::String& family, const juce::String& layer, const juce::String& anchor)
+{
+    return cachedExtra (backdrops["families"][juce::Identifier (family)]["layers"][juce::Identifier (layer)]["frames"][juce::Identifier (anchor)].toString(), 40);
 }
 
 juce::Point<float> SceneAssets::marker (const juce::String& name) const
@@ -113,6 +162,8 @@ size_t SceneAssets::decodedBytes() const
         add (s.image);
     for (auto& s : anemoSprites)
         add (s.image);
+    for (auto& e : extra)
+        add (e.second);
     return n;
 }
 } // namespace atmos::gui

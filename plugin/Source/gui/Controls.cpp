@@ -448,7 +448,9 @@ void HeaderBar::resized()
 void HeaderBar::paint (juce::Graphics& g)
 {
     const float s = scale;
-    g.fillAll (Theme::ui);
+    // Transparent over the sky (hero framing); a soft shade keeps the text readable on bright skies
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0x59101a28), 0, 0, juce::Colour (0x00101a28), 0, (float) getHeight() * 1.4f, false));
+    g.fillAll();
     g.setColour (Theme::text);
     g.setFont (Theme::font (24 * s, true).withExtraKerningFactor (0.06f));
     g.drawText ("ATMOSPHERIC", juce::Rectangle<float> (22 * s, 0, 220 * s, (float) getHeight()), juce::Justification::centredLeft);

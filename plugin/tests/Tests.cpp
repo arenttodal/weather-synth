@@ -944,7 +944,7 @@ static void testGuiEditor()
         CHECK (inside && clear, "layout at %dx%d: controls inside, below the scene, tracks tall enough", sz.x, sz.y);
     }
     ed->setSize (820, 546);
-    CHECK (std::abs (e->sceneView().getWidth() / (double) e->sceneView().getHeight() - 1024.0 / 460.0) < 0.02, "scene keeps its aspect at minimum size");
+    CHECK (std::abs (e->sceneView().getWidth() / (double) e->sceneView().getHeight() - 1024.0 / 504.0) < 0.02, "scene keeps its aspect at minimum size");
 
     // Particles stay bounded and finite for every weather, even after a long stall
     int worst = 0;

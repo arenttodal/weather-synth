@@ -385,11 +385,11 @@ SkyColours skyColours (const Environment& e)
         double alt;
         unsigned zen, hor, sea, deep, amb;
     };
-    // Picked from the light-and-time reference sheet
+    // Picked from the light-and-time reference sheet; dusk from the hero (deep indigo over a salmon horizon)
     static const K morning[] = { { -14, 0x1A2547, 0x2E3F6C, 0x1E4660, 0x15344A, 0x6F7FA8 }, { -4, 0x56609A, 0xF19C7E, 0x3E5E8A, 0x2C4870, 0xD9B8C0 },
                                  { 14, 0x5DA0DA, 0xCDE5F4, 0x2E86A8, 0x1F6688, 0xF2F2F0 }, { 42, 0x3F92D8, 0xA4D3F1, 0x2699AA, 0x1B7486, 0xFFFFFF } };
-    static const K evening[] = { { -14, 0x1A2547, 0x2E3F6C, 0x1E4660, 0x15344A, 0x6F7FA8 }, { -6, 0x3C3F78, 0x8E70A8, 0x2D4670, 0x223558, 0x9C98C8 },
-                                 { 1, 0x6A5A8E, 0xF5865A, 0x3A5C80, 0x2A4466, 0xE8B49A }, { 18, 0x6A90C2, 0xF0C99C, 0x3A7494, 0x295873, 0xF6E2C8 },
+    static const K evening[] = { { -14, 0x1A2547, 0x2E3F6C, 0x1E4660, 0x15344A, 0x6F7FA8 }, { -6, 0x2E3158, 0xD9826E, 0x2D4670, 0x223558, 0x9C98C8 },
+                                 { 1, 0x4A4078, 0xF58A5C, 0x3A5C80, 0x2A4466, 0xE8B49A }, { 18, 0x6A90C2, 0xF0C99C, 0x3A7494, 0x295873, 0xF6E2C8 },
                                  { 42, 0x3F92D8, 0xA4D3F1, 0x2699AA, 0x1B7486, 0xFFFFFF } };
     const K* k = e.evening ? evening : morning;
     const int n = e.evening ? 5 : 4;
@@ -424,7 +424,11 @@ SkyColours skyColours (const Environment& e)
             c[j] = (float) (lerp (c[j], g[j] * tone, grey) * (1 - dark));
     };
     toGrey (s.zenith, 0.95);
+    // The horizon keeps part of its colour under cloud and rain (the hero's monsoon dusk stays warm low down)
+    const double fullGrey = grey;
+    grey = fullGrey * 0.55;
     toGrey (s.horizon, 0.92);
+    grey = fullGrey;
     // The sea keeps some of its colour under grey skies
     const double keepGrey = grey;
     grey = keepGrey * 0.6;
